@@ -22,6 +22,7 @@ try:
     from igibson.object_states.on_floor import \
         RoomFloor  # pylint: disable=unused-import
     from igibson.objects.articulated_object import URDFObject
+    from igibson.objects.multi_object_wrappers import ObjectMultiplexer 
     from igibson.utils.behavior_robot_planning_utils import \
         plan_base_motion_br, plan_hand_motion_br
 
@@ -86,7 +87,7 @@ def make_navigation_plan(
 
     if not isinstance(
             obj,
-            URDFObject):  # must be a URDFObject so we can get its position!
+            (URDFObject, ObjectMultiplexer)):  # must be a URDFObject so we can get its position!
         logging.error("ERROR! Object to navigate to is not valid (not an "
                       "instance of URDFObject).")
         p.restoreState(state)
@@ -201,7 +202,7 @@ def make_grasp_plan(
 
     # If the object we're trying to grasp doesn't have all the attributes
     # we'll need for assistive grasping, fail and return None
-    if not (isinstance(obj, URDFObject) and hasattr(obj, "states")
+    if not (isinstance(obj, (URDFObject, ObjectMultiplexer)) and hasattr(obj, "states")
             and object_states.AABB in obj.states):
         logging.info(f"PRIMITIVE: grasp {obj.name} fail, no object")
         return None
@@ -385,7 +386,7 @@ def make_place_plan(
         obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
         obj_in_hand = [
             obj for obj in env.scene.get_objects()
-            if obj.get_body_id() == obj_in_hand_idx
+            if (not isinstance(obj, ObjectMultiplexer) or obj.current_index == 0) and obj.get_body_id() == obj_in_hand_idx
         ][0]
         logging.info(f"PRIMITIVE: attempt to place {obj_in_hand.name} ontop"
                      f"/inside {obj.name} with params {place_rel_pos}")
@@ -402,7 +403,7 @@ def make_place_plan(
         return None
 
     # if the object is not a urdf object, fail and return None
-    if not isinstance(obj, URDFObject):
+    if not isinstance(obj, (URDFObject, ObjectMultiplexer)):
         logging.info(f"PRIMITIVE: place {obj_in_hand.name} ontop/inside "
                      f"{obj.name} fail, too far")
         return None
@@ -423,7 +424,7 @@ def make_place_plan(
     obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
     obj_in_hand = [
         obj for obj in env.scene.get_objects()
-        if obj.get_body_id() == obj_in_hand_idx
+        if (not isinstance(obj, ObjectMultiplexer) or obj.current_index == 0) and obj.get_body_id() == obj_in_hand_idx
     ][0]
     x, y, z = np.add(place_rel_pos, obj.get_position())
     hand_x, hand_y, hand_z = env.robots[0].parts["right_hand"].get_position()
@@ -436,7 +437,19 @@ def make_place_plan(
     maxz = max(z, hand_z) + 0.5
 
     obstacles = get_scene_body_ids(env, include_self=False)
-    obstacles.remove(env.robots[0].parts["right_hand"].object_in_hand)
+    if isinstance(obj_in_hand, ObjectMultiplexer):
+        # assert obj_in_hand.current_index == 0
+        # obj_in_hand.set_selection(1)
+        # obj_in_hand_idx_0 = obj_in_hand.objects[0].get_body_id()
+        # obj_in_hand_idx_1 = obj_in_hand.objects[1].get_body_id()
+        # obstacles.remove(obj_in_hand_idx_0)
+        # obstacles.remove(obj_in_hand_idx_1)
+        # obj_in_hand.set_selection(0)
+        # Note: it seems that object multiplexers don't show up in the list
+        # of obstacles, so we can just skip this step
+        pass
+    else:
+        obstacles.remove(env.robots[0].parts["right_hand"].object_in_hand)
     end_conf = [
         x,
         y,

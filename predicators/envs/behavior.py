@@ -11,30 +11,31 @@ import matplotlib
 import numpy as np
 from numpy.random._generator import Generator
 
-try:
-    import bddl
-    import igibson
-    import pybullet as pyb
-    from igibson import object_states
-    from igibson.activity.bddl_backend import SUPPORTED_PREDICATES, \
-        ObjectStateBinaryPredicate, ObjectStateUnaryPredicate
-    from igibson.envs import behavior_env
-    from igibson.object_states.on_floor import RoomFloor
-    from igibson.objects.articulated_object import \
-        ArticulatedObject  # pylint: disable=unused-import
-    from igibson.objects.articulated_object import \
-        URDFObject  # pylint: disable=unused-import
-    from igibson.robots.behavior_robot import BRBody
-    from igibson.simulator import Simulator  # pylint: disable=unused-import
-    from igibson.utils.checkpoint_utils import save_checkpoint
-    from igibson.utils.utils import modify_config_file
+# try:
+import bddl
+import igibson
+import pybullet as pyb
+from igibson import object_states
+from igibson.activity.bddl_backend import SUPPORTED_PREDICATES, \
+    ObjectStateBinaryPredicate, ObjectStateUnaryPredicate
+from igibson.envs import behavior_env
+from igibson.object_states.on_floor import RoomFloor
+from igibson.objects.articulated_object import \
+    ArticulatedObject  # pylint: disable=unused-import
+from igibson.objects.articulated_object import \
+    URDFObject  # pylint: disable=unused-import
+from igibson.objects.multi_object_wrappers import ObjectMultiplexer 
+from igibson.robots.behavior_robot import BRBody
+from igibson.simulator import Simulator  # pylint: disable=unused-import
+from igibson.utils.checkpoint_utils import save_checkpoint
+from igibson.utils.utils import modify_config_file
 
-    _BEHAVIOR_IMPORTED = True
-    bddl.set_backend("iGibson")  # pylint: disable=no-member
-    if not os.path.exists("tmp_behavior_states/"):
-        os.makedirs("tmp_behavior_states/")
-except (ImportError, ModuleNotFoundError) as e:
-    _BEHAVIOR_IMPORTED = False
+_BEHAVIOR_IMPORTED = True
+bddl.set_backend("iGibson")  # pylint: disable=no-member
+if not os.path.exists("tmp_behavior_states/"):
+    os.makedirs("tmp_behavior_states/")
+# except (ImportError, ModuleNotFoundError) as e:
+#     _BEHAVIOR_IMPORTED = False
 from gym.spaces import Box
 
 from predicators import utils
@@ -47,7 +48,8 @@ from predicators.behavior_utils.option_fns import create_dummy_policy, \
 from predicators.behavior_utils.option_model_fns import \
     create_close_option_model, create_grasp_option_model, \
     create_navigate_option_model, create_open_option_model, \
-    create_place_inside_option_model, create_place_option_model
+    create_place_inside_option_model, create_place_option_model, \
+    create_slice_option_model
 from predicators.envs import BaseEnv
 from predicators.settings import CFG
 from predicators.structs import Action, Array, GroundAtom, Object, \
@@ -143,7 +145,8 @@ class BehaviorEnv(BaseEnv):
             Callable[[State, "behavior_env.BehaviorEnv"], None]]] = [
                 create_navigate_option_model, create_grasp_option_model,
                 create_place_option_model, create_open_option_model,
-                create_close_option_model, create_place_inside_option_model
+                create_close_option_model, create_place_inside_option_model,
+                create_slice_option_model,
             ]
 
         # name, planner_fn, option_policy_fn, option_model_fn,
@@ -161,6 +164,8 @@ class BehaviorEnv(BaseEnv):
              option_model_fns[4], 3, 1, (-1.0, 1.0)),
             ("PlaceInside", planner_fns[2], option_policy_fns[3],
              option_model_fns[5], 3, 1, (-1.0, 1.0)),
+            ("Slice", planner_fns[3], option_policy_fns[3],
+             option_model_fns[6], 3, 1, (-1.0, 1.0))
         ]
         self._options: Set[ParameterizedOption] = set()
         for (name, planner_fn, policy_fn, option_model_fn, param_dim, num_args,
@@ -346,7 +351,7 @@ class BehaviorEnv(BaseEnv):
                 self._name_to_ig_object(t)
                 for t in head_expr.terms[obj_start_idx:]
             ]
-            objects = [self._ig_object_to_object(i) for i in ig_objs]
+            objects = [obj for i in ig_objs for obj in self._ig_object_to_object(i) ]
             pred_name = self._create_type_combo_name(bddl_name,
                                                      [o.type for o in objects])
             pred = self._name_to_predicate(pred_name)
@@ -408,6 +413,10 @@ class BehaviorEnv(BaseEnv):
             ("openable", self._openable_classifier, 1),
             ("not-openable", self._not_openable_classifier, 1),
             ("closed", self._closed_classifier, 1),
+            ("sliceable", self._sliceable_classifier, 1),
+            ("slicer", self._slicer_classifier, 1),
+            ("not-sliced", self._not_sliced_classifier, 1),
+            ("sliced", self._sliced_classifier, 1)
         ]
 
         for name, classifier, arity in custom_predicate_specs:
@@ -416,7 +425,6 @@ class BehaviorEnv(BaseEnv):
                 pred_name = self._create_type_combo_name(name, type_combo)
                 pred = Predicate(pred_name, list(type_combo), classifier)
                 predicates.add(pred)
-
         return predicates
 
     @property
@@ -503,7 +511,22 @@ class BehaviorEnv(BaseEnv):
                         "behavior_mode in settings.py instead")
 
     def _get_task_relevant_objects(self) -> List["ArticulatedObject"]:
-        return list(self.igibson_behavior_env.task.object_scope.values())
+        initial_list = list(self.igibson_behavior_env.task.object_scope.values())
+
+        # NOTE: sliceable objects are multiplexers with one URDFObject (which
+        # is used as the object while not_sliced) and one GroupedObject (which
+        # contains two halves of the object to be treated as individual objects)
+        # after slicing. Therefore, we add the multiplexer as a single object
+        # (handled above in initial_list) and each of the two elements in the
+        # grouped object (handled below)
+        multiplexed_list = []
+        # for obj in initial_list:
+        #     if isinstance(obj, ObjectMultiplexer):
+        #         obj.multiplexer.set_selection(1)
+        #         for sub_obj in obj.objects:
+        #             multiplexed_list.append(sub_obj)
+        #             obj.multiplexer.set_selection(0)
+        return initial_list + multiplexed_list
 
     def set_igibson_behavior_env(self, task_num: int, task_instance_id: int,
                                  seed: int) -> None:
@@ -529,8 +552,9 @@ class BehaviorEnv(BaseEnv):
             self.igibson_behavior_env.step(
                 np.zeros(self.igibson_behavior_env.action_space.shape))
             ig_objs_bddl_scope = [
-                self._ig_object_name(obj)
-                for obj in self._get_task_relevant_objects()
+                self._ig_object_name(obj)[0]
+                # for obj in self._get_task_relevant_objects()
+                for obj in self.igibson_behavior_env.task.object_scope.values()
             ]
             if None not in ig_objs_bddl_scope or env_creation_attempts > 9:
                 break
@@ -545,7 +569,7 @@ class BehaviorEnv(BaseEnv):
 
     # Do not add @functools.lru_cache(maxsize=None) here this will
     # lead to wrong mappings when we load a different scene
-    def _ig_object_to_object(self, ig_obj: "ArticulatedObject") -> Object:
+    def _ig_object_to_object(self, ig_obj: "ArticulatedObject") -> List[Object]:
         type_name = ig_obj.category
         # NOTE: Since we don't necessarily have the full set of
         # types we might need to solve a new domain, it is often
@@ -558,8 +582,11 @@ class BehaviorEnv(BaseEnv):
         #         if ig_obj.category not in ALL_RELEVANT_OBJECT_TYPES:
         #             print(ig_obj.category)
         #     import ipdb; ipdb.set_trace()
-        ig_obj_name = self._ig_object_name(ig_obj)
-        return Object(ig_obj_name, obj_type)
+        ig_obj_name_list = self._ig_object_name(ig_obj)
+        obj_list = []
+        for ig_obj_name in ig_obj_name_list:
+            obj_list.append(Object(ig_obj_name, obj_type))
+        return obj_list
 
     # Do not add @functools.lru_cache(maxsize=None) here this will
     # lead to wrong mappings when we load a different scene
@@ -572,7 +599,13 @@ class BehaviorEnv(BaseEnv):
     def _name_to_ig_object(self, name: str) -> "ArticulatedObject":
         for ig_obj in self._get_task_relevant_objects():
             # Name is extended with sub-type in some behavior tasks
-            if self._ig_object_name(ig_obj).startswith(name):
+            ig_names = self._ig_object_name(ig_obj)
+            if len(ig_names) > 1:
+                assert isinstance(ig_obj, ObjectMultiplexer) and ig_obj.current_index == 1
+                for ig_name, sub_ig_obj in zip(ig_names, ig_obj.objects):
+                    if ig_name.startswith(name):
+                        return sub_ig_obj
+            elif ig_names[0].startswith(name):
                 return ig_obj
         raise ValueError(f"No IG object found for name {name}.")
 
@@ -588,14 +621,24 @@ class BehaviorEnv(BaseEnv):
         iGibson simulator state."""
         state_data = {}
         for ig_obj in self._get_task_relevant_objects():
-            obj = self._ig_object_to_object(ig_obj)
-            # In the future, we may need other object attributes,
-            # but for the moment, we just need position and orientation.
-            obj_state = np.hstack([
-                ig_obj.get_position(),
-                ig_obj.get_orientation(),
-            ])
-            state_data[obj] = obj_state
+            obj_list = self._ig_object_to_object(ig_obj)
+            if len(obj_list) > 1:
+                assert isinstance(ig_obj, ObjectMultiplexer) and ig_obj.current_index == 1
+                for obj, sub_ig_obj in zip(obj_list, ig_obj.objects):
+                    # In the future, we may need other object attributes,
+                    # but for the moment, we just need position and orientation.
+                    obj_state = np.hstack([
+                        sub_ig_obj.get_position(),
+                        sub_ig_obj.get_orientation(),
+                    ])
+                    state_data[obj] = obj_state
+            else:
+                obj = obj_list[0]
+                obj_state = np.hstack([
+                    ig_obj.get_position(),
+                    ig_obj.get_orientation(),
+                ])
+                state_data[obj] = obj_state
 
         # NOTE: we set simulator state to none as a 'dummy' value.
         # we should never load a simulator state that was saved when
@@ -748,14 +791,75 @@ class BehaviorEnv(BaseEnv):
             return not ig_obj.states[object_states.Open].get_value()
         return False
 
+    def _sliceable_classifier(self, state: State,
+                              objs: Sequence[Object]) -> bool:
+        if not state.allclose(
+                self.current_ig_state_to_state(save_state=False)):
+            load_checkpoint_state(state, self)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_sliceable = hasattr(
+            ig_obj, "states") and object_states.Sliced in ig_obj.states
+        return obj_sliceable
+
+    def _slicer_classifier(self, state: State,
+                              objs: Sequence[Object]) -> bool:
+        if not state.allclose(
+                self.current_ig_state_to_state(save_state=False)):
+            load_checkpoint_state(state, self)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_slicer = hasattr(
+            ig_obj, "states") and object_states.Slicer in ig_obj.states
+        return obj_slicer
+
+    def _not_sliced_classifier(self, state: State, objs: Sequence[Object]) -> bool:
+        if not state.allclose(
+                self.current_ig_state_to_state(save_state=False)):
+            load_checkpoint_state(state, self)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        # NOTE: If an object is not sliceable, we default to setting
+        # it be not_sliced, since that's a precondition for grasping
+        obj_sliceable = self._sliceable_classifier(state, objs)
+        if obj_sliceable:
+            return not ig_obj.states[object_states.Sliced].get_value()
+        return True
+
+    def _sliced_classifier(self, state: State, objs: Sequence[Object]) -> bool:
+        if not state.allclose(
+                self.current_ig_state_to_state(save_state=False)):
+            load_checkpoint_state(state, self)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        # NOTE: If an object is not sliceable, we default to setting
+        # it to not be not_sliced and not be sliced
+        obj_sliceable = self._sliceable_classifier(state, objs)
+        if obj_sliceable:
+            return ig_obj.states[object_states.Sliced].get_value()
+        return False
+
+
     @staticmethod
-    def _ig_object_name(ig_obj: "ArticulatedObject") -> str:
+    def _ig_object_name(ig_obj: "ArticulatedObject") -> List[str]:
         if isinstance(ig_obj, (URDFObject, RoomFloor)):
-            return ig_obj.bddl_object_scope
+            return [ig_obj.bddl_object_scope]
+        # For multiplexers, only object_id 0 has a bddl_scope
+        # Note: internally, the multiplexer gets its attributes
+        # from the current_index
+        if isinstance(ig_obj, ObjectMultiplexer):
+            idx = ig_obj.current_index
+            if idx == 0:
+                return [ig_obj.bddl_object_scope]
+            else:
+                ig_obj.set_selection(0)
+                name = ig_obj.bddl_object_scope
+                ig_obj.set_selection(1)
+                return [name+'_left', name+'_right']
         # Robot does not have a field "bddl_object_scope", so we define
         # its name manually.
         assert isinstance(ig_obj, BRBody)
-        return "agent"
+        return ["agent"]
 
     @staticmethod
     def _bddl_predicate_arity(bddl_predicate: "bddl.AtomicFormula") -> int:

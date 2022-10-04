@@ -15,6 +15,7 @@ try:
         BehaviorEnv  # pylint: disable=unused-import
     from igibson.objects.articulated_object import \
         URDFObject  # pylint: disable=unused-import
+    from igibson.objects.multi_object_wrappers import ObjectMultiplexer 
 except (ImportError, ModuleNotFoundError) as e:
     pass
 
@@ -210,7 +211,7 @@ def create_place_inside_option_model(
         obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
         obj_in_hand = [
             obj for obj in env.scene.get_objects()
-            if obj.get_body_id() == obj_in_hand_idx
+            if (not isinstance(obj, ObjectMultiplexer) or obj.current_index == 0) and obj.get_body_id() == obj_in_hand_idx
         ][0]
         rh_orig_grasp_position = env.robots[0].parts[
             "right_hand"].get_position()
@@ -268,3 +269,27 @@ def create_place_inside_option_model(
         env.step(np.zeros(env.action_space.shape))
 
     return placeInsideObjectOptionModel
+
+def create_slice_option_model(
+        plan: List[List[float]], _original_orientation: List[List[float]],
+        obj_to_slice: "URDFObject") -> Callable[[State, "BehaviorEnv"], None]:
+    """Instantiates and returns a slice option model given a dummy plan."""
+    del plan
+
+    def sliceObjectOptionModel(_init_state: State, env: "BehaviorEnv") -> None:
+        logging.info(f"PRIMITIVE: Attempting to slice {obj_to_slice.name}")
+        if np.linalg.norm(
+                np.array(obj_to_slice.get_position()) -
+                np.array(env.robots[0].get_position())) < 2:
+            if hasattr(obj_to_slice,
+                       "states") and object_states.Sliced in obj_to_slice.states:
+                obj_to_slice.states[object_states.Sliced].set_value(True)
+            else:
+                logging.info("PRIMITIVE slice failed, cannot be sliced")
+        else:
+            logging.info("PRIMITIVE slice failed, too far")
+        obj_to_slice.force_wakeup()
+        # Step the simulator to update visuals.
+        env.step(np.zeros(env.action_space.shape))
+
+    return sliceObjectOptionModel
