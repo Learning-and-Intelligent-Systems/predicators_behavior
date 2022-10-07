@@ -9,7 +9,8 @@ from numpy.random._generator import Generator
 
 from predicators.behavior_utils.behavior_utils import OPENABLE_OBJECT_TYPES, \
     PICK_PLACE_OBJECT_TYPES, PLACE_INTO_SURFACE_OBJECT_TYPES, \
-    PLACE_ONTOP_SURFACE_OBJECT_TYPES, check_hand_end_pose, \
+    PLACE_ONTOP_SURFACE_OBJECT_TYPES, CLEANING_OBJECT_TYPES, \
+    DUSTYABLE_OBJECT_TYPES,check_hand_end_pose, \
     check_nav_end_pose, load_checkpoint_state
 from predicators.envs import get_or_create_env
 from predicators.envs.behavior import BehaviorEnv
@@ -2794,6 +2795,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
     op_name_count_open = itertools.count()
     op_name_count_close = itertools.count()
     op_name_count_place_inside = itertools.count()
+    op_name_count_clean_dusty = itertools.count()
 
     # Dummy sampler definition. Useful for open and close.
     def dummy_param_sampler(state: State, goal: Set[GroundAtom],
@@ -3330,7 +3332,44 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     ),
                 )
                 nsrts.add(not_openable_nsrt)
-
+        elif base_option_name == "CleanDusty":
+            assert len(option_arg_type_names) == 1
+            clean_obj_type_name = option_arg_type_names[0]
+            clean_obj_type = type_name_to_type[clean_obj_type_name]
+            clean_obj = Variable("?obj", clean_obj_type)
+            # We don't need an NSRT to close objects that are not
+            # openable.
+            if clean_obj_type.name not in DUSTYABLE_OBJECT_TYPES:
+                continue
+            for held_obj_types in sorted(env.task_relevant_types):
+                if held_obj_types.name not in CLEANING_OBJECT_TYPES or \
+                    held_obj_types.name == clean_obj_type.name:
+                    continue
+                held_obj = Variable("?held", held_obj_types)
+                parameters = [held_obj, clean_obj]
+                option_vars = [clean_obj]
+                preconditions = {
+                    _get_lifted_atom("reachable", [clean_obj]),
+                    _get_lifted_atom("holding", [held_obj]),
+                    _get_lifted_atom("dusty", [clean_obj]),
+                    _get_lifted_atom("dustyable", [clean_obj]),
+                    _get_lifted_atom("cleaner", [held_obj])
+                }
+                add_effects = {_get_lifted_atom("not-dusty", [clean_obj])}
+                delete_effects = {_get_lifted_atom("dusty", [clean_obj])}
+                nsrt = NSRT(
+                    f"{option.name}-{next(op_name_count_close)}", parameters,
+                    preconditions, add_effects, delete_effects, set(), option,
+                    option_vars, lambda s, g, r, o: dummy_param_sampler(
+                        s,
+                        g,
+                        r,
+                        [
+                            env.object_to_ig_object(o_i)
+                            if isinstance(o_i, Object) else o_i for o_i in o
+                        ],
+                    ))
+                nsrts.add(nsrt)
         else:
             raise ValueError(
                 f"Unexpected base option name: {base_option_name}")

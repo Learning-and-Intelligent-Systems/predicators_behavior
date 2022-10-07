@@ -47,7 +47,8 @@ from predicators.behavior_utils.option_fns import create_dummy_policy, \
 from predicators.behavior_utils.option_model_fns import \
     create_close_option_model, create_grasp_option_model, \
     create_navigate_option_model, create_open_option_model, \
-    create_place_inside_option_model, create_place_option_model
+    create_place_inside_option_model, create_place_option_model, \
+    create_clean_dusty_option_model
 from predicators.envs import BaseEnv
 from predicators.settings import CFG
 from predicators.structs import Action, Array, GroundAtom, Object, \
@@ -143,7 +144,8 @@ class BehaviorEnv(BaseEnv):
             Callable[[State, "behavior_env.BehaviorEnv"], None]]] = [
                 create_navigate_option_model, create_grasp_option_model,
                 create_place_option_model, create_open_option_model,
-                create_close_option_model, create_place_inside_option_model
+                create_close_option_model, create_place_inside_option_model,
+                create_clean_dusty_option_model
             ]
 
         # name, planner_fn, option_policy_fn, option_model_fn,
@@ -161,6 +163,8 @@ class BehaviorEnv(BaseEnv):
              option_model_fns[4], 3, 1, (-1.0, 1.0)),
             ("PlaceInside", planner_fns[2], option_policy_fns[3],
              option_model_fns[5], 3, 1, (-1.0, 1.0)),
+            ("CleanDusty", planner_fns[3], option_policy_fns[3],
+                option_model_fns[6], 3, 1, (-1.0, 1.0)),
         ]
         self._options: Set[ParameterizedOption] = set()
         for (name, planner_fn, policy_fn, option_model_fn, param_dim, num_args,
@@ -331,10 +335,12 @@ class BehaviorEnv(BaseEnv):
             # Since our implementation of SeSamE assumes positive preconditions
             # and goals, we must parse these into positive expressions.
             if head_expr.terms[0] == 'not':
-                # Currently, the only goals that include 'not' are those that
-                # include 'not open' statements, so turn these into 'closed'.
-                assert head_expr.terms[1] == 'open'
-                bddl_name = 'closed'
+                if head_expr.terms[1] == 'open':
+                    bddl_name = 'closed'
+                elif head_expr.terms[1] == 'dusty':
+                    bddl_name = 'not-dusty'
+                else:
+                    raise ValueError('Only open and dusty support negation in goals')
                 obj_start_idx = 2
             else:
                 bddl_name = head_expr.terms[0]  # untyped
@@ -408,6 +414,10 @@ class BehaviorEnv(BaseEnv):
             ("openable", self._openable_classifier, 1),
             ("not-openable", self._not_openable_classifier, 1),
             ("closed", self._closed_classifier, 1),
+            ("cleaner", self._cleaner_classifier, 1),
+            ("dustyable", self._dustyable_classifier, 1),
+            ("dusty", self._dusty_classifier, 1),
+            ("not-dusty", self._not_dusty_classifier, 1),
         ]
 
         for name, classifier, arity in custom_predicate_specs:
@@ -746,6 +756,48 @@ class BehaviorEnv(BaseEnv):
         obj_openable = self._openable_classifier(state, objs)
         if obj_openable:
             return not ig_obj.states[object_states.Open].get_value()
+        return False
+
+    def _cleaner_classifier(self, state: State, objs: Sequence[Object]) -> bool:
+        if not state.allclose(
+                self.current_ig_state_to_state(save_state=False)):
+            load_checkpoint_state(state, self)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_cleaner = hasattr(
+             ig_obj, "states") and object_states.CleaningTool in ig_obj.states
+        return obj_cleaner
+
+    def _dustyable_classifier(self, state: State, objs: Sequence[Object]) -> bool:
+        if not state.allclose(
+                self.current_ig_state_to_state(save_state=False)):
+            load_checkpoint_state(state, self)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_dustyable = hasattr(
+            ig_obj, "states") and object_states.Dusty in ig_obj.states
+        return obj_dustyable
+
+    def _dusty_classifier(self, state: State, objs: Sequence[Object]) -> bool:
+        if not state.allclose(
+                self.current_ig_state_to_state(save_state=False)):
+            load_checkpoint_state(state, self)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_dustyable = self._dustyable_classifier(state, objs)
+        if obj_dustyable:
+            return ig_obj.states[object_states.Dusty].get_value()
+        return False
+
+    def _not_dusty_classifier(self, state: State, objs: Sequence[Object]) -> bool:
+        if not state.allclose(
+                self.current_ig_state_to_state(save_state=False)):
+            load_checkpoint_state(state, self)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_dustyable = self._dustyable_classifier(state, objs)
+        if obj_dustyable:
+            return not ig_obj.states[object_states.Dusty].get_value()
         return False
 
     @staticmethod
