@@ -783,10 +783,7 @@ class BehaviorEnv(BaseEnv):
                 np.array(ig_obj.get_position())) < 2)
 
         # Note: these are magic numbers computed from visualizing a scene.
-        # It doesn't exactly correspond to a cilinder with a hole because
-        # The vertical distance is included in the distance computation, 
-        # but it doesn't correspond to a sphere with a hole because the
-        # angle only considers the horizontal plane
+        # It corresponds to a 120 degree section of a cylinder with a hole 
         robot = env.igibson_behavior_env.robots[0]
         robot_pos = robot.get_position()
         robot_quat = robot.get_orientation()
@@ -798,7 +795,7 @@ class BehaviorEnv(BaseEnv):
             gamma -= 2 * np.pi
         elif gamma <= -np.pi:
             gamma += 2 * np.pi
-        return (0.5 <= np.linalg.norm(obj_pos - robot_pos) <= 1.0 
+        return (0.5 <= np.linalg.norm(obj_pos[:2] - robot_pos[:2]) <= 1.0 
                 and -np.pi / 3 <= gamma <= np.pi / 3)
 
 
