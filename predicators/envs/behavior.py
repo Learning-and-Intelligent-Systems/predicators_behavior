@@ -24,7 +24,8 @@ try:
         ArticulatedObject  # pylint: disable=unused-import
     from igibson.objects.articulated_object import \
         URDFObject  # pylint: disable=unused-import
-    from igibson.robots.behavior_robot import BRBody
+    from igibson.robots.behavior_robot import BRBody, BehaviorRobot
+    from igibson.robots.fetch_gripper_robot import FetchGripper
     from igibson.simulator import Simulator  # pylint: disable=unused-import
     from igibson.utils.checkpoint_utils import save_checkpoint
     from igibson.utils.utils import modify_config_file
@@ -87,12 +88,13 @@ class BehaviorEnv(BaseEnv):
                 os.path.join(igibson.root_path, CFG.behavior_config_file),
                 CFG.behavior_task_list[0],
                 self.get_random_scene_for_task(CFG.behavior_task_list[0],
-                                               rng), False, CFG.seed)
+                                               rng), False, CFG.behavior_robot, 
+                CFG.seed)
         else:
             self._config_file = modify_config_file(
                 os.path.join(igibson.root_path, CFG.behavior_config_file),
-                CFG.behavior_task_list[0], CFG.behavior_train_scene_name,
-                False, CFG.seed)
+                CFG.behavior_task_list[0], CFG.behavior_scene_name, False,
+                CFG.behavior_robot, CFG.seed)
 
         super().__init__()  # To ensure self._seed is defined.
         self._rng = np.random.default_rng(self._seed)
@@ -210,7 +212,7 @@ class BehaviorEnv(BaseEnv):
         self._config_file = modify_config_file(
             os.path.join(igibson.root_path, CFG.behavior_config_file),
             CFG.behavior_task_list[task_index], self.scene_list[task_num],
-            False, CFG.seed)
+            False, CFG.behavior_robot, CFG.seed)
 
     def get_random_scene_for_task(self, behavior_task_name: str,
                                   rng: Generator) -> str:
@@ -539,9 +541,16 @@ class BehaviorEnv(BaseEnv):
     @property
     def action_space(self) -> Box:
         # 17-dimensional, between -1 and 1
-        assert self.igibson_behavior_env.action_space.shape == (17, )
-        assert np.all(self.igibson_behavior_env.action_space.low == -1)
-        assert np.all(self.igibson_behavior_env.action_space.high == 1)
+        if isinstance(self.igibson_behavior_env.robots[0], BehaviorRobot):
+            assert self.igibson_behavior_env.action_space.shape == (17, )
+            assert np.all(self.igibson_behavior_env.action_space.low == -1)
+            assert np.all(self.igibson_behavior_env.action_space.high == 1)
+        elif isinstance(self.igibson_behavior_env.robots[0], FetchGripper):
+            assert self.igibson_behavior_env.action_space.shape == (11, )
+            assert np.all(self.igibson_behavior_env.action_space.low == -1)
+            assert np.all(self.igibson_behavior_env.action_space.high == 1)
+        else:
+            raise ValueError("Robot can only be BehavorRobot or FetchGripper")
         return self.igibson_behavior_env.action_space
 
     def render_state_plt(
@@ -768,9 +777,30 @@ class BehaviorEnv(BaseEnv):
         # appear in any preconditions.
         if ig_obj.name == "agent":
             return False
-        return (np.linalg.norm(  # type: ignore
-            np.array(robot_obj.get_position()) -
-            np.array(ig_obj.get_position())) < 2)
+        if isinstance(robot_obj, BehaviorRobot):
+            return (np.linalg.norm(  # type: ignore
+                np.array(robot_obj.get_position()) -
+                np.array(ig_obj.get_position())) < 2)
+
+        # Note: these are magic numbers computed from visualizing a scene.
+        # It doesn't exactly correspond to a cilinder with a hole because
+        # The vertical distance is included in the distance computation, 
+        # but it doesn't correspond to a sphere with a hole because the
+        # angle only considers the horizontal plane
+        robot = env.igibson_behavior_env.robots[0]
+        robot_pos = robot.get_position()
+        robot_quat = robot.get_orientation()
+        robot_eul = pyb.getEulerFromQuaternion(robot_quat)
+        theta = robot_eul[2]
+        obj_pos = ig_obj.get_position()
+        gamma = np.arctan2(obj_pos[1] - robot_pos[1], obj_pos[0] - robot_pos[0]) - theta
+        if gamma > np.pi:
+            gamma -= 2 * np.pi
+        elif gamma <= -np.pi:
+            gamma += 2 * np.pi
+        return (0.5 <= np.linalg.norm(obj_pos - robot_pos) <= 1.0 
+                and -np.pi / 3 <= gamma <= np.pi / 3)
+
 
     def _reachable_nothing_classifier(
             self,
@@ -941,7 +971,7 @@ class BehaviorEnv(BaseEnv):
             return ig_obj.bddl_object_scope
         # Robot does not have a field "bddl_object_scope", so we define
         # its name manually.
-        assert isinstance(ig_obj, BRBody)
+        assert isinstance(ig_obj, (BRBody, FetchGripper)), f"ig_obj type: {type(ig_obj)}"
         return "agent"
 
     @staticmethod

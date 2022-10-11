@@ -20,7 +20,7 @@ try:
         RoomFloor  # pylint: disable=unused-import
     from igibson.objects.articulated_object import URDFObject
     from igibson.robots.behavior_robot import \
-        BRBody  # pylint: disable=unused-import
+        BRBody, BehaviorRobot  # pylint: disable=unused-import
     from igibson.robots.robot_base import \
         BaseRobot  # pylint: disable=unused-import
     from igibson.utils.checkpoint_utils import load_checkpoint
@@ -873,11 +873,14 @@ def detect_collision(bodyA: int, object_in_hand: Optional[int] = None) -> bool:
 def detect_robot_collision(robot: "BaseRobot") -> bool:
     """Function to detect whether the robot is currently colliding with any
     object in the scene."""
-    object_in_hand = robot.parts["right_hand"].object_in_hand
-    return (detect_collision(robot.parts["body"].body_id)
-            or detect_collision(robot.parts["left_hand"].body_id)
-            or detect_collision(robot.parts["right_hand"].body_id,
-                                object_in_hand))
+    if isinstance(robot, BehaviorRobot):
+        object_in_hand = robot.parts["right_hand"].object_in_hand
+        return (detect_collision(robot.parts["body"].body_id)
+                or detect_collision(robot.parts["left_hand"].body_id)
+                or detect_collision(robot.parts["right_hand"].body_id,
+                                    object_in_hand))
+    object_in_hand = robot.object_in_hand
+    return detect_collision(robot.body_id, object_in_hand)
 
 
 def reset_and_release_hand(env: "BehaviorEnv") -> None:
@@ -1020,17 +1023,27 @@ def check_nav_end_pose(
     robot_orn = p.getEulerFromQuaternion(env.robots[0].get_orientation())
     orn = [robot_orn[0], robot_orn[1], yaw_angle]
     env.robots[0].set_position_orientation(pos, p.getQuaternionFromEuler(orn))
-    eye_pos = env.robots[0].parts["eye"].get_position()
+    if isinstance(env.robots[0], BehaviorRobot):
+        eye_pos = env.robots[0].parts["eye"].get_position()
+    else:
+        eye_pos = env.robots[0].parts["eyes"].get_position()
     ray_test_res = p.rayTest(eye_pos, obj_pos)
     # Test to see if the robot is obstructed by some object, but make sure
     # that object is not either the robot's body or the object we want to
     # pick up!
-    blocked = len(ray_test_res) > 0 and (ray_test_res[0][0] not in (
-        env.robots[0].parts["body"].get_body_id(),
-        obj.get_body_id(),
-    ))
+    if isinstance(env.robots[0], BehaviorRobot):
+        blocked = len(ray_test_res) > 0 and (ray_test_res[0][0] not in (
+            env.robots[0].parts["body"].get_body_id(),
+            obj.get_body_id(),
+        ))
+    else:
+        blocked = len(ray_test_res) > 0 and (ray_test_res[0][0] not in (
+            env.robots[0].get_body_id(),
+            obj.get_body_id(),
+        ))
     if not detect_robot_collision(env.robots[0]) and (not blocked
                                                       or ignore_blocked):
+
         valid_position = (pos, orn)
 
     p.restoreState(state)

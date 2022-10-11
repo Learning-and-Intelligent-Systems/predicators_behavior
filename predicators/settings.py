@@ -133,6 +133,7 @@ class GlobalSettings:
     behavior_ignore_discover_failures = True
     create_training_dataset = False
     simulate_nav = False
+    behavior_robot = "BehaviorRobot"  # BehaviorRobot, FetchGripper
 
     # general pybullet parameters
     pybullet_draw_debug = False  # useful for annotating in the GUI
