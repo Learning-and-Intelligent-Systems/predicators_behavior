@@ -27,8 +27,11 @@ try:
     from igibson.objects.articulated_object import \
         URDFObject  # pylint: disable=unused-import
     from igibson.robots.behavior_robot import BRBody, BREye, BRHand \
-        # pylint: disable=unused-import
+        BehaviorRobot # pylint: disable=unused-import
 
+    from igibson.robots.fetch_gripper_robot import FetchGripper
+    from igibson.external.pybullet_tools.utils import \
+        get_joint_positions
 except (ImportError, ModuleNotFoundError) as e:
     pass
 
@@ -111,49 +114,83 @@ def create_grasp_option_model(
 
     def graspObjectOptionModel(_state: State, env: "BehaviorEnv") -> None:
         nonlocal hand_i
-        rh_orig_grasp_position = env.robots[0].parts[
-            "right_hand"].get_position()
-        rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
+        if isinstance(env.robots[0], BehaviorRobot):
+            rh_orig_grasp_postion = env.robots[0].parts["right_hand"].get_position(
+            )
+            rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
 
-        # 1 Teleport Hand to Grasp offset location
-        env.robots[0].parts["right_hand"].set_position_orientation(
-            rh_final_grasp_postion,
-            p.getQuaternionFromEuler(rh_final_grasp_orn))
+            # 1 Teleport Hand to Grasp offset location
+            env.robots[0].parts["right_hand"].set_position_orientation(
+                rh_final_grasp_postion,
+                p.getQuaternionFromEuler(rh_final_grasp_orn))
 
-        # 3. Close hand and simulate grasp
-        a = np.zeros(env.action_space.shape, dtype=float)
-        a[16] = 1.0
-        assisted_grasp_action = np.zeros(28, dtype=float)
-        assisted_grasp_action[26] = 1.0
-        if isinstance(obj_to_grasp.body_id, List):
-            grasp_obj_body_id = obj_to_grasp.body_id[0]
+            # 3. Close hand and simulate grasp
+            a = np.zeros(env.action_space.shape, dtype=float)
+            a[16] = 1.0
+            assisted_grasp_action = np.zeros(28, dtype=float)
+            assisted_grasp_action[26] = 1.0
+            if isinstance(obj_to_grasp.body_id, List):
+                grasp_obj_body_id = obj_to_grasp.body_id[0]
+            else:
+                grasp_obj_body_id = obj_to_grasp.body_id
+            # 3.1 Call code that does assisted grasping
+            # bypass_force_check is basically a hack we should
+            # turn it off for the final system and use a real grasp
+            # sampler
+            if env.robots[0].parts["right_hand"].object_in_hand is None:
+                env.robots[0].parts["right_hand"].trigger_fraction = 0
+            env.robots[0].parts["right_hand"].handle_assisted_grasping(
+                assisted_grasp_action,
+                override_ag_data=(grasp_obj_body_id, -1),
+                bypass_force_check=True)
+            # 3.2 step the environment a few timesteps to complete grasp
+            for _ in range(5):
+                env.step(a)
+
+            # 4 Move Hand to Original Location
+            env.robots[0].parts["right_hand"].set_position_orientation(
+                rh_orig_grasp_postion, rh_orig_grasp_orn)
+            if env.robots[0].parts["right_hand"].object_in_hand is not None:
+                # NOTE: This below line is necessary to update the visualizer.
+                # Also, it only works for URDF objects (but if the object is
+                # not a URDF object, grasping should have failed)
+                obj_to_grasp.force_wakeup()
+            # Step a zero-action in the environment to update the visuals of the
+            # environment.
+            env.step(np.zeros(env.action_space.shape))
         else:
-            grasp_obj_body_id = obj_to_grasp.body_id
-        # 3.1 Call code that does assisted grasping
-        # bypass_force_check is basically a hack we should
-        # turn it off for the final system and use a real grasp
-        # sampler
-        if env.robots[0].parts["right_hand"].object_in_hand is None:
-            env.robots[0].parts["right_hand"].trigger_fraction = 0
-        env.robots[0].parts["right_hand"].handle_assisted_grasping(
-            assisted_grasp_action,
-            override_ag_data=(grasp_obj_body_id, -1),
-            bypass_force_check=True)
-        # 3.2 step the environment a few timesteps to complete grasp
-        for _ in range(5):
-            env.step(a)
+            robot = env.robots[0]
+            orig_joint_positions = get_joint_positions(robot.robot_ids[0], robot.joint_ids)
 
-        # 4 Move Hand to Original Location
-        env.robots[0].parts["right_hand"].set_position_orientation(
-            rh_orig_grasp_position, rh_orig_grasp_orn)
-        if env.robots[0].parts["right_hand"].object_in_hand is not None:
-            # NOTE: This below line is necessary to update the visualizer.
-            # Also, it only works for URDF objects (but if the object is
-            # not a URDF object, grasping should have failed)
-            obj_to_grasp.force_wakeup()
-        # Step a zero-action in the environment to update the visuals of the
-        # environment.
-        env.step(np.zeros(env.action_space.shape))
+            # 1 Teleport Hand to Grasp offset location
+            robot.set_eef_position_orientation(rh_final_grasp_postion,
+                p.getQuaternionFromEuler(rh_final_grasp_orn))
+
+            # 3. Close hand and simulate grasp
+            a = np.zeros(env.action_space.shape, dtype=float)
+            a[10] = -1.0
+            assisted_grasp_action = np.zeros(11, dtype=float)
+            assisted_grasp_action[10] = -1.0
+            if isinstance(obj_to_grasp.body_id, List):
+                grasp_obj_body_id = obj_to_grasp.body_id[0]
+            else:
+                grasp_obj_body_id = obj_to_grasp.body_id
+            # 3.1 Call code that does assisted grasping
+            robot.handle_assisted_grasping(assisted_grasp_action)
+            # 3.2 step the environment a few timesteps to complete grasp
+            for _ in range(5):
+                env.step(a)
+
+            # 4 Move Hand to Original Location
+            robot.set_joint_positions(orig_joint_positions) # saves us one call to IK
+            if robot.object_in_hand is not None:
+                # NOTE: This below line is necessary to update the visualizer.
+                # Also, it only works for URDF objects (but if the object is
+                # not a URDF object, grasping should have failed)
+                obj_to_grasp.force_wakeup()
+            # Step a zero-action in the environment to update the visuals of the
+            # environment.
+            env.step(np.zeros(env.action_space.shape))
 
     return graspObjectOptionModel
 

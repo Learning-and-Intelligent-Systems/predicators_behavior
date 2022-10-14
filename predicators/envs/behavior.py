@@ -784,7 +784,7 @@ class BehaviorEnv(BaseEnv):
 
         # Note: these are magic numbers computed from visualizing a scene.
         # It corresponds to a 120 degree section of a cylinder with a hole 
-        robot = env.igibson_behavior_env.robots[0]
+        robot = self.igibson_behavior_env.robots[0]
         robot_pos = robot.get_position()
         robot_quat = robot.get_orientation()
         robot_eul = pyb.getEulerFromQuaternion(robot_quat)
@@ -795,7 +795,7 @@ class BehaviorEnv(BaseEnv):
             gamma -= 2 * np.pi
         elif gamma <= -np.pi:
             gamma += 2 * np.pi
-        return (0.5 <= np.linalg.norm(obj_pos[:2] - robot_pos[:2]) <= 1.0 
+        return (0.3 <= np.linalg.norm(obj_pos[:2] - robot_pos[:2]) <= 0.8 
                 and -np.pi / 3 <= gamma <= np.pi / 3)
 
 

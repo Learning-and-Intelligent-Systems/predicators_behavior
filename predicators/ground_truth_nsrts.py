@@ -5,6 +5,7 @@ from typing import List, Sequence, Set, Union, cast
 
 import numpy as np
 from numpy.random._generator import Generator
+import scipy
 
 from predicators.behavior_utils.behavior_utils import CLEANING_OBJECT_TYPES, \
     DUSTYABLE_OBJECT_TYPES, OPENABLE_OBJECT_TYPES, PICK_PLACE_OBJECT_TYPES, \
@@ -27,13 +28,20 @@ from predicators.structs import NSRT, Array, GroundAtom, LiftedAtom, Object, \
     ParameterizedOption, Predicate, State, Type, Variable
 from predicators.utils import null_sampler
 
+import pybullet as p
 try:  # pragma: no cover
     from igibson.external.pybullet_tools.utils import get_aabb, get_aabb_extent
     from igibson.object_states.on_floor import \
         RoomFloor  # pylint: disable=unused-import
     from igibson.objects.articulated_object import \
         URDFObject  # pylint: disable=unused-import
+    from igibson.robots.behavior_robot import \
+        BehaviorRobot  # pylint: disable=unused-import
     from igibson.utils import sampling_utils
+    from igibson.external.pybullet_tools.utils import \
+        get_joint_positions, set_joint_positions
+    from igibson.external.pybullet_tools.utils import get_link_pose
+    import igibson.utils.transform_utils as T
 except (ImportError, ModuleNotFoundError) as e:  # pragma: no cover
     pass
 
@@ -2958,6 +2966,78 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         z_offset = rng.random() * 0.2
         return np.array([x_offset, y_offset, z_offset])
 
+    def grasp_obj_param_sampler_fetch(state: State, goal: Set[GroundAtom],
+                                      rng: Generator,
+                                      objects: Sequence["URDFObject"]) -> Array:
+        """Sampler for grasp option (Fetch)."""
+        ig_env = get_or_create_env("behavior").igibson_behavior_env
+        obj = objects[0]
+        num_tries = 100
+        ret_val = None
+        for samples in range(num_tries):
+            x_offset = (rng.random() * 0.4) - 0.2
+            y_offset = (rng.random() * 0.4) - 0.2
+            z_offset = rng.random() * 0.2
+            obj_pos = obj.get_position()
+            x = obj_pos[0] + x_offset
+            y = obj_pos[1] + y_offset
+            z = obj_pos[2] + z_offset
+
+            # compute the angle the hand must be in such that it can
+            # grasp the object from its current offset position
+            # This involves aligning the z-axis (in the world frame)
+            # of the hand with the vector that goes from the hand
+            # to the object. We can find the rotation matrix that
+            # accomplishes this rotation by following:
+            # https://math.stackexchange.com/questions/180418/
+            # calculate-rotation-matrix-to-align-vector-a-to-vector
+            # -b-in-3d
+            hand_to_obj_vector = np.array([x_offset, y_offset, z_offset])
+            hand_to_obj_unit_vector = hand_to_obj_vector / \
+                np.linalg.norm(
+                hand_to_obj_vector
+            )
+            unit_z_vector = np.array([0.0, 0.0, -1.0])
+            # This is because we assume the hand is originally oriented
+            # so -z is coming out of the palm
+            c_var = np.dot(unit_z_vector, hand_to_obj_unit_vector)
+            if c_var not in [-1.0, 1.0]:
+                v_var = np.cross(unit_z_vector, hand_to_obj_unit_vector)
+                s_var = np.linalg.norm(v_var)
+                v_x = np.array([
+                    [0, -v_var[2], v_var[1]],
+                    [v_var[2], 0, -v_var[0]],
+                    [-v_var[1], v_var[0], 0],
+                ])
+                R = (np.eye(3) + v_x + np.linalg.matrix_power(v_x, 2) * ((1 - c_var) /
+                                                                         (s_var**2)))
+                r = scipy.spatial.transform.Rotation.from_matrix(R)
+                euler_angles = r.as_euler("xyz")
+            else:
+                if c_var == 1.0:
+                    euler_angles = np.zeros(3, dtype=float)
+                else:
+                    euler_angles = np.array([0.0, np.pi, 0.0])
+
+            state = p.saveState()
+            ig_env.robots[0].set_eef_position_orientation(np.array([x, y, z]),
+                p.getQuaternionFromEuler(euler_angles))
+
+            sim_position = ig_env.robots[0].get_end_effector_position()
+            sim_orientation = T.mat2quat(T.pose2mat(get_link_pose(ig_env.robots[0].robot_ids[0], ig_env.robots[0].eef_link_id))[:3, :3])
+            num_tries += 1
+
+            target_position = np.array([x, y, z])
+            target_orientation = p.getQuaternionFromEuler(euler_angles)
+            p.restoreState(state)
+            p.removeState(state)
+            if np.all(np.abs(sim_position - target_position) < 1e-1) \
+                and np.linalg.norm(T.quat2axisangle(T.quat_distance(sim_orientation, target_orientation))) < 1e-2:
+                ret_val = np.array([x_offset, y_offset, z_offset])
+                break
+
+        return ret_val
+
     # Place OnTop sampler definition.
     def place_ontop_obj_pos_sampler(
             state: State, goal: Set[GroundAtom], rng: Generator,
@@ -3151,6 +3231,9 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                 add_effects = {targ_holding}
                 delete_effects_ontop = {handempty, ontop, targ_reachable}
                 delete_effects_inside = {handempty, inside, targ_reachable}
+                sampler = (grasp_obj_param_sampler if 
+                        isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot) 
+                        else grasp_obj_param_sampler_fetch)
                 # NSRT for grasping an object from ontop an object.
                 nsrt = NSRT(
                     f"{option.name}-{next(op_name_count_pick)}",
@@ -3161,8 +3244,15 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     set(),
                     option,
                     option_vars,
-                    grasp_obj_param_sampler,
-                )
+                    lambda s, g, r, o: sampler(
+                    s,
+                    g,
+                    r,
+                    [
+                        env.object_to_ig_object(o_i)
+                        if isinstance(o_i, Object) else o_i for o_i in o
+                    ],
+                ))
                 nsrts.add(nsrt)
                 # NSRT for grasping an object from inside an object.
                 nsrt = NSRT(
@@ -3174,8 +3264,15 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     set(),
                     option,
                     option_vars,
-                    grasp_obj_param_sampler,
-                )
+                    lambda s, g, r, o: sampler(
+                    s,
+                    g,
+                    r,
+                    [
+                        env.object_to_ig_object(o_i)
+                        if isinstance(o_i, Object) else o_i for o_i in o
+                    ],
+                ))
                 nsrts.add(nsrt)
 
         elif base_option_name == "PlaceOnTop":

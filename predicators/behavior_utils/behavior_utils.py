@@ -828,6 +828,11 @@ def get_closest_point_on_aabb(xyz: List, lo: Array, hi: Array) -> List[float]:
                 closest_point_on_aabb[i] = lo[i]
     return closest_point_on_aabb
 
+def get_aabb_centroid(lo: Array, hi: Array) -> List[float]:
+    """Get the centroid of aabb."""
+    assert np.all(hi >= lo)
+    return [(hi[0] + lo[0]) / 2, (hi[1] + lo[1]) / 2, (hi[2] + lo[2]) / 2]
+
 
 def get_scene_body_ids(
     env: "BehaviorEnv",
@@ -887,10 +892,17 @@ def reset_and_release_hand(env: "BehaviorEnv") -> None:
     """Resets the state of the right hand."""
     env.robots[0].set_position_orientation(env.robots[0].get_position(),
                                            env.robots[0].get_orientation())
-    for _ in range(50):
-        env.robots[0].parts["right_hand"].set_close_fraction(0)
-        env.robots[0].parts["right_hand"].trigger_fraction = 0
-        p.stepSimulation()
+    if isinstance(env.robots[0], BehaviorRobot):
+        for _ in range(50):
+            env.robots[0].parts["right_hand"].set_close_fraction(0)
+            env.robots[0].parts["right_hand"].trigger_fraction = 0
+            p.stepSimulation()
+    else:
+        open_action = np.zeros(env.action_space.shape)
+        open_action[10] = 1.0
+        for _ in range(50):
+            env.robots[0].apply_action(open_action)
+            p.stepSimulation()
 
 
 def get_delta_low_level_base_action(robot_z: float,
@@ -936,6 +948,7 @@ def get_delta_low_level_base_action(robot_z: float,
     return ret_action
 
 
+# TODO: implement this for the Fetch
 def get_delta_low_level_hand_action(
     body: "BRBody",
     old_pos: Union[Sequence[float], Array],
@@ -1089,8 +1102,8 @@ def sample_navigation_params(igibson_behavior_env: "BehaviorEnv",
     Implemented in a separate method to enable code reuse in
     option_model_fns.
     """
-    closeness_limit = 2.00
-    nearness_limit = 0.15
+    closeness_limit = 2.00 if isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot) else 0.8
+    nearness_limit = 0.15 if isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot) else 0.3
     distance = nearness_limit + (
         (closeness_limit - nearness_limit) * rng.random())
     yaw = rng.random() * (2 * np.pi) - np.pi
