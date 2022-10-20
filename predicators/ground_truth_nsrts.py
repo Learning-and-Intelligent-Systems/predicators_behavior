@@ -2973,7 +2973,8 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         ig_env = get_or_create_env("behavior").igibson_behavior_env
         obj = objects[0]
         num_tries = 100
-        ret_val = None
+        best_distance = np.inf
+        logging.info("Sampling params for grasp...")
         for samples in range(num_tries):
             x_offset = (rng.random() * 0.4) - 0.2
             y_offset = (rng.random() * 0.4) - 0.2
@@ -3035,6 +3036,10 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                 and np.linalg.norm(T.quat2axisangle(T.quat_distance(sim_orientation, target_orientation))) < 1e-2:
                 ret_val = np.array([x_offset, y_offset, z_offset])
                 break
+            if np.linalg.norm(sim_position - target_position) < best_distance:
+                ret_val = np.array([x_offset, y_offset, z_offset])
+        else:
+            logging.info("Did not find params for grasp, return bad params and retry")
 
         return ret_val
 
@@ -3073,6 +3078,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             **params,
         )
 
+<<<<<<< HEAD
         # If we cannot find a sample using BEHAVIOR's utility, fall back onto
         # our custom-written samplers.
         if sampling_results[0] is None or sampling_results[0][0] is None:
@@ -3081,6 +3087,92 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             env.check_state_closeness_and_load(state)
             return sample_place_ontop_params(env.igibson_behavior_env, objB,
                                              rng)
+=======
+        def _sample_bbox_fetch(ig_obj):
+            robot = env.igibson_behavior_env.robots[0]
+            robot_pos = robot.get_position()
+            robot_quat = robot.get_orientation()
+            robot_eul = p.getEulerFromQuaternion(robot_quat)
+            theta = robot_eul[2]
+            obj_pos = ig_obj.get_position()
+
+            objB_sampling_bounds = ig_obj.bounding_box / 2
+
+            while True:
+                sample_params = np.array([
+                    rng.uniform(-objB_sampling_bounds[0],
+                                objB_sampling_bounds[0]),
+                    rng.uniform(-objB_sampling_bounds[1],
+                                objB_sampling_bounds[1]),
+                    rng.uniform(objB_sampling_bounds[2],
+                                objB_sampling_bounds[2]) + 0.3
+                ])
+
+                target_pos = obj_pos + sample_params
+                gamma = np.arctan2(target_pos[1] - robot_pos[1], target_pos[0] - robot_pos[0]) - theta
+                if gamma > np.pi:
+                    gamma -= 2 * np.pi
+                elif gamma <= -np.pi:
+                    gamma += 2 * np.pi
+                if (0.3 <= np.linalg.norm(target_pos[:2] - robot_pos[:2]) <= 0.8 
+                        and -np.pi / 3 <= gamma <= np.pi / 3):
+                    break
+
+            return sample_params
+
+
+        if sampling_results[0] is None or sampling_results[0][0] is None:
+            # If sampling fails, fall back onto custom-defined object-specific
+            # samplers
+            if objB.category == "shelf":
+                # Get the current env for collision checking.
+                env = get_or_create_env("behavior")
+                assert isinstance(env, BehaviorEnv)
+                load_checkpoint_state(state, env)
+                objB_sampling_bounds = objB.bounding_box / 2
+                if isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot):
+                    sample_params = np.array([
+                        rng.uniform(-objB_sampling_bounds[0],
+                                    objB_sampling_bounds[0]),
+                        rng.uniform(-objB_sampling_bounds[1],
+                                    objB_sampling_bounds[1]),
+                        rng.uniform(-objB_sampling_bounds[2] + 0.3,
+                                    objB_sampling_bounds[2]) + 0.3
+                    ])
+                else:
+                    sample_params = _sample_bbox_fetch(objB)
+                logging.info("Sampling params for placeOnTop shelf...")
+                num_samples_tried = 0
+                while not check_hand_end_pose(env.igibson_behavior_env, objB,
+                                              sample_params):
+                    if isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot):
+                        sample_params = np.array([
+                            rng.uniform(-objB_sampling_bounds[0],
+                                        objB_sampling_bounds[0]),
+                            rng.uniform(-objB_sampling_bounds[1],
+                                        objB_sampling_bounds[1]),
+                            rng.uniform(-objB_sampling_bounds[2] + 0.3,
+                                        objB_sampling_bounds[2]) + 0.3
+                        ])
+                    else:
+                        sample_params = _sample_bbox_fetch(objB)
+                    # NOTE: In many situations, it is impossible to find a
+                    # good sample no matter how many times we try. Thus, we
+                    # break this loop after a certain number of tries so the
+                    # planner will backtrack.
+                    if num_samples_tried > MAX_PLACEONTOP_SAMPLES:
+                        logging.info("Did not find params for place, return bad params and retry")
+                        break
+                    num_samples_tried += 1
+                return sample_params
+            # If there's no object specific sampler, just return a
+            # random sample.
+            return np.array([
+                rng.uniform(-0.5, 0.5),
+                rng.uniform(-0.5, 0.5),
+                rng.uniform(0.3, 1.0)
+            ])
+>>>>>>> 7d4f268f (Adding missing changes for Fetch pick-place functionality)
 
         rnd_params = np.subtract(sampling_results[0][0], objB.get_position())
         return rnd_params

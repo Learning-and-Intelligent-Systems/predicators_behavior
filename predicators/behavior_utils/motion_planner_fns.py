@@ -320,10 +320,6 @@ def make_grasp_plan(
             env.robots[0].parts["right_hand"].get_position())
         env.robots[0].parts["left_hand"].set_position(
             env.robots[0].parts["left_hand"].get_position())
-    else:
-        # Unclear if this is necessary, but it doesn't seem to hurt
-        env.robots[0].parts["gripper_link"].set_position(
-            env.robots[0].get_end_effector_position())
 
     # # If RRT planning fails, fail and return None
     # if plan is None:
@@ -401,7 +397,10 @@ def make_place_plan(
         rng = np.random.default_rng(23)
 
     try:
-        obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
+        if isinstance(env.robots[0], BehaviorRobot):
+            obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
+        else:
+            obj_in_hand_idx = env.robots[0].object_in_hand
         obj_in_hand = [
             obj for obj in env.scene.get_objects()
             if obj.get_body_id() == obj_in_hand_idx
@@ -434,19 +433,22 @@ def make_place_plan(
     # track of their state, and if we don't reset their this
     # state to mirror the actual pybullet state, the hand will
     # think it's elsewhere and update incorrectly accordingly
-    env.robots[0].parts["right_hand"].set_position(
-        env.robots[0].parts["right_hand"].get_position())
-    env.robots[0].parts["left_hand"].set_position(
-        env.robots[0].parts["left_hand"].get_position())
+    if isinstance(env.robots[0], BehaviorRobot):
+        env.robots[0].parts["right_hand"].set_position(
+            env.robots[0].parts["right_hand"].get_position())
+        env.robots[0].parts["left_hand"].set_position(
+            env.robots[0].parts["left_hand"].get_position())
 
-    obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
+    if isinstance(env.robots[0], BehaviorRobot):
+        obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
+    else:
+        obj_in_hand_idx = env.robots[0].object_in_hand
     obj_in_hand = [
         obj for obj in env.scene.get_objects()
         if obj.get_body_id() == obj_in_hand_idx
     ][0]
     x, y, z = np.add(place_rel_pos, obj.get_position())
     # hand_x, hand_y, hand_z = env.robots[0].parts["right_hand"].get_position()
-
     # minx = min(x, hand_x) - 1
     # miny = min(y, hand_y) - 1
     # minz = min(z, hand_z) - 0.5
@@ -455,42 +457,63 @@ def make_place_plan(
     # maxz = max(z, hand_z) + 0.5
 
     obstacles = get_scene_body_ids(env, include_self=False)
-    obstacles.remove(env.robots[0].parts["right_hand"].object_in_hand)
-    end_conf = [
-        x,
-        y,
-        z + 0.2,
-        0,
-        np.pi * 7 / 6,
-        0,
-    ]
-    # For now we are not running rrt with place.
-    # if False:
-    #     plan = plan_hand_motion_br(
-    #         robot=env.robots[0],
-    #         obj_in_hand=obj_in_hand,
-    #         end_conf=end_conf,
-    #         hand_limits=((minx, miny, minz), (maxx, maxy, maxz)),
-    #         obstacles=obstacles,
-    #         rng=rng,
-    #     )
-    #     p.restoreState(state)
-    #     p.removeState(state)
+    if isinstance(env.robots[0], BehaviorRobot):
+        obstacles.remove(env.robots[0].parts["right_hand"].object_in_hand)
+        end_conf = [
+            x,
+            y,
+            z + 0.2,
+            0,
+            np.pi * 7 / 6,
+            0,
+        ]
+    else:
+        obstacles.remove(env.robots[0].object_in_hand)
+        end_conf = [
+            x,
+            y,
+            z,
+            0,
+            np.pi * 7 / 6,
+            0,
+        ]
+
+    # if env.use_rrt:
+    #     if isinstance(env.robots[0], BehaviorRobot):
+    #         plan = plan_hand_motion_br(
+    #             robot=env.robots[0],
+    #             obj_in_hand=obj_in_hand,
+    #             end_conf=end_conf,
+    #             hand_limits=((minx, miny, minz), (maxx, maxy, maxz)),
+    #             obstacles=obstacles,
+    #             rng=rng,
+    #         )
+    #         p.restoreState(state)
+    #         p.removeState(state)
+    #     else:
+    #         raise NotImplementedError('RRT hand motion planning is only implemented for the Behavior bot')
     # else:
-    pos = env.robots[0].parts["right_hand"].get_position()
-    plan = [[pos[0], pos[1], pos[2]] + list(
-        p.getEulerFromQuaternion(
-            env.robots[0].parts["right_hand"].get_orientation())), end_conf]
+    if isinstance(env.robots[0], BehaviorRobot):
+        pos = env.robots[0].parts["right_hand"].get_position()
+        plan = [[pos[0], pos[1], pos[2]] + list(
+            p.getEulerFromQuaternion(
+                env.robots[0].parts["right_hand"].get_orientation())), end_conf]
+    else:
+        pos = env.robots[0].get_end_effector_position()
+        orn = list(p.getEulerFromQuaternion(
+            T.mat2quat(T.pose2mat(get_link_pose(env.robots[0].robot_ids[0], env.robots[0].eef_link_id))[:3, :3])))
+        plan = [[pos[0], pos[1], pos[2], orn[0], orn[1], orn[2]], end_conf]
 
     # NOTE: This below line is *VERY* important after the
     # pybullet state is restored. The hands keep an internal
     # track of their state, and if we don't reset this
     # state to mirror the actual pybullet state, the hand will
     # think it's elsewhere and update incorrectly accordingly
-    env.robots[0].parts["right_hand"].set_position(
-        env.robots[0].parts["right_hand"].get_position())
-    env.robots[0].parts["left_hand"].set_position(
-        env.robots[0].parts["left_hand"].get_position())
+    if isinstance(env.robots[0], BehaviorRobot):
+        env.robots[0].parts["right_hand"].set_position(
+            env.robots[0].parts["right_hand"].get_position())
+        env.robots[0].parts["left_hand"].set_position(
+            env.robots[0].parts["left_hand"].get_position())
 
     # # If RRT planning fails, fail and return None
     # if plan is None:
@@ -498,9 +521,16 @@ def make_place_plan(
     #                  f"to find plan to continuous params {place_rel_pos}")
     #     return None
 
-    original_orientation = list(
-        p.getEulerFromQuaternion(
-            env.robots[0].parts["right_hand"].get_orientation()))
+    if isinstance(env.robots[0], BehaviorRobot):
+        original_orientation = list(
+            p.getEulerFromQuaternion(
+                env.robots[0].parts["right_hand"].get_orientation()))
+    else:
+        original_orientation = list(
+            p.getEulerFromQuaternion(
+                T.mat2quat(T.pose2mat(get_link_pose(env.robots[0].robot_ids[0], env.robots[0].eef_link_id))[:3, :3])))
+        # original_orientation = env.robots[0].get_relative_eef_orientation()
+
     logging.info(f"PRIMITIVE: placeOnTop/inside {obj.name} success! Plan "
                  f"found with continuous params {place_rel_pos}.")
     return plan, original_orientation
