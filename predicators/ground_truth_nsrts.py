@@ -1,6 +1,5 @@
 """Definitions of ground truth NSRTs for all environments."""
 
-from faulthandler import disable
 import itertools
 import logging
 from typing import List, Sequence, Set, Union, cast
@@ -2846,7 +2845,10 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             y = distance * np.sin(yaw)
             sampler_output = np.array([x, y])
             if obj_to_sample_near.category == "shelf":
-                if check_nav_end_pose(env.igibson_behavior_env, obj_to_sample_near, sampler_output, ignore_blocked=True):
+                if check_nav_end_pose(env.igibson_behavior_env,
+                                      obj_to_sample_near,
+                                      sampler_output,
+                                      ignore_blocked=True):
                     return sampler_output
             # NOTE: In many situations, it is impossible to find a good sample
             # no matter how many times we try. Thus, we break this loop after
