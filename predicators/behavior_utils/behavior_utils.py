@@ -382,7 +382,7 @@ def get_delta_low_level_hand_action(
 
 def check_nav_end_pose(
         env: "BehaviorEnv", obj: Union["URDFObject", "RoomFloor"],
-        pos_offset: Array) -> Optional[Tuple[List[int], List[int]]]:
+        pos_offset: Array, ignore_blocked: bool = False) -> Optional[Tuple[List[int], List[int]]]:
     """Check that the robot can reach pos_offset from the obj without (1) being
     in collision with anything, or (2) being blocked from obj by some other
     solid object.
@@ -410,7 +410,7 @@ def check_nav_end_pose(
         env.robots[0].parts["body"].get_body_id(),
         obj.get_body_id(),
     ))
-    if not detect_robot_collision(env.robots[0]) and not blocked:
+    if not detect_robot_collision(env.robots[0]) and (not blocked or ignore_blocked):
         valid_position = (pos, orn)
 
     p.restoreState(state)
