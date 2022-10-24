@@ -285,7 +285,7 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
             print("Task Num:", env.task_num)
             print("Task Instance ID:", env.task_instance_id)
             print("Task iGibson Seed:", env.task_num_task_instance_id_to_igibson_seed[(env.task_num, env.task_instance_id)])
-            import ipdb; ipdb.set_trace()
+            #import ipdb; ipdb.set_trace()
             continue
         solve_time = time.perf_counter() - solve_start
         metrics[f"PER_TASK_task{test_task_idx}_solve_time"] = solve_time
