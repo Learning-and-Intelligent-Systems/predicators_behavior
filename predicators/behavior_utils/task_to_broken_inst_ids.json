@@ -11,6 +11,13 @@
             "train": [],
             "test": [14]
         }
+    },
+
+    "throwing_away_leftovers": {
+        "Pomaria_1_int": {
+            "train": [],
+            "test": [13, 17]
+        }
     }
 
 }
