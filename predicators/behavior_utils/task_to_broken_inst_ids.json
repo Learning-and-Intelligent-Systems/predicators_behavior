@@ -14,9 +14,9 @@
     },
 
     "throwing_away_leftovers": {
-        "Pomaria_1_int": {
+        "Ihlen_1_int": {
             "train": [],
-            "test": [13, 17]
+            "test": [13, 14, 15, 17, 18]
         }
     }
 

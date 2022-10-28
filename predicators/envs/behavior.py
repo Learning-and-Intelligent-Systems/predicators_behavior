@@ -269,6 +269,10 @@ class BehaviorEnv(BaseEnv):
                     self.task_instance_id = self.task_num + 10 #rng.integers(10, 20)
                 else:
                     self.task_instance_id = rng.integers(0, 10)
+                # ### SET Task
+                # self.task_instance_id = 19
+                # curr_env_seed = 1926061129
+                # ###
                 # Check to see if task_instance_id is in broken_instances.
                 if len(CFG.behavior_task_list) != 1:
                     task_name = CFG.behavior_task_list[self.task_list_indices[
