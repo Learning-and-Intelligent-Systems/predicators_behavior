@@ -266,12 +266,12 @@ class BehaviorEnv(BaseEnv):
                 # Get random scene for BEHAVIOR between O-9 and 10-20
                 # if train or test, respectively.
                 if testing:
-                    self.task_instance_id = rng.integers(10, 20)
+                    self.task_instance_id = self.task_num # rng.integers(10, 20)
                 else:
                     self.task_instance_id = rng.integers(0, 10)
                 # ### SET Task
-                # self.task_instance_id = 19
-                # curr_env_seed = 1491030301
+                # self.task_instance_id = 17
+                # curr_env_seed = 2377310379
                 # ###
                 # Check to see if task_instance_id is in broken_instances.
                 if len(CFG.behavior_task_list) != 1:

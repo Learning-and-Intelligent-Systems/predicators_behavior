@@ -873,6 +873,7 @@ def _sesame_plan_with_fast_downward(
     try:
         necessary_atoms_seq = utils.compute_necessary_atoms_seq(
             skeleton, atoms_sequence, task.goal)
+        import ipdb; ipdb.set_trace()
         plan, suc, traj = run_low_level_search(task, option_model, skeleton,
                                                necessary_atoms_seq, seed,
                                                low_level_timeout, max_horizon)
