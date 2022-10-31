@@ -9,14 +9,21 @@
     "sorting_books": {
         "Pomaria_1_int": {
             "train": [],
-            "test": [14]
+            "test": [3, 12, 14, 17, 26, 28]
+        }
+    },
+
+    "re-shelving-library-books": {
+        "Pomaria_1_int": {
+            "train": [],
+            "test": [3, 9, 11, 12, 13, 14, 17, 18, 26, 28]
         }
     },
 
     "throwing_away_leftovers": {
         "Ihlen_1_int": {
             "train": [],
-            "test": [10, 13, 14, 15, 16, 17, 18, 19]
+            "test": [1, 2, 3, 4, 5, 9, 10, 13, 14, 15, 16, 17, 18, 19, 25, 26]
         }
     }
 
