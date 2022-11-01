@@ -81,7 +81,7 @@ ENVS:
 ARGS: {}
 FLAGS:  # general flags
   num_train_tasks: 0
-  num_test_tasks: 20
+  num_test_tasks: 10
 START_SEED: 456
 NUM_SEEDS: 3
 USE_GPU: True

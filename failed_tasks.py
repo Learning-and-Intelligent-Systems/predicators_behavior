@@ -13,7 +13,7 @@ for filename in glob.glob("logs/behavior*"):
                 # print(line.replace("\n", ""))
                 # print(lines[i+1].replace("\n", ""))
                 # print(lines[i+2])
-                task_instance_id = int(line.split(": ")[-1])
+                task_instance_id = int(lines[i+1].replace("\n", "").split(": ")[-1])
                 bad_ids.append(task_instance_id)
     print(bad_ids)
     for key in tasks.keys():
