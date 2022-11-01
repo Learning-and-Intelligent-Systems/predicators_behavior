@@ -603,7 +603,7 @@ def test_backchaining_strips_learner_order_dependence():
         # Rename the output NSRT operators to standardize naming
         # and make comparison easier.
         op = nsrt.op.copy_with(name=nsrt.option.name + "0")
-        assert op in set([pnad.op for pnad in reverse_order_pnads])
+        assert op in set(pnad.op for pnad in reverse_order_pnads)
 
 
 def test_spawn_new_pnad():
