@@ -270,7 +270,7 @@ class BehaviorEnv(BaseEnv):
                 else:
                     self.task_instance_id = rng.integers(0, 10)
                 # ### SET Task
-                # self.task_instance_id = 17
+                # self.task_instance_id = 2
                 # curr_env_seed = 2377310379
                 # ###
                 # Check to see if task_instance_id is in broken_instances.
