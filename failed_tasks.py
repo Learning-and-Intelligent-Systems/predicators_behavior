@@ -32,4 +32,4 @@ for task in tasks.items():
         if i_in:
             remove_ids.append(i)
     all_ids = set(all_ids)
-    print(task[0], remove_ids)
+    print(task[0], task[1], remove_ids)
