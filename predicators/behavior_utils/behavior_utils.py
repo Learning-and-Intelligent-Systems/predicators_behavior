@@ -5,6 +5,7 @@ import os
 from typing import List, Optional, Sequence, Tuple, Union
 
 import numpy as np
+import scipy
 import pybullet as p
 from tqdm import tqdm
 
@@ -1061,9 +1062,10 @@ def check_nav_end_pose(
             env.robots[0].get_body_id(),
             obj.get_body_id(),
         ))
-    if not detect_robot_collision(env.robots[0]) and (not blocked
-                                                      or ignore_blocked):
-
+    if not detect_robot_collision(env.robots[0]) and (not blocked 
+        or ignore_blocked) and  (isinstance(env.robots[0], BehaviorRobot)
+        or check_hand_end_pose(env, obj, np.zeros(3, dtype=float), 
+                                ignore_collisions=True)):
         valid_position = (pos, orn)
 
     p.restoreState(state)
@@ -1074,7 +1076,7 @@ def check_nav_end_pose(
 
 def check_hand_end_pose(env: "BehaviorEnv", obj: Union["URDFObject",
                                                        "RoomFloor"],
-                        pos_offset: Array) -> bool:
+                        pos_offset: Array, ignore_collisions=False) -> bool:
     """Check that the robot's hand can reach pos_offset from the obj without
     being in collision with anything.
 
@@ -1093,11 +1095,51 @@ def check_hand_end_pose(env: "BehaviorEnv", obj: Union["URDFObject",
         if not detect_robot_collision(env.robots[0]):
             ret_bool = True
     else:
-        env.robots[0].set_eef_position(hand_pos)
-        sim_position = env.robots[0].get_end_effector_position()
-        target_position = hand_pos
-        if np.all(np.abs(sim_position - target_position) < 1e-1) \
-            and not detect_robot_collision(env.robots[0]):
+        # compute the angle the hand must be in such that it can
+        # grasp the object from its current offset position
+        # This involves aligning the z-axis (in the world frame)
+        # of the hand with the vector that goes from the hand
+        # to the object. We can find the rotation matrix that
+        # accomplishes this rotation by following:
+        # https://math.stackexchange.com/questions/180418/
+        # calculate-rotation-matrix-to-align-vector-a-to-vector
+        # -b-in-3d
+        if (np.array(pos_offset[:3]) == 0).all():
+            # If offset is 0, then use the current hand position
+            # to compute angle of approach
+            hand_to_obj_vector = env.robots[0].get_end_effector_position() - \
+                np.array(obj_pos[:3])
+        else:
+            hand_to_obj_vector = np.array(pos_offset[:3])
+        hand_to_obj_unit_vector = hand_to_obj_vector / \
+            np.linalg.norm(
+            hand_to_obj_vector
+        )
+        unit_z_vector = np.array([0.0, 0.0, -1.0])
+        # This is because we assume the hand is originally oriented
+        # so -z is coming out of the palm
+        c_var = np.dot(unit_z_vector, hand_to_obj_unit_vector)
+        if c_var not in [-1.0, 1.0]:
+            v_var = np.cross(unit_z_vector, hand_to_obj_unit_vector)
+            s_var = np.linalg.norm(v_var)
+            v_x = np.array([
+                [0, -v_var[2], v_var[1]],
+                [v_var[2], 0, -v_var[0]],
+                [-v_var[1], v_var[0], 0],
+            ])
+            R = (np.eye(3) + v_x + np.linalg.matrix_power(v_x, 2) * ((1 - c_var) /
+                                                                     (s_var**2)))
+            r = scipy.spatial.transform.Rotation.from_matrix(R)
+            euler_angles = r.as_euler("xyz")
+        else:
+            if c_var == 1.0:
+                euler_angles = np.zeros(3, dtype=float)
+            else:
+                euler_angles = np.array([0.0, np.pi, 0.0])
+        hand_orn = p.getQuaternionFromEuler(euler_angles)
+        ik_success = env.robots[0].set_eef_position_orientation(hand_pos, hand_orn)
+        if ik_success and (ignore_collisions or 
+            not detect_robot_collision(env.robots[0])):
             ret_bool = True
     p.restoreState(state)
     p.removeState(state)

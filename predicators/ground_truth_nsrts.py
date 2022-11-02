@@ -2979,69 +2979,12 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             x_offset = (rng.random() * 0.4) - 0.2
             y_offset = (rng.random() * 0.4) - 0.2
             z_offset = rng.random() * 0.2
-            obj_pos = obj.get_position()
-            x = obj_pos[0] + x_offset
-            y = obj_pos[1] + y_offset
-            z = obj_pos[2] + z_offset
-
-            # compute the angle the hand must be in such that it can
-            # grasp the object from its current offset position
-            # This involves aligning the z-axis (in the world frame)
-            # of the hand with the vector that goes from the hand
-            # to the object. We can find the rotation matrix that
-            # accomplishes this rotation by following:
-            # https://math.stackexchange.com/questions/180418/
-            # calculate-rotation-matrix-to-align-vector-a-to-vector
-            # -b-in-3d
-            hand_to_obj_vector = np.array([x_offset, y_offset, z_offset])
-            hand_to_obj_unit_vector = hand_to_obj_vector / \
-                np.linalg.norm(
-                hand_to_obj_vector
-            )
-            unit_z_vector = np.array([0.0, 0.0, -1.0])
-            # This is because we assume the hand is originally oriented
-            # so -z is coming out of the palm
-            c_var = np.dot(unit_z_vector, hand_to_obj_unit_vector)
-            if c_var not in [-1.0, 1.0]:
-                v_var = np.cross(unit_z_vector, hand_to_obj_unit_vector)
-                s_var = np.linalg.norm(v_var)
-                v_x = np.array([
-                    [0, -v_var[2], v_var[1]],
-                    [v_var[2], 0, -v_var[0]],
-                    [-v_var[1], v_var[0], 0],
-                ])
-                R = (np.eye(3) + v_x + np.linalg.matrix_power(v_x, 2) * ((1 - c_var) /
-                                                                         (s_var**2)))
-                r = scipy.spatial.transform.Rotation.from_matrix(R)
-                euler_angles = r.as_euler("xyz")
-            else:
-                if c_var == 1.0:
-                    euler_angles = np.zeros(3, dtype=float)
-                else:
-                    euler_angles = np.array([0.0, np.pi, 0.0])
-
-            state = p.saveState()
-            ig_env.robots[0].set_eef_position_orientation(np.array([x, y, z]),
-                p.getQuaternionFromEuler(euler_angles))
-
-            sim_position = ig_env.robots[0].get_end_effector_position()
-            sim_orientation = T.mat2quat(T.pose2mat(get_link_pose(ig_env.robots[0].robot_ids[0], ig_env.robots[0].eef_link_id))[:3, :3])
-            num_tries += 1
-
-            target_position = np.array([x, y, z])
-            target_orientation = p.getQuaternionFromEuler(euler_angles)
-            p.restoreState(state)
-            p.removeState(state)
-            if np.all(np.abs(sim_position - target_position) < 1e-1) \
-                and np.linalg.norm(T.quat2axisangle(T.quat_distance(sim_orientation, target_orientation))) < 1e-2:
-                ret_val = np.array([x_offset, y_offset, z_offset])
+            if check_hand_end_pose(ig_env, obj, [x_offset, y_offset, x_offset]):
                 break
-            if np.linalg.norm(sim_position - target_position) < best_distance:
-                ret_val = np.array([x_offset, y_offset, z_offset])
         else:
             logging.info("Did not find params for grasp, return bad params and retry")
 
-        return ret_val
+        return np.array([x_offset, y_offset, z_offset])
 
     # Place OnTop sampler definition.
     def place_ontop_obj_pos_sampler(
@@ -3078,7 +3021,6 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             **params,
         )
 
-<<<<<<< HEAD
         # If we cannot find a sample using BEHAVIOR's utility, fall back onto
         # our custom-written samplers.
         if sampling_results[0] is None or sampling_results[0][0] is None:
@@ -3087,92 +3029,6 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             env.check_state_closeness_and_load(state)
             return sample_place_ontop_params(env.igibson_behavior_env, objB,
                                              rng)
-=======
-        def _sample_bbox_fetch(ig_obj):
-            robot = env.igibson_behavior_env.robots[0]
-            robot_pos = robot.get_position()
-            robot_quat = robot.get_orientation()
-            robot_eul = p.getEulerFromQuaternion(robot_quat)
-            theta = robot_eul[2]
-            obj_pos = ig_obj.get_position()
-
-            objB_sampling_bounds = ig_obj.bounding_box / 2
-
-            while True:
-                sample_params = np.array([
-                    rng.uniform(-objB_sampling_bounds[0],
-                                objB_sampling_bounds[0]),
-                    rng.uniform(-objB_sampling_bounds[1],
-                                objB_sampling_bounds[1]),
-                    rng.uniform(objB_sampling_bounds[2],
-                                objB_sampling_bounds[2]) + 0.3
-                ])
-
-                target_pos = obj_pos + sample_params
-                gamma = np.arctan2(target_pos[1] - robot_pos[1], target_pos[0] - robot_pos[0]) - theta
-                if gamma > np.pi:
-                    gamma -= 2 * np.pi
-                elif gamma <= -np.pi:
-                    gamma += 2 * np.pi
-                if (0.3 <= np.linalg.norm(target_pos[:2] - robot_pos[:2]) <= 0.8 
-                        and -np.pi / 3 <= gamma <= np.pi / 3):
-                    break
-
-            return sample_params
-
-
-        if sampling_results[0] is None or sampling_results[0][0] is None:
-            # If sampling fails, fall back onto custom-defined object-specific
-            # samplers
-            if objB.category == "shelf":
-                # Get the current env for collision checking.
-                env = get_or_create_env("behavior")
-                assert isinstance(env, BehaviorEnv)
-                load_checkpoint_state(state, env)
-                objB_sampling_bounds = objB.bounding_box / 2
-                if isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot):
-                    sample_params = np.array([
-                        rng.uniform(-objB_sampling_bounds[0],
-                                    objB_sampling_bounds[0]),
-                        rng.uniform(-objB_sampling_bounds[1],
-                                    objB_sampling_bounds[1]),
-                        rng.uniform(-objB_sampling_bounds[2] + 0.3,
-                                    objB_sampling_bounds[2]) + 0.3
-                    ])
-                else:
-                    sample_params = _sample_bbox_fetch(objB)
-                logging.info("Sampling params for placeOnTop shelf...")
-                num_samples_tried = 0
-                while not check_hand_end_pose(env.igibson_behavior_env, objB,
-                                              sample_params):
-                    if isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot):
-                        sample_params = np.array([
-                            rng.uniform(-objB_sampling_bounds[0],
-                                        objB_sampling_bounds[0]),
-                            rng.uniform(-objB_sampling_bounds[1],
-                                        objB_sampling_bounds[1]),
-                            rng.uniform(-objB_sampling_bounds[2] + 0.3,
-                                        objB_sampling_bounds[2]) + 0.3
-                        ])
-                    else:
-                        sample_params = _sample_bbox_fetch(objB)
-                    # NOTE: In many situations, it is impossible to find a
-                    # good sample no matter how many times we try. Thus, we
-                    # break this loop after a certain number of tries so the
-                    # planner will backtrack.
-                    if num_samples_tried > MAX_PLACEONTOP_SAMPLES:
-                        logging.info("Did not find params for place, return bad params and retry")
-                        break
-                    num_samples_tried += 1
-                return sample_params
-            # If there's no object specific sampler, just return a
-            # random sample.
-            return np.array([
-                rng.uniform(-0.5, 0.5),
-                rng.uniform(-0.5, 0.5),
-                rng.uniform(0.3, 1.0)
-            ])
->>>>>>> 7d4f268f (Adding missing changes for Fetch pick-place functionality)
 
         rnd_params = np.subtract(sampling_results[0][0], objB.get_position())
         return rnd_params

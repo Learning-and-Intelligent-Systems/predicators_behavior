@@ -29,7 +29,6 @@ try:
     from igibson.simulator import Simulator  # pylint: disable=unused-import
     from igibson.utils.checkpoint_utils import save_checkpoint
     from igibson.utils.utils import modify_config_file
-
     _BEHAVIOR_IMPORTED = True
     bddl.set_backend("iGibson")  # pylint: disable=no-member
     if not os.path.exists("tmp_behavior_states/"):
@@ -40,7 +39,8 @@ from gym.spaces import Box
 
 from predicators import utils
 from predicators.behavior_utils.behavior_utils import \
-    ALL_RELEVANT_OBJECT_TYPES, load_checkpoint_state
+    ALL_RELEVANT_OBJECT_TYPES, load_checkpoint_state, \
+    check_hand_end_pose
 from predicators.behavior_utils.motion_planner_fns import make_dummy_plan, \
     make_grasp_plan, make_navigation_plan, make_place_plan
 from predicators.behavior_utils.option_fns import create_dummy_policy, \
@@ -616,7 +616,10 @@ class BehaviorEnv(BaseEnv):
             raise RuntimeError("ERROR: Failed to sample iGibson BEHAVIOR "
                                "environment that meets bddl initial "
                                "conditions!")
-        self.igibson_behavior_env.robots[0].initial_z_offset = 0.7
+        if isinstance(self.igibson_behavior_env.robots[0], BehaviorRobot):
+            self.igibson_behavior_env.robots[0].initial_z_offset = 0.7
+        else:
+            self.igibson_behavior_env.robots[0].initial_z_offset = 0.01
         self.igibson_behavior_env.use_rrt = CFG.behavior_option_model_rrt
 
     # Do not add @functools.lru_cache(maxsize=None) here this will
@@ -796,7 +799,10 @@ class BehaviorEnv(BaseEnv):
         elif gamma <= -np.pi:
             gamma += 2 * np.pi
         return (0.3 <= np.linalg.norm(obj_pos[:2] - robot_pos[:2]) <= 0.8 
-                and -np.pi / 3 <= gamma <= np.pi / 3)
+                and -np.pi / 3 <= gamma <= np.pi / 3
+                and check_hand_end_pose(self.igibson_behavior_env, ig_obj, 
+                    np.zeros(3, dtype=float), ignore_collisions=True))
+
 
 
     def _reachable_nothing_classifier(

@@ -161,7 +161,6 @@ def create_grasp_option_model(
         else:
             robot = env.robots[0]
             orig_joint_positions = get_joint_positions(robot.robot_ids[0], robot.joint_ids)
-
             # 1 Teleport Hand to Grasp offset location
             robot.set_eef_position_orientation(rh_final_grasp_postion,
                 p.getQuaternionFromEuler(rh_final_grasp_orn))
@@ -176,8 +175,8 @@ def create_grasp_option_model(
             else:
                 grasp_obj_body_id = obj_to_grasp.body_id
             # 3.1 Call code that does assisted grasping
-            robot.handle_assisted_grasping(assisted_grasp_action,
-                override_ag_data=(grasp_obj_body_id, -1),)
+            robot.handle_assisted_grasping(assisted_grasp_action,)
+                # override_ag_data=(grasp_obj_body_id, -1),)
             # 3.2 step the environment a few timesteps to complete grasp
             for _ in range(5):
                 env.step(a)
