@@ -18,4 +18,4 @@ FLAGS:  # general flags
   num_train_tasks: 0
   num_test_tasks: 50
 START_SEED: 0
-NUM_SEEDS: 100
+NUM_SEEDS: 10
