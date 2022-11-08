@@ -507,7 +507,7 @@ def run_low_level_search(
                 # Remember only the most recent failure.
                 discovered_failures[cur_idx - 1] = _DiscoveredFailure(e, nsrt)
             else:  # an EnvironmentFailure was not raised
-                discovered_failures[cur_idx - 1] = None
+                # TODO discovered_failures[cur_idx - 1] = None
                 num_actions_per_option[cur_idx - 1] = num_actions
                 traj[cur_idx] = next_state
                 # Check if we have exceeded the horizon.
