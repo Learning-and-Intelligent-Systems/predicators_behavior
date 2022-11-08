@@ -151,7 +151,7 @@ def create_place_option_model(
         # to let the object fall into its place
         for _ in range(15):
             env.step(np.zeros(env.action_space.shape))
-        
+
         ####
         # Check whether object is ontop of not a target object
         from igibson.object_states.touching import Touching
@@ -177,8 +177,8 @@ def create_place_option_model(
                             obj_type = Type(
                                 type_name,
                                 [
-                                    "pos_x", "pos_y", "pos_z", "orn_0", "orn_1", "orn_2",
-                                    "orn_3"
+                                    "pos_x", "pos_y", "pos_z", "orn_0",
+                                    "orn_1", "orn_2", "orn_3"
                                 ],
                             )
                             _type_name_to_type[type_name] = obj_type
@@ -196,8 +196,8 @@ def create_place_option_model(
                         objs_under.add(Object(obj_name, obj_type))
 
         if len(objs_under) != 0:
-            raise utils.EnvironmentFailure(
-                "collision", {"offending_objects": objs_under})
+            raise utils.EnvironmentFailure("collision",
+                                           {"offending_objects": objs_under})
         ####
 
     return placeOntopObjectOptionModel
