@@ -266,7 +266,7 @@ class BehaviorEnv(BaseEnv):
                 # Get random scene for BEHAVIOR between O-9 and 10-20
                 # if train or test, respectively.
                 if testing:
-                    self.task_instance_id = self.task_num  #rng.integers(10, 20)
+                    self.task_instance_id = rng.integers(10, 20)
                 else:
                     self.task_instance_id = rng.integers(0, 10)
                 # ### SET TASK IDs
