@@ -480,7 +480,7 @@ def make_place_plan(
             y,
             z,
             0,
-            np.pi * 7 / 6,
+            np.pi / 2,
             0,
         ]
 

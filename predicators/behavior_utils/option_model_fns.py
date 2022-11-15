@@ -274,7 +274,7 @@ def create_place_option_model(
                              f"place ontop {obj_to_place_onto.name} with "
                              f"params {target_pos}")
 
-            robot.set_eef_position(target_pos)  # ignore target orientation
+            robot.set_eef_position_orientation(target_pos, p.getQuaternionFromEuler(target_orn))
             a = np.zeros(env.action_space.shape, dtype=float)
             a[10] = 1.0
             for _ in range(5):

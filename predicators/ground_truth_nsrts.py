@@ -3015,15 +3015,20 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         aabb_extent = get_aabb_extent(aabb)
 
         random_seed_int = rng.integers(10000000)
-        sampling_results = sampling_utils.sample_cuboid_on_object(
-            objB,
-            num_samples=1,
-            cuboid_dimensions=aabb_extent,
-            axis_probabilities=[0, 0, 1],
-            refuse_downwards=True,
-            random_seed_number=random_seed_int,
-            **params,
-        )
+        env = get_or_create_env("behavior")
+        assert isinstance(env, BehaviorEnv)
+        if isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot):
+           sampling_results = sampling_utils.sample_cuboid_on_object(
+                objB,
+                num_samples=1,
+                cuboid_dimensions=aabb_extent,
+                axis_probabilities=[0, 0, 1],
+                refuse_downwards=True,
+                random_seed_number=random_seed_int,
+                **params,
+            )
+        else:
+            sampling_results = [None]
 
         # If we cannot find a sample using BEHAVIOR's utility, fall back onto
         # our custom-written samplers.
