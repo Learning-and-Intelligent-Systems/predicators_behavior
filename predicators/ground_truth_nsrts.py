@@ -2973,16 +2973,20 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         ig_env = get_or_create_env("behavior").igibson_behavior_env
         obj = objects[0]
         num_tries = 100
-        best_distance = np.inf
         logging.info("Sampling params for grasp...")
         for samples in range(num_tries):
-            x_offset = (rng.random() * 0.4) - 0.2
-            y_offset = (rng.random() * 0.4) - 0.2
-            z_offset = rng.random() * 0.2
-            if check_hand_end_pose(ig_env, obj, [x_offset, y_offset, x_offset]):
+            # x_offset = (rng.random() * 0.4) - 0.2
+            # y_offset = (rng.random() * 0.4) - 0.2
+            # z_offset = rng.random() * .2
+            x_offset = 0#(rng.random() * 0.04) - 0.02
+            y_offset = 0#(rng.random() * 0.04) - 0.02
+            z_offset = rng.random() * 0.02
+
+            if check_hand_end_pose(ig_env, obj, [x_offset, y_offset, z_offset], ignore_collisions=True):
                 break
         else:
             logging.info("Did not find params for grasp, return bad params and retry")
+
 
         return np.array([x_offset, y_offset, z_offset])
 

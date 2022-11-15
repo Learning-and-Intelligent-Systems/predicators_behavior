@@ -798,7 +798,7 @@ class BehaviorEnv(BaseEnv):
             gamma -= 2 * np.pi
         elif gamma <= -np.pi:
             gamma += 2 * np.pi
-        return (0.3 <= np.linalg.norm(obj_pos[:2] - robot_pos[:2]) <= 0.8 
+        return (0.15 <= np.linalg.norm(obj_pos[:2] - robot_pos[:2]) <= 0.75
                 and -np.pi / 3 <= gamma <= np.pi / 3
                 and check_hand_end_pose(self.igibson_behavior_env, ig_obj, 
                     np.zeros(3, dtype=float), ignore_collisions=True))

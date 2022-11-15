@@ -249,9 +249,14 @@ def make_grasp_plan(
         np.linalg.norm(
         hand_to_obj_vector
     )
-    unit_z_vector = np.array([0.0, 0.0, -1.0])
-    # This is because we assume the hand is originally oriented
-    # so -z is coming out of the palm
+    if isinstance(env.robots[0], BehaviorRobot):
+        unit_z_vector = np.array([0.0, 0.0, -1.0])
+        # This is because we assume the hand is originally oriented
+        # so -z is coming out of the palm
+    else:
+        unit_z_vector = np.array([-1.0, 0.0, 0.0])
+        # This is because we assume the hand is originally oriented
+        # so -x is coming out of the palm
     c_var = np.dot(unit_z_vector, hand_to_obj_unit_vector)
     if c_var not in [-1.0, 1.0]:
         v_var = np.cross(unit_z_vector, hand_to_obj_unit_vector)
@@ -371,6 +376,7 @@ def make_grasp_plan(
         # original_orientation = env.robots[0].get_relative_eef_orientation()
     logging.info(f"PRIMITIVE: grasp {obj.name} success! Plan found with "
                  f"continuous params {grasp_offset}.")
+
     return plan, original_orientation
 
 

@@ -1105,9 +1105,8 @@ def check_hand_end_pose(env: "BehaviorEnv", obj: Union["URDFObject",
         # calculate-rotation-matrix-to-align-vector-a-to-vector
         # -b-in-3d
         if (np.array(pos_offset[:3]) == 0).all():
-            # If offset is 0, then use the current hand position
-            # to compute angle of approach
-            hand_to_obj_vector = env.robots[0].get_end_effector_position() - \
+            # If offset is 0, then grasp from above
+            hand_to_obj_vector = (np.array(obj_pos[:3]) + np.array([0,0,10])) - \
                 np.array(obj_pos[:3])
         else:
             hand_to_obj_vector = np.array(pos_offset[:3])
@@ -1115,9 +1114,9 @@ def check_hand_end_pose(env: "BehaviorEnv", obj: Union["URDFObject",
             np.linalg.norm(
             hand_to_obj_vector
         )
-        unit_z_vector = np.array([0.0, 0.0, -1.0])
+        unit_z_vector = np.array([-1.0, 0.0, 0.0])
         # This is because we assume the hand is originally oriented
-        # so -z is coming out of the palm
+        # so -x is coming out of the palm
         c_var = np.dot(unit_z_vector, hand_to_obj_unit_vector)
         if c_var not in [-1.0, 1.0]:
             v_var = np.cross(unit_z_vector, hand_to_obj_unit_vector)
