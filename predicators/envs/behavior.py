@@ -40,7 +40,7 @@ from gym.spaces import Box
 from predicators import utils
 from predicators.behavior_utils.behavior_utils import \
     ALL_RELEVANT_OBJECT_TYPES, load_checkpoint_state, \
-    check_hand_end_pose
+    check_hand_end_pose, get_closest_point_on_aabb
 from predicators.behavior_utils.motion_planner_fns import make_dummy_plan, \
     make_grasp_plan, make_navigation_plan, make_place_plan
 from predicators.behavior_utils.option_fns import create_dummy_policy, \
@@ -780,25 +780,27 @@ class BehaviorEnv(BaseEnv):
         # appear in any preconditions.
         if ig_obj.name == "agent":
             return False
+
+        robot_pos = robot_obj.get_position()
+        obj_aabb = ig_obj.states[object_states.AABB].get_value()
+        obj_closest_point = get_closest_point_on_aabb(robot_pos, obj_aabb[0], obj_aabb[1])
         if isinstance(robot_obj, BehaviorRobot):
             return (np.linalg.norm(  # type: ignore
-                np.array(robot_obj.get_position()) -
-                np.array(ig_obj.get_position())) < 2)
+                np.array(robot_pos) -
+                np.array(obj_closest_point)) < 2)
 
         # Note: these are magic numbers computed from visualizing a scene.
         # It corresponds to a 120 degree section of a cylinder with a hole 
         robot = self.igibson_behavior_env.robots[0]
-        robot_pos = robot.get_position()
         robot_quat = robot.get_orientation()
         robot_eul = pyb.getEulerFromQuaternion(robot_quat)
         theta = robot_eul[2]
-        obj_pos = ig_obj.get_position()
-        gamma = np.arctan2(obj_pos[1] - robot_pos[1], obj_pos[0] - robot_pos[0]) - theta
+        gamma = np.arctan2(obj_closest_point[1] - robot_pos[1], obj_closest_point[0] - robot_pos[0]) - theta
         if gamma > np.pi:
             gamma -= 2 * np.pi
         elif gamma <= -np.pi:
             gamma += 2 * np.pi
-        return (0.15 <= np.linalg.norm(obj_pos[:2] - robot_pos[:2]) <= 0.75
+        return (0.15 <= np.linalg.norm(obj_closest_point[:2] - robot_pos[:2]) <= 0.75
                 and -np.pi / 3 <= gamma <= np.pi / 3
                 and check_hand_end_pose(self.igibson_behavior_env, ig_obj, 
                     np.zeros(3, dtype=float), ignore_collisions=True))

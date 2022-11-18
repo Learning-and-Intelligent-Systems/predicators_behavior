@@ -27,7 +27,8 @@ try:
         BehaviorRobot  # pylint: disable=unused-import
     from igibson.utils.behavior_robot_planning_utils import \
         plan_base_motion_br, plan_hand_motion_br
-    from igibson.external.pybullet_tools.utils import get_link_pose
+    from igibson.external.pybullet_tools.utils import get_link_pose, get_aabb_center, \
+        get_aabb_extent
     import igibson.utils.transform_utils as T
 except (ImportError, ModuleNotFoundError) as e:
     pass
@@ -223,7 +224,13 @@ def make_grasp_plan(
     # Grasping Phase 1: Compute the position and orientation of
     # the hand based on the provided continuous parameters and
     # try to create a plan to it.
-    obj_pos = obj.get_position()
+    if isinstance(env.robots[0], BehaviorRobot):
+        obj_pos = obj.get_position()
+        hand_x, hand_y, hand_z = (env.robots[0].parts["right_hand"].get_position())
+    else:
+        aabb = obj.states[object_states.AABB].get_value()
+        obj_pos = get_closest_point_on_aabb(env.robots[0].get_position(), aabb[0], aabb[1])
+        hand_x, hand_y, hand_z = env.robots[0].get_end_effector_position()
     x = obj_pos[0] + grasp_offset[0]
     y = obj_pos[1] + grasp_offset[1]
     z = obj_pos[2] + grasp_offset[2]
@@ -235,25 +242,28 @@ def make_grasp_plan(
     # maxy = max(y, hand_y) + 0.5
     # maxz = max(z, hand_z) + 0.5
 
-    # compute the angle the hand must be in such that it can
-    # grasp the object from its current offset position
-    # This involves aligning the z-axis (in the world frame)
-    # of the hand with the vector that goes from the hand
-    # to the object. We can find the rotation matrix that
-    # accomplishes this rotation by following:
-    # https://math.stackexchange.com/questions/180418/
-    # calculate-rotation-matrix-to-align-vector-a-to-vector
-    # -b-in-3d
-    hand_to_obj_vector = np.array(grasp_offset[:3])
-    hand_to_obj_unit_vector = hand_to_obj_vector / \
-        np.linalg.norm(
-        hand_to_obj_vector
-    )
+
     if isinstance(env.robots[0], BehaviorRobot):
+        # compute the angle the hand must be in such that it can
+        # grasp the object from its current offset position
+        # This involves aligning the z-axis (in the world frame)
+        # of the hand with the vector that goes from the hand
+        # to the object. We can find the rotation matrix that
+        # accomplishes this rotation by following:
+        # https://math.stackexchange.com/questions/180418/
+        # calculate-rotation-matrix-to-align-vector-a-to-vector
+        # -b-in-3d
+        hand_to_obj_vector = np.array(grasp_offset[:3])
+        hand_to_obj_unit_vector = hand_to_obj_vector / \
+            np.linalg.norm(
+            hand_to_obj_vector
+        )
         unit_z_vector = np.array([0.0, 0.0, -1.0])
         # This is because we assume the hand is originally oriented
         # so -z is coming out of the palm
     else:
+        # Always grasp downward
+        hand_to_obj_unit_vector = np.array([0., 0., 1.])
         unit_z_vector = np.array([-1.0, 0.0, 0.0])
         # This is because we assume the hand is originally oriented
         # so -x is coming out of the palm
@@ -342,7 +352,9 @@ def make_grasp_plan(
     if isinstance(env.robots[0], BehaviorRobot):
         closest_point_on_aabb = get_closest_point_on_aabb(hand_pos, lo, hi)
     else:
-        closest_point_on_aabb = get_aabb_centroid(lo, hi)
+        aabb_center = get_aabb_center([lo, hi])
+        closest_point_on_aabb = get_closest_point_on_aabb (hand_pos, lo, hi)
+        closest_point_on_aabb[2] = aabb_center[2]   # make sure the height is really on the object
     delta_pos_to_obj = [
         closest_point_on_aabb[0] - hand_pos[0],
         closest_point_on_aabb[1] - hand_pos[1],

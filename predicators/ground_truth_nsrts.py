@@ -13,7 +13,8 @@ from predicators.behavior_utils.behavior_utils import CLEANING_OBJECT_TYPES, \
     PLACE_ONTOP_SURFACE_OBJECT_TYPES, PLACE_UNDER_SURFACE_OBJECT_TYPES, \
     TOGGLEABLE_OBJECT_TYPES, sample_navigation_params, \
     sample_place_inside_params, sample_place_next_to_params, \
-    sample_place_ontop_params, sample_place_under_params
+    sample_place_ontop_params, sample_place_under_params check_hand_end_pose, \
+    check_nav_end_pose, load_checkpoint_state, get_closest_point_on_aabb
 from predicators.envs import get_or_create_env
 from predicators.envs.behavior import BehaviorEnv
 from predicators.envs.doors import DoorsEnv
@@ -42,6 +43,7 @@ try:  # pragma: no cover
         get_joint_positions, set_joint_positions
     from igibson.external.pybullet_tools.utils import get_link_pose
     import igibson.utils.transform_utils as T
+    from igibson import object_states
 except (ImportError, ModuleNotFoundError) as e:  # pragma: no cover
     pass
 
@@ -2974,19 +2976,29 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         obj = objects[0]
         num_tries = 100
         logging.info("Sampling params for grasp...")
+
+        robot_pos = ig_env.robots[0].get_position()
+        aabb = obj.states[object_states.AABB].get_value()
+        aabb_extent = get_aabb_extent(aabb)
+        obj_closest_point = get_closest_point_on_aabb(robot_pos, aabb[0], aabb[1])
+
         for samples in range(num_tries):
             # x_offset = (rng.random() * 0.4) - 0.2
             # y_offset = (rng.random() * 0.4) - 0.2
             # z_offset = rng.random() * .2
-            x_offset = 0#(rng.random() * 0.04) - 0.02
-            y_offset = 0#(rng.random() * 0.04) - 0.02
-            z_offset = rng.random() * 0.02
+                
+            x = rng.random() * aabb_extent[0] + aabb[0][0]
+            y = rng.random() * aabb_extent[1] + aabb[0][1]
+            z = obj.get_position()[2] + rng.random() * 0.02
+
+            x_offset = x - obj_closest_point[0]
+            y_offset = y - obj_closest_point[1]
+            z_offset = z - obj_closest_point[2]#rng.random() * 0.02
 
             if check_hand_end_pose(ig_env, obj, [x_offset, y_offset, z_offset], ignore_collisions=True):
                 break
         else:
             logging.info("Did not find params for grasp, return bad params and retry")
-
 
         return np.array([x_offset, y_offset, z_offset])
 

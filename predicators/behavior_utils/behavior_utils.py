@@ -15,6 +15,7 @@ from predicators.structs import Array, GroundAtom, GroundAtomTrajectory, \
     LowLevelTrajectory, Predicate, Set, State, Task
 
 try:
+    from igibson import object_states
     from igibson.envs.behavior_env import \
         BehaviorEnv  # pylint: disable=unused-import
     from igibson.object_states.on_floor import \
@@ -1084,36 +1085,21 @@ def check_hand_end_pose(env: "BehaviorEnv", obj: Union["URDFObject",
     """
     ret_bool = False
     state = p.saveState()
-    obj_pos = obj.get_position()
+    obj_aabb = obj.states[object_states.AABB].get_value()
+    obj_closest_point = get_closest_point_on_aabb(env.robots[0].get_position(), obj_aabb[0], obj_aabb[1])
+
     hand_pos = (
-        pos_offset[0] + obj_pos[0],
-        pos_offset[1] + obj_pos[1],
-        pos_offset[2] + obj_pos[2],
+        pos_offset[0] + obj_closest_point[0],
+        pos_offset[1] + obj_closest_point[1],
+        pos_offset[2] + obj_closest_point[2],
     )
     if isinstance(env.robots[0], BehaviorRobot):
         env.robots[0].parts["right_hand"].set_position(hand_pos)
         if not detect_robot_collision(env.robots[0]):
             ret_bool = True
     else:
-        # compute the angle the hand must be in such that it can
-        # grasp the object from its current offset position
-        # This involves aligning the z-axis (in the world frame)
-        # of the hand with the vector that goes from the hand
-        # to the object. We can find the rotation matrix that
-        # accomplishes this rotation by following:
-        # https://math.stackexchange.com/questions/180418/
-        # calculate-rotation-matrix-to-align-vector-a-to-vector
-        # -b-in-3d
-        if (np.array(pos_offset[:3]) == 0).all():
-            # If offset is 0, then grasp from above
-            hand_to_obj_vector = (np.array(obj_pos[:3]) + np.array([0,0,10])) - \
-                np.array(obj_pos[:3])
-        else:
-            hand_to_obj_vector = np.array(pos_offset[:3])
-        hand_to_obj_unit_vector = hand_to_obj_vector / \
-            np.linalg.norm(
-            hand_to_obj_vector
-        )
+        # Always grasp downward
+        hand_to_obj_unit_vector = np.array([0., 0., 1.])
         unit_z_vector = np.array([-1.0, 0.0, 0.0])
         # This is because we assume the hand is originally oriented
         # so -x is coming out of the palm
@@ -1161,6 +1147,10 @@ def sample_navigation_params(igibson_behavior_env: "BehaviorEnv",
     nearness_limit = 0.15 if isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot) else 0.3
     distance = nearness_limit + (
         (closeness_limit - nearness_limit) * rng.random())
+    # NOTE: In a previous version, we attempted to sample at a distance d from
+    # the object's bbox. The implementation was incorrect because it didn't 
+    # yield a uniform distribution, but we might want to revisit that if we
+    # have trouble getting the fetch to work
     yaw = rng.random() * (2 * np.pi) - np.pi
     x = distance * np.cos(yaw)
     y = distance * np.sin(yaw)
