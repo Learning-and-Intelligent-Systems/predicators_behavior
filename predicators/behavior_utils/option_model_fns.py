@@ -408,14 +408,18 @@ def create_place_inside_option_model(
 
     def placeInsideObjectOptionModel(_init_state: State,
                                      env: "BehaviorEnv") -> None:
-        obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
+        if isinstance(env.robots[0], BehaviorRobot):
+            obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
+            rh_orig_grasp_position = env.robots[0].parts[
+                "right_hand"].get_position()
+            rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
+        else:
+            obj_in_hand_idx = env.robots[0].object_in_hand
+            orig_joint_positions = get_joint_positions(env.robots[0].robot_ids[0], env.robots[0].joint_ids)
         obj_in_hand = [
             obj for obj in env.scene.get_objects()
             if obj.get_body_id() == obj_in_hand_idx
         ][0]
-        rh_orig_grasp_position = env.robots[0].parts[
-            "right_hand"].get_position()
-        rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
         if obj_in_hand is not None and obj_in_hand != obj_to_place_into and \
             isinstance(obj_to_place_into, URDFObject):
             logging.info(
@@ -455,10 +459,19 @@ def create_place_inside_option_model(
                             f", {plan[-1][3:6]}) and attempting to " +
                             f"place inside to {obj_to_place_into.name} with "
                             f"params {target_pos}")
-                    env.robots[0].parts["right_hand"].force_release_obj()
-                    obj_to_place_into.force_wakeup()
-                    obj_in_hand.set_position_orientation(
-                        target_pos, p.getQuaternionFromEuler(target_orn))
+                    if isinstance(env.robots[0], BehaviorRobot):
+                        env.robots[0].parts["right_hand"].force_release_obj()
+                        obj_to_place_into.force_wakeup()
+                        obj_in_hand.set_position_orientation(
+                            target_pos, p.getQuaternionFromEuler(target_orn))
+                    else:
+                        env.robots[0].set_eef_position_orientation(target_pos, p.getQuaternionFromEuler(target_orn))
+                        a = np.zeros(env.action_space.shape, dtype=float)
+                        a[10] = 1.0
+                        for _ in range(5):
+                            env.step(a)
+                        obj_to_place_into.force_wakeup()
+
                     # this is running a zero action to step simulator
                     env.step(np.zeros(env.action_space.shape))
                     # reset the released object to zero velocity so it
@@ -469,8 +482,11 @@ def create_place_inside_option_model(
                         linearVelocity=[0, 0, 0],
                         angularVelocity=[0, 0, 0],
                     )
-                    env.robots[0].parts["right_hand"].set_position_orientation(
-                        rh_orig_grasp_position, rh_orig_grasp_orn)
+                    if isinstance(env.robots[0], BehaviorRobot):
+                        env.robots[0].parts["right_hand"].set_position_orientation(
+                            rh_orig_grasp_position, rh_orig_grasp_orn)
+                    else:
+                        env.robots[0].set_joint_positions(orig_joint_positions)
                     # this is running a series of zero action to step
                     # simulator to let the object fall into its place
                     for _ in range(15):
