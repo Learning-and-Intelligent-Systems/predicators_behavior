@@ -8,7 +8,7 @@ APPROACHES:
   #     timeout: 1000.0
   #     plan_only_eval: True
   #     sesame_task_planner: fdopt
-  backchaining:
+  pnad-search:
     NAME: "nsrt_learning"
     FLAGS:
       offline_data_planning_timeout: 1000.0
