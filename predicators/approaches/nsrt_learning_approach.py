@@ -158,7 +158,7 @@ class NSRTLearningApproach(BilevelPlanningApproach):
             # If we're only interested in creating a training dataset, then
             # terminate the program here and return how many demos were
             # collected.
-            if CFG.create_training_dataset:
+            if CFG.create_training_dataset:  # pragma: no cover
                 if CFG.num_train_tasks != len(trajectories):
                     raise AssertionError(
                         "ERROR!: Collected only" +
