@@ -1,4 +1,7 @@
-# An example configuration file.
+# A configuration file for 4 representative pick and place BEHAVIOR tasks.
+# python scripts/supercloud/launch.py \
+# --user wmcclinton \
+# --config behavior_pick_place_data_collection.yaml
 ---
 APPROACHES:
   pnad-search:
@@ -39,7 +42,7 @@ ENVS:
 ARGS: {}
 FLAGS:  # general flags
   num_train_tasks: 10
-  num_test_tasks: 1
+  num_test_tasks: 0
 START_SEED: 456
 NUM_SEEDS: 10
 USE_GPU: True
