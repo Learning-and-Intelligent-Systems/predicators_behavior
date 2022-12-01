@@ -8,8 +8,15 @@
 
     "sorting_books": {
         "Pomaria_1_int": {
-            "train": [],
-            "test": [14]
+            "train": [0, 2, 3, 6, 7, 8],
+            "test": [12, 13, 14, 17, 26, 28]
+        }
+    },
+
+    "re-shelving_library_books": {
+        "Pomaria_1_int": {
+            "train": [0, 2, 3, 7, 8, 9],
+            "test": [10, 11, 12, 13, 14, 17, 18, 26, 28]
         }
     },
 
