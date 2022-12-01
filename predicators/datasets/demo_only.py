@@ -75,9 +75,8 @@ def create_demo_data(env: BaseEnv, train_tasks: List[Task],
                         "ERROR!: Collected only" +
                         f"{len(trajectories)} trajectories, but needed" +
                         f"{CFG.num_train_tasks}.")
-                raise AssertionError(
-                    "SUCCESS!: Created training dataset" +
-                    f"with {len(trajectories)} trajectories.")
+                raise AssertionError("SUCCESS!: Created training dataset" +
+                                     f"with {len(trajectories)} trajectories.")
 
     # NOTE: This is necessary because we replace BEHAVIOR
     # options with dummy options in order to pickle them, so
