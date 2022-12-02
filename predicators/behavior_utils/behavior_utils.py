@@ -515,6 +515,11 @@ def load_checkpoint_state(s: State,
     env.igibson_behavior_env.step(
         np.zeros(env.igibson_behavior_env.action_space.shape))
 
+    print("Task Num:", env.task_num)
+    print("Task Instance ID:", env.task_instance_id)
+    print("Curr Seed:", env.task_num_task_instance_id_to_igibson_seed[
+        new_task_num_task_instance_id])
+
 
 def create_ground_atom_dataset_behavior(
         trajectories: Sequence[LowLevelTrajectory], predicates: Set[Predicate],
