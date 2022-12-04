@@ -289,9 +289,6 @@ class BehaviorEnv(BaseEnv):
                             while self.task_instance_id in broken_instances[
                                     'train']:
                                 self.task_instance_id = rng.integers(0, 10)
-                # ### SET TASK IDs
-                self.task_instance_id = 13
-                # ###
                 if len(CFG.behavior_task_list) != 1:
                     self.set_config_by_task_num(self.task_num)
                 self.set_igibson_behavior_env(

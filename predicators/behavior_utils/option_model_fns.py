@@ -150,8 +150,6 @@ def create_place_option_model(
         # to let the object fall into its place
         for _ in range(15):
             env.step(np.zeros(env.action_space.shape))
-
-        ####
         # Check whether object is ontop of not a target object
         from igibson.object_states.adjacency import VerticalAdjacency
         from igibson.object_states.touching import Touching
@@ -165,10 +163,8 @@ def create_place_option_model(
                 if "floor" not in obj.category:
                     if obj != obj_to_place:
                         type_name = obj.category
-                        #
                         _type_name_to_type: Dict[str, Type] = {}
                         for type_name in ALL_RELEVANT_OBJECT_TYPES:
-                            # type_name = ig_obj.category
                             if type_name in _type_name_to_type:
                                 continue
                             # In the future, we may need other object attributes,
@@ -181,7 +177,6 @@ def create_place_option_model(
                                 ],
                             )
                             _type_name_to_type[type_name] = obj_type
-                        #
                         if isinstance(obj, (URDFObject, RoomFloor)):
                             if "board_game" in obj.name:
                                 obj_name = obj.name + ".n.01_1"
@@ -190,14 +185,11 @@ def create_place_option_model(
                         else:
                             assert isinstance(obj, BRBody)
                             obj_name = "agent"
-                        #
                         obj_type = _type_name_to_type[type_name]
                         objs_under.add(Object(obj_name, obj_type))
-
         if len(objs_under) != 0:
             raise utils.EnvironmentFailure("collision",
                                            {"offending_objects": objs_under})
-        ####
 
     return placeOntopObjectOptionModel
 
