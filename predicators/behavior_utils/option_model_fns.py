@@ -15,8 +15,10 @@ try:
     from igibson import object_states
     from igibson.envs.behavior_env import \
         BehaviorEnv  # pylint: disable=unused-import
+    from igibson.object_states.adjacency import VerticalAdjacency
     from igibson.object_states.on_floor import \
         RoomFloor  # pylint: disable=unused-import
+    from igibson.object_states.touching import Touching
     from igibson.objects.articulated_object import \
         URDFObject  # pylint: disable=unused-import
     from igibson.robots.behavior_robot import \
@@ -151,9 +153,6 @@ def create_place_option_model(
         for _ in range(15):
             env.step(np.zeros(env.action_space.shape))
         # Check whether object is ontop of not a target object
-        from igibson.object_states.adjacency import VerticalAdjacency
-        from igibson.object_states.touching import Touching
-
         objs_under = set()
         for obj in env.scene.get_objects():
             if not obj_in_hand.states[Touching].get_value(obj):
@@ -167,8 +166,9 @@ def create_place_option_model(
                         for type_name in ALL_RELEVANT_OBJECT_TYPES:
                             if type_name in _type_name_to_type:
                                 continue
-                            # In the future, we may need other object attributes,
-                            # but for the moment, we just need position and orientation.
+                            # In the future, we may need other object
+                            # attributes, but for the moment, we just 
+                            # need position and orientation.
                             obj_type = Type(
                                 type_name,
                                 [
