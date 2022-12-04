@@ -167,7 +167,7 @@ def create_place_option_model(
                             if type_name in _type_name_to_type:
                                 continue
                             # In the future, we may need other object
-                            # attributes, but for the moment, we just 
+                            # attributes, but for the moment, we just
                             # need position and orientation.
                             obj_type = Type(
                                 type_name,
