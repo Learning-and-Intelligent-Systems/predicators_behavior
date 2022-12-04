@@ -8,20 +8,19 @@ import numpy as np
 import pybullet as p
 
 from predicators import utils
-from predicators.behavior_utils.behavior_utils import \
-    ALL_RELEVANT_OBJECT_TYPES
+from predicators.behavior_utils.behavior_utils import ALL_RELEVANT_OBJECT_TYPES
 from predicators.structs import Object, State, Type
 
 try:
     from igibson import object_states
-    from igibson.object_states.on_floor import \
-        RoomFloor  # pylint: disable=unused-import
-    from igibson.robots.behavior_robot import \
-        BRBody  # pylint: disable=unused-import
     from igibson.envs.behavior_env import \
         BehaviorEnv  # pylint: disable=unused-import
+    from igibson.object_states.on_floor import \
+        RoomFloor  # pylint: disable=unused-import
     from igibson.objects.articulated_object import \
         URDFObject  # pylint: disable=unused-import
+    from igibson.robots.behavior_robot import \
+        BRBody  # pylint: disable=unused-import
 except (ImportError, ModuleNotFoundError) as e:
     pass
 
@@ -154,8 +153,8 @@ def create_place_option_model(
 
         ####
         # Check whether object is ontop of not a target object
-        from igibson.object_states.touching import Touching
         from igibson.object_states.adjacency import VerticalAdjacency
+        from igibson.object_states.touching import Touching
 
         objs_under = set()
         for obj in env.scene.get_objects():
