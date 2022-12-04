@@ -508,6 +508,10 @@ class BehaviorEnv(BaseEnv):
                         "behavior_mode in settings.py instead")
 
     def _get_task_relevant_objects(self) -> List["ArticulatedObject"]:
+        # Sometimes other objects (not in the envs object scope) will cause
+        # a Discovered Failure when interacting with a relevant object.
+        # Here we add board_games one of those addtional items that have to
+        # be added to the envs relevant objects.
         additional_objs = [
             obj for obj in self.igibson_behavior_env.scene.get_objects()
             if "board_game" in obj.name
