@@ -261,7 +261,7 @@ def _generate_demonstrations(
                 logging.info("Successfully collected human demonstration of "
                              f"length {len(traj.states)} for task {idx+1} / "
                              f"{num_tasks}.")
-            break
+            break  # pragma: no cover
 
         if skip:
             continue
