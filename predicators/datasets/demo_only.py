@@ -41,10 +41,6 @@ def create_demo_data(env: BaseEnv, train_tasks: List[Task],
                                                 train_tasks_start_idx=0)
         logging.info(f"\n\nCREATED {len(trajectories)} DEMONSTRATIONS")
         dataset = Dataset(trajectories)
-
-        import ipdb
-        ipdb.set_trace()
-
         # NOTE: This is necessary because BEHAVIOR options save
         # the BEHAVIOR environment object in their memory, and this
         # can't be pickled.
