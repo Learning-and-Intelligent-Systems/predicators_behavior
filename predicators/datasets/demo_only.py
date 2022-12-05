@@ -1,6 +1,5 @@
 """Create offline datasets by collecting demonstrations."""
 
-from bdb import set_trace
 import functools
 import logging
 import os
