@@ -16,18 +16,18 @@ APPROACHES:
       create_training_dataset: True
       max_demo_attempts: 10
 ENVS:
-  # collecting-aluminum-cans-Ihlen_1_int:
-  #   NAME: "behavior"
-  #   FLAGS:
-  #     behavior_scene_name: Ihlen_1_int
-  #     behavior_task_list: "[collecting_aluminum_cans]"
-  #     behavior_option_model_eval: True
-  storing-food-Beechwood_0_int:
+  collecting-aluminum-cans-Ihlen_1_int:
     NAME: "behavior"
     FLAGS:
-      behavior_scene_name: Beechwood_0_int
-      behavior_task_list: "[storing_food]"
+      behavior_scene_name: Ihlen_1_int
+      behavior_task_list: "[collecting_aluminum_cans]"
       behavior_option_model_eval: True
+  # storing-food-Beechwood_0_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_scene_name: Beechwood_0_int
+  #     behavior_task_list: "[storing_food]"
+  #     behavior_option_model_eval: True
   # opening-presents-Pomaria_2_int:
   #   NAME: "behavior"
   #   FLAGS:
@@ -40,12 +40,12 @@ ENVS:
   #     behavior_scene_name: Merom_1_int
   #     behavior_task_list: "[locking_every_window]"
   #     behavior_option_model_eval: True
-  sorting-books-Pomaria_1_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_scene_name: Pomaria_1_int
-      behavior_task_list: "[sorting_books]"
-      behavior_option_model_eval: True
+  # sorting-books-Pomaria_1_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_scene_name: Pomaria_1_int
+  #     behavior_task_list: "[sorting_books]"
+  #     behavior_option_model_eval: True
 ARGS: {}
 FLAGS:  # general flags
   num_train_tasks: 10
