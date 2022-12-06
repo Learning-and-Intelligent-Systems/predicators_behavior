@@ -27,7 +27,7 @@ class GlobalSettings:
     # Maximum number of times to attempt a demonstration when generating
     # demonstration dataset.
     max_demo_attempts = 1
-    # If this ism False, then environment interactions can only take place
+    # If this is False, then environment interactions can only take place
     # on tasks that have no demonstrations.
     allow_interaction_in_demo_tasks = True
     # Maximum number of steps to run an InteractionRequest policy.

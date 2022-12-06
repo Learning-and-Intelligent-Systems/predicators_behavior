@@ -263,7 +263,8 @@ def _generate_demonstrations(
                              f"length {len(traj.states)} for task {idx+1} / "
                              f"{num_tasks}.")
             break  # pragma: no cover
-
+        # Here we skip if the last attempt to create the demo trajectory
+        # was not successful and move on to producing the next trajectory.
         if skip:
             continue
         # Add is_demo flag and task index information into the trajectory.
