@@ -153,7 +153,7 @@ def run_cmds_on_machine(
 
 
 def run_command_with_subprocess(
-    cmd: str, allowed_return_codes: Tuple[int, ...] = (0, )) -> None:
+    cmd: str, allowed_return_codes: Tuple[int, ...] = (0, 23)) -> None:
     """Run a command string with subprocess.run and raise an error if the
     return code is not as expected."""
     print(cmd)
