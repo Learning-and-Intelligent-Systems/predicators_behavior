@@ -45,6 +45,10 @@ def create_navigate_option_model(
     def navigateToOptionModel(_init_state: State, env: "BehaviorEnv") -> None:
         robot_z = env.robots[0].get_position()[2]
         robot_orn = p.getEulerFromQuaternion(env.robots[0].get_orientation())
+        # If we're not overriding the learned samplers, then we will directly
+        # use the elements of `plan`, which in turn use the outputs of the
+        # learned samplers. Otherwise, we will ignore these and use our
+        # oracle sampler to give us values to use.
         if not CFG.behavior_override_learned_samplers:
             desired_xpos = plan[-1][0]
             desired_ypos = plan[-1][1]
