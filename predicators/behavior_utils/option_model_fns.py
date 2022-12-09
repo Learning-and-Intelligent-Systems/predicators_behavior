@@ -56,7 +56,8 @@ def create_navigate_option_model(
             desired_xpos = sample_arr[0] + obj_pos[0]
             desired_ypos = sample_arr[1] + obj_pos[1]
             desired_zrot = np.arctan2(sample_arr[1], sample_arr[0]) - np.pi
-            logging.info("PRIMITIVE: Overriding sampler and attempting to " +
+            logging.info(f"PRIMITIVE: Overriding sample ({plan[-1][0]}" +
+                         f", {plan[-1][1]}) and attempting to " +
                          f"navigate to {_obj_to_nav_to.name} with "
                          f"params {sample_arr}")
 
