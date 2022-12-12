@@ -579,7 +579,7 @@ def create_ground_atom_dataset_behavior(
             # If th environment is BEHAVIOR we need to load the state before
             # we call the predicate classifiers.
             load_checkpoint_state(s, env)
-            if not use_last_state or i > 0:
+            if not use_last_state or i == 0:
                 next_atoms = abstract(s, predicates)
             else:
                 # Get atoms from last abstract state and state change
