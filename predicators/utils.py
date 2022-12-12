@@ -1737,6 +1737,30 @@ def abstract(state: State, preds: Collection[Predicate]) -> Set[GroundAtom]:
                 atoms.add(GroundAtom(pred, choice))
     return atoms
 
+def abstract_from_last(state: State, preds: Collection[Predicate], last_state: State, last_atoms: Set[GroundAtom]) -> Set[GroundAtom]:
+    """Get the atomic representation of the given state (i.e., a set of ground
+    atoms), using the given set of predicates and the last state and atoms.
+
+    Duplicate arguments in predicates are allowed.
+    """
+    # Finds objects whose states have changed.
+    changed_objs = set()
+    for obj in state.data:
+        if not np.allclose(state.data[obj], last_state.data[obj], atol=1e-3):
+            changed_objs.add(obj)
+    atoms = set()
+    # Adds to atoms all last_atoms about objects whose state is unchanged.
+    for atom in last_atoms:
+        if all([obj not in changed_objs for obj in atom.objects]):
+            atoms.add(atom)
+    # Computes predicats for atoms with objects whose state has changed.
+    for pred in preds:
+        for choice in get_object_combinations(list(state), pred.types):
+            if any([obj in changed_objs for obj in choice]):
+                if pred.holds(state, choice):
+                    atoms.add(GroundAtom(pred, choice))
+    return atoms
+
 
 def all_ground_operators(
         operator: STRIPSOperator,

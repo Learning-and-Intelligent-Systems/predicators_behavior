@@ -124,7 +124,7 @@ class NSRTLearningApproach(BilevelPlanningApproach):
                 env = get_or_create_env("behavior")
                 assert isinstance(env, BehaviorEnv)
                 ground_atom_dataset = \
-                    behavior_utils.create_ground_atom_dataset_behavior(
+                    behavior_utils.create_ground_atom_dataset_behavior_fast(
                         trajectories, self._get_current_predicates(), env)
             else:
                 ground_atom_dataset = utils.create_ground_atom_dataset(

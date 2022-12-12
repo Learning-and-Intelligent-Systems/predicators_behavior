@@ -9,7 +9,7 @@ import pybullet as p
 from predicators.settings import CFG
 from predicators.structs import Array, GroundAtomTrajectory, \
     LowLevelTrajectory, Predicate, Set, State
-from predicators.utils import abstract
+from predicators.utils import abstract, abstract_from_last
 
 try:
     from igibson.envs.behavior_env import \
@@ -575,5 +575,29 @@ def create_ground_atom_dataset_behavior(
             # we call the predicate classifiers.
             load_checkpoint_state(s, env)
             atoms.append(abstract(s, predicates))
+        ground_atom_dataset.append((traj, atoms))
+    return ground_atom_dataset
+
+def create_ground_atom_dataset_behavior_fast(
+        trajectories: Sequence[LowLevelTrajectory], predicates: Set[Predicate],
+        env: "BehaviorEnv") -> List[GroundAtomTrajectory]:  # pragma: no cover
+    """Apply all predicates to all trajectories in the dataset."""
+    ground_atom_dataset = []
+    for traj in trajectories:
+        last_s = None
+        last_atoms = None
+        atoms = []
+        for s in traj.states:
+            # If th environment is BEHAVIOR we need to load the state before
+            # we call the predicate classifiers.
+            load_checkpoint_state(s, env)
+            if last_s is None:
+                next_atoms = abstract(s, predicates)
+            else:
+                # Get atoms from last abstract state and state change
+                next_atoms = abstract_from_last(s, predicates, last_s, last_atoms)
+            atoms.append(next_atoms)
+            last_s = s
+            last_atoms = next_atoms
         ground_atom_dataset.append((traj, atoms))
     return ground_atom_dataset
