@@ -1737,7 +1737,10 @@ def abstract(state: State, preds: Collection[Predicate]) -> Set[GroundAtom]:
                 atoms.add(GroundAtom(pred, choice))
     return atoms
 
-def abstract_from_last(state: State, preds: Collection[Predicate], last_state: State, last_atoms: Set[GroundAtom]) -> Set[GroundAtom]:
+
+def abstract_from_last(state: State, preds: Collection[Predicate],
+                       last_state: State,
+                       last_atoms: Set[GroundAtom]) -> Set[GroundAtom]:
     """Get the atomic representation of the given state (i.e., a set of ground
     atoms), using the given set of predicates and the last state and atoms.
 

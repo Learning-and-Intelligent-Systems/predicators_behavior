@@ -578,6 +578,7 @@ def create_ground_atom_dataset_behavior(
         ground_atom_dataset.append((traj, atoms))
     return ground_atom_dataset
 
+
 def create_ground_atom_dataset_behavior_fast(
         trajectories: Sequence[LowLevelTrajectory], predicates: Set[Predicate],
         env: "BehaviorEnv") -> List[GroundAtomTrajectory]:  # pragma: no cover
@@ -595,7 +596,8 @@ def create_ground_atom_dataset_behavior_fast(
                 next_atoms = abstract(s, predicates)
             else:
                 # Get atoms from last abstract state and state change
-                next_atoms = abstract_from_last(s, predicates, last_s, last_atoms)
+                next_atoms = abstract_from_last(s, predicates, last_s,
+                                                last_atoms)
             atoms.append(next_atoms)
             last_s = s
             last_atoms = next_atoms
