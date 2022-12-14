@@ -1748,18 +1748,26 @@ def abstract_from_last(
     """
     # Finds objects whose states have changed.
     changed_objs = set()
+    agent_changed = False
     for obj in state.data:
         if not np.allclose(state.data[obj], last_state.data[obj], atol=1e-3):
+            if obj.name == "agent":
+                agent_changed = True
             changed_objs.add(obj)
     atoms = set()
     # Adds to atoms all last_atoms about objects whose state is unchanged.
+    # For all predicates with objects not changed, if the predicate is
+    # reachable and the agent has moved position we want to recompute it.
     for atom in last_atoms:
         if all(obj not in changed_objs for obj in atom.objects):
-            atoms.add(atom)
-    # Computes predicats for atoms with objects whose state has changed.
+            if not ("reachable" in atom.predicate.name and agent_changed):
+                atoms.add(atom)
+    # Computes predicates for atoms with objects whose state has changed.
     for pred in preds:
         for choice in get_object_combinations(list(state), pred.types):
-            if any(obj in changed_objs for obj in choice):
+            if any(obj in changed_objs
+                   for obj in choice) or ("reachable" in pred.name
+                                          and agent_changed):
                 if pred.holds(state, choice):
                     atoms.add(GroundAtom(pred, choice))
     return atoms
