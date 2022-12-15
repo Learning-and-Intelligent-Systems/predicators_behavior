@@ -26,6 +26,7 @@ try:
         URDFObject  # pylint: disable=unused-import
     from igibson.robots.behavior_robot import BRBody, BREye, BRHand \
         # pylint: disable=unused-import
+
 except (ImportError, ModuleNotFoundError) as e:
     pass
 
