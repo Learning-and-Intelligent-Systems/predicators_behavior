@@ -20,4 +20,3 @@ graphlib-backport
 openai
 pyyaml
 types-PyYAML
-tqdm
