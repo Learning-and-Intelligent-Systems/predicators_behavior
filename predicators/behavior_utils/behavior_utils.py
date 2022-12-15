@@ -5,6 +5,7 @@ from typing import List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pybullet as p
+from tqdm import tqdm
 
 from predicators.settings import CFG
 from predicators.structs import Array, GroundAtom, GroundAtomTrajectory, \
@@ -571,7 +572,7 @@ def create_ground_atom_dataset_behavior(
 ) -> List[GroundAtomTrajectory]:  # pragma: no cover
     """Apply all predicates to all trajectories in the dataset."""
     ground_atom_dataset = []
-    for traj in trajectories:
+    for traj in tqdm(trajectories):
         last_s: State = State(data={})
         last_atoms: Set[GroundAtom] = set()
         atoms = []
