@@ -1512,20 +1512,13 @@ def run_hill_climbing(
             logging.info("\nTerminating hill climbing, no more successors")
             break
         if last_heuristic <= best_heuristic:
+            # import ipdb; ipdb.set_trace()
             logging.info(
                 "\nTerminating hill climbing, could not improve score")
             break
         heuristics.extend(all_best_heuristics)
         cur_node = best_child_node
         last_heuristic = best_heuristic
-
-        # for cn in child_nodes:
-        #     if cn.state not in node_state_to_heuristic_vals:
-        #         import ipdb; ipdb.set_trace()
-        #     else:
-        #         if heuristic(cn.state) != node_state_to_heuristic_vals[cn.state]:
-        #             import ipdb; ipdb.set_trace()
-
         logging.info(f"\nHill climbing reached new state {cur_node.state} "
                      f"with heuristic {last_heuristic}")
     states, actions = _finish_plan(cur_node)
