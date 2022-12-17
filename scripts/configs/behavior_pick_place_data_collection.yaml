@@ -13,7 +13,7 @@ APPROACHES:
       strips_learner: pnad_search
       plan_only_eval: True
       sesame_task_planner: fdopt
-      create_training_dataset: True
+      create_training_dataset: False #True
       max_demo_attempts: 10
 ENVS:
   collecting-aluminum-cans-Ihlen_1_int:
@@ -22,34 +22,36 @@ ENVS:
       behavior_scene_name: Ihlen_1_int
       behavior_task_list: "[collecting_aluminum_cans]"
       behavior_option_model_eval: True
-  storing-food-Beechwood_0_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_scene_name: Beechwood_0_int
-      behavior_task_list: "[storing_food]"
-      behavior_option_model_eval: True
-  opening-presents-Pomaria_2_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_scene_name: Pomaria_2_int
-      behavior_task_list: "[opening_presents]"
-      behavior_option_model_eval: True
-  locking-every-window-Merom_1_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_scene_name: Merom_1_int
-      behavior_task_list: "[locking_every_window]"
-      behavior_option_model_eval: True
-  sorting-books-Pomaria_1_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_scene_name: Pomaria_1_int
-      behavior_task_list: "[sorting_books]"
-      behavior_option_model_eval: True
-ARGS: {}
+  # storing-food-Beechwood_0_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_scene_name: Beechwood_0_int
+  #     behavior_task_list: "[storing_food]"
+  #     behavior_option_model_eval: True
+  # opening-presents-Pomaria_2_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_scene_name: Pomaria_2_int
+  #     behavior_task_list: "[opening_presents]"
+  #     behavior_option_model_eval: True
+  # locking-every-window-Merom_1_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_scene_name: Merom_1_int
+  #     behavior_task_list: "[locking_every_window]"
+  #     behavior_option_model_eval: True
+  # sorting-books-Pomaria_1_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_scene_name: Pomaria_1_int
+  #     behavior_task_list: "[sorting_books]"
+  #     behavior_option_model_eval: True
+ARGS: 
+- "load_data"
+- "load_atoms"
 FLAGS:  # general flags
   num_train_tasks: 10
-  num_test_tasks: 0
+  num_test_tasks: 10
 START_SEED: 456
 NUM_SEEDS: 10
 USE_GPU: True
