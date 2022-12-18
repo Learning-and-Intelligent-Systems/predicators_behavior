@@ -22,6 +22,7 @@ ENVS:
       behavior_scene_name: Ihlen_1_int
       behavior_task_list: "[collecting_aluminum_cans]"
       behavior_option_model_eval: True
+      behavior_override_learned_samplers: True
   # storing-food-Beechwood_0_int:
   #   NAME: "behavior"
   #   FLAGS:
