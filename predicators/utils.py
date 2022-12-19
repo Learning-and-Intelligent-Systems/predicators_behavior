@@ -1724,7 +1724,9 @@ def strip_task(task: Task, included_predicates: Set[Predicate]) -> Task:
     return Task(task.init, stripped_goal)
 
 
-def abstract(state: State, preds: Collection[Predicate]) -> Set[GroundAtom]:
+def abstract(state: State,
+             preds: Collection[Predicate],
+             no_load: bool = False) -> Set[GroundAtom]:
     """Get the atomic representation of the given state (i.e., a set of ground
     atoms), using the given set of predicates.
 
@@ -1733,14 +1735,17 @@ def abstract(state: State, preds: Collection[Predicate]) -> Set[GroundAtom]:
     atoms = set()
     for pred in preds:
         for choice in get_object_combinations(list(state), pred.types):
-            if pred.holds(state, choice):
+            if pred.holds(state, choice, no_load=no_load):
                 atoms.add(GroundAtom(pred, choice))
     return atoms
 
 
 def abstract_from_last(
-        state: State, preds: Collection[Predicate], last_state: State,
-        last_atoms: Set[GroundAtom]) -> Set[GroundAtom]:  # pragma: no cover
+        state: State,
+        preds: Collection[Predicate],
+        last_state: State,
+        last_atoms: Set[GroundAtom],
+        no_load: bool = False) -> Set[GroundAtom]:  # pragma: no cover
     """Get the atomic representation of the given state (i.e., a set of ground
     atoms), using the given set of predicates and the last state and atoms.
 
@@ -1768,7 +1773,7 @@ def abstract_from_last(
             if any(obj in changed_objs
                    for obj in choice) or ("reachable" in pred.name
                                           and agent_changed):
-                if pred.holds(state, choice):
+                if pred.holds(state, choice, no_load=no_load):
                     atoms.add(GroundAtom(pred, choice))
     return atoms
 

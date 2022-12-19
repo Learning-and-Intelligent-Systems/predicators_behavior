@@ -237,7 +237,10 @@ class Predicate:
         """The arity of this predicate (number of arguments)."""
         return len(self.types)
 
-    def holds(self, state: State, objects: Sequence[Object]) -> bool:
+    def holds(self,
+              state: State,
+              objects: Sequence[Object],
+              no_load: bool = False) -> bool:
         """Public method for calling the classifier.
 
         Performs type checking first.
@@ -246,7 +249,7 @@ class Predicate:
         for obj, pred_type in zip(objects, self.types):
             assert isinstance(obj, Object)
             assert obj.is_instance(pred_type)
-        return self._classifier(state, objects)
+        return self._classifier(state, objects, skip_allclose_check=no_load)
 
     def __str__(self) -> str:
         return self.name
