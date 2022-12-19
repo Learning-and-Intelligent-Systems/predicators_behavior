@@ -255,7 +255,8 @@ class Predicate:
         # grounding inserts. We need to ignore typing here because
         # the classfiers have an extra parameter for skipping allclose.
         return self._classifier(  # pragma: no cover
-            state, objects,
+            state,
+            objects,
             skip_allclose_check=skip_allclose_check)  # type:ignore
 
     def __str__(self) -> str:
