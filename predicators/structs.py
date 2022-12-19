@@ -253,8 +253,10 @@ class Predicate:
             return self._classifier(state, objects)
         # Note: This line skips the allclose check for Behavior when
         # grounding inserts. We need to ignore typing here because
-        # the Behavior 
-        return self._classifier(state, objects, skip_allclose_check=skip_allclose_check)  # type:ignore
+        # the classfiers have an extra parameter for skipping allclose.
+        return self._classifier(
+            state, objects,
+            skip_allclose_check=skip_allclose_check)  # type:ignore
 
     def __str__(self) -> str:
         return self.name

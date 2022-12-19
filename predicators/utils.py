@@ -1735,7 +1735,9 @@ def abstract(state: State,
     atoms = set()
     for pred in preds:
         for choice in get_object_combinations(list(state), pred.types):
-            if pred.holds(state, choice, skip_allclose_check=skip_allclose_check):
+            if pred.holds(state,
+                          choice,
+                          skip_allclose_check=skip_allclose_check):
                 atoms.add(GroundAtom(pred, choice))
     return atoms
 
@@ -1745,7 +1747,8 @@ def abstract_from_last(
         preds: Collection[Predicate],
         last_state: State,
         last_atoms: Set[GroundAtom],
-        skip_allclose_check: bool = False) -> Set[GroundAtom]:  # pragma: no cover
+        skip_allclose_check: bool = False
+) -> Set[GroundAtom]:  # pragma: no cover
     """Get the atomic representation of the given state (i.e., a set of ground
     atoms), using the given set of predicates and the last state and atoms.
 
@@ -1773,7 +1776,9 @@ def abstract_from_last(
             if any(obj in changed_objs
                    for obj in choice) or ("reachable" in pred.name
                                           and agent_changed):
-                if pred.holds(state, choice, skip_allclose_check=skip_allclose_check):
+                if pred.holds(state,
+                              choice,
+                              skip_allclose_check=skip_allclose_check):
                     atoms.add(GroundAtom(pred, choice))
     return atoms
 

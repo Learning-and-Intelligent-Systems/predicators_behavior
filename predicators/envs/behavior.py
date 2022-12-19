@@ -670,7 +670,7 @@ class BehaviorEnv(BaseEnv):
                               objs: Sequence[Object],
                               skip_allclose_check: bool = False) -> bool:
         if not skip_allclose_check and not state.allclose(
-                    self.current_ig_state_to_state(save_state=False)):
+                self.current_ig_state_to_state(save_state=False)):
             load_checkpoint_state(state, self)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
@@ -699,7 +699,7 @@ class BehaviorEnv(BaseEnv):
             objs: Sequence[Object],
             skip_allclose_check: bool = False) -> bool:
         if not skip_allclose_check and not state.allclose(
-                    self.current_ig_state_to_state(save_state=False)):
+                self.current_ig_state_to_state(save_state=False)):
             load_checkpoint_state(state, self)
         assert len(objs) == 0
         for obj in state:
@@ -733,7 +733,7 @@ class BehaviorEnv(BaseEnv):
                               objs: Sequence[Object],
                               skip_allclose_check: bool = False) -> bool:
         if not skip_allclose_check and not state.allclose(
-                    self.current_ig_state_to_state(save_state=False)):
+                self.current_ig_state_to_state(save_state=False)):
             load_checkpoint_state(state, self)
         assert len(objs) == 0
         grasped_objs = self._get_grasped_objects(state)
@@ -744,7 +744,7 @@ class BehaviorEnv(BaseEnv):
                             objs: Sequence[Object],
                             skip_allclose_check: bool = False) -> bool:
         if not skip_allclose_check and not state.allclose(
-                    self.current_ig_state_to_state(save_state=False)):
+                self.current_ig_state_to_state(save_state=False)):
             load_checkpoint_state(state, self)
         assert len(objs) == 1
         grasped_objs = self._get_grasped_objects(state)
@@ -755,7 +755,7 @@ class BehaviorEnv(BaseEnv):
                              objs: Sequence[Object],
                              skip_allclose_check: bool = False) -> bool:
         if not skip_allclose_check and not state.allclose(
-                    self.current_ig_state_to_state(save_state=False)):
+                self.current_ig_state_to_state(save_state=False)):
             load_checkpoint_state(state, self)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
@@ -775,7 +775,7 @@ class BehaviorEnv(BaseEnv):
                            objs: Sequence[Object],
                            skip_allclose_check: bool = False) -> bool:
         if not skip_allclose_check and not state.allclose(
-                    self.current_ig_state_to_state(save_state=False)):
+                self.current_ig_state_to_state(save_state=False)):
             load_checkpoint_state(state, self)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
