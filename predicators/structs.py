@@ -208,7 +208,7 @@ class Predicate:
     # The classifier takes in a complete state and a sequence of objects
     # representing the arguments. These objects should be the only ones
     # treated "specially" by the classifier.
-    _classifier: Callable[[State, Sequence[Object]],
+    _classifier: Callable[[State, Sequence[Object], bool],
                           bool] = field(compare=False)
 
     def __call__(self, entities: Sequence[_TypedEntity]) -> _Atom:
@@ -240,7 +240,7 @@ class Predicate:
     def holds(self,
               state: State,
               objects: Sequence[Object],
-              no_load: bool = False) -> bool:
+              skip_allclose_check: bool = False) -> bool:
         """Public method for calling the classifier.
 
         Performs type checking first.
@@ -249,7 +249,7 @@ class Predicate:
         for obj, pred_type in zip(objects, self.types):
             assert isinstance(obj, Object)
             assert obj.is_instance(pred_type)
-        return self._classifier(state, objects, skip_allclose_check=no_load)
+        return self._classifier(state, objects, skip_allclose_check=skip_allclose_check)
 
     def __str__(self) -> str:
         return self.name

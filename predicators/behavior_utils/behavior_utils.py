@@ -583,7 +583,7 @@ def create_ground_atom_dataset_behavior(
             # we call the predicate classifiers.
             load_checkpoint_state(s, env)
             if not use_last_state or first_state:
-                next_atoms = abstract(s, predicates, no_load=False)
+                next_atoms = abstract(s, predicates, skip_allclose_check=False)
                 first_state = False
             else:
                 # Get atoms from last abstract state and state change
@@ -591,7 +591,7 @@ def create_ground_atom_dataset_behavior(
                                                 predicates,
                                                 last_s,
                                                 last_atoms,
-                                                no_load=True)
+                                                skip_allclose_check=True)
             atoms.append(next_atoms)
             last_s = s
             last_atoms = next_atoms
