@@ -254,7 +254,7 @@ class Predicate:
         # Note: This line skips the allclose check for Behavior when
         # grounding inserts. We need to ignore typing here because
         # the classfiers have an extra parameter for skipping allclose.
-        return self._classifier(
+        return self._classifier(  # pragma: no cover
             state, objects,
             skip_allclose_check=skip_allclose_check)  # type:ignore
 
