@@ -208,7 +208,7 @@ class Predicate:
     # The classifier takes in a complete state and a sequence of objects
     # representing the arguments. These objects should be the only ones
     # treated "specially" by the classifier.
-    _classifier: Callable[[State, Sequence[Object], bool],
+    _classifier: Callable[[State, Sequence[Object]],
                           bool] = field(compare=False)
 
     def __call__(self, entities: Sequence[_TypedEntity]) -> _Atom:
@@ -249,7 +249,12 @@ class Predicate:
         for obj, pred_type in zip(objects, self.types):
             assert isinstance(obj, Object)
             assert obj.is_instance(pred_type)
-        return self._classifier(state, objects, skip_allclose_check=skip_allclose_check)
+        if CFG.env != "behavior":
+            return self._classifier(state, objects)
+        # Note: This line skips the allclose check for Behavior when
+        # grounding inserts. We need to ignore typing here because
+        # the Behavior 
+        return self._classifier(state, objects, skip_allclose_check=skip_allclose_check)  # type:ignore
 
     def __str__(self) -> str:
         return self.name
