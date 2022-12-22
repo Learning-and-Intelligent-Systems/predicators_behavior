@@ -1,18 +1,18 @@
 """Utility functions for using iGibson and BEHAVIOR."""
 
+import logging
 import os
 from typing import List, Optional, Sequence, Tuple, Union
 
+import dill as pkl
 import numpy as np
 import pybullet as p
-import logging
 from tqdm import tqdm
-import dill as pkl
 
+from predicators import utils
 from predicators.settings import CFG
 from predicators.structs import Array, GroundAtom, GroundAtomTrajectory, \
     LowLevelTrajectory, Predicate, Set, State
-from predicators import utils
 
 try:
     from igibson.envs.behavior_env import \
@@ -590,7 +590,7 @@ def create_ground_atom_dataset_behavior(
             else:
                 # Get atoms from last abstract state and state change
                 next_atoms = utils.abstract_from_last(s, predicates, last_s,
-                                                last_atoms)
+                                                      last_atoms)
             atoms.append(next_atoms)
             last_s = s
             last_atoms = next_atoms
@@ -599,7 +599,7 @@ def create_ground_atom_dataset_behavior(
     return ground_atom_dataset
 
 
-def load_or_make_new_ground_atom_dataset(
+def get_ground_atoms_dataset(
         trajectories: Sequence[LowLevelTrajectory], predicates: Set[Predicate],
         online_learning_cycle: Optional[int]) -> List[GroundAtomTrajectory]:
     """Either tries to load a saved ground atom dataset, or creates a new one

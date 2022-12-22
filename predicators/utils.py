@@ -24,7 +24,6 @@ from typing import TYPE_CHECKING, Any, Callable, ClassVar, Collection, Dict, \
 from typing import Type as TypingType
 from typing import TypeVar, Union, cast
 
-import dill as pkl
 import imageio
 import matplotlib
 import matplotlib.pyplot as plt

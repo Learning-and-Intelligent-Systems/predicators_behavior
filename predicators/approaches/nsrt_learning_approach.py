@@ -5,7 +5,6 @@ or options.
 """
 
 import logging
-import os
 import re
 import time
 from typing import Dict, List, Optional, Set
@@ -18,11 +17,10 @@ from predicators.approaches.bilevel_planning_approach import \
     BilevelPlanningApproach
 from predicators.behavior_utils import behavior_utils
 from predicators.envs import get_or_create_env
-from predicators.envs.behavior import BehaviorEnv
 from predicators.nsrt_learning.nsrt_learning_main import learn_nsrts_from_data
 from predicators.planning import task_plan, task_plan_grounding
 from predicators.settings import CFG
-from predicators.structs import NSRT, Dataset, GroundAtom, LiftedAtom, \
+from predicators.structs import NSRT, Dataset, LiftedAtom, \
     LowLevelTrajectory, NSRTSampler, ParameterizedOption, Predicate, Segment, \
     Task, Type, Variable
 
@@ -68,9 +66,7 @@ class NSRTLearningApproach(BilevelPlanningApproach):
 
     def _learn_nsrts(self, trajectories: List[LowLevelTrajectory],
                      online_learning_cycle: Optional[int]) -> None:
-        # TODO: Create ground atom dataset to pass into subsequent
-        # functions.
-        ground_atom_dataset = behavior_utils.load_or_make_new_ground_atom_dataset(
+        ground_atom_dataset = behavior_utils.get_ground_atoms_dataset(
             trajectories, self._get_current_predicates(),
             online_learning_cycle)
 

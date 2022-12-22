@@ -12,9 +12,9 @@ import torch.optim
 from gym.spaces import Box
 
 from predicators import utils
-from predicators.behavior_utils import behavior_utils
 from predicators.approaches import ApproachFailure, ApproachTimeout
 from predicators.approaches.gnn_approach import GNNApproach
+from predicators.behavior_utils import behavior_utils
 from predicators.nsrt_learning.segmentation import segment_trajectory
 from predicators.option_model import create_option_model
 from predicators.settings import CFG
@@ -44,7 +44,7 @@ class GNNOptionPolicyApproach(GNNApproach):
         self, dataset: Dataset
     ) -> List[Tuple[State, Set[GroundAtom], Set[GroundAtom], _Option]]:
         data = []
-        ground_atom_dataset = behavior_utils.load_or_make_new_ground_atom_dataset(
+        ground_atom_dataset = behavior_utils.get_ground_atoms_dataset(
             dataset.trajectories, self._initial_predicates, None)
         # In this approach, we never learned any NSRTs, so we just call
         # segment_trajectory() to segment the given dataset.
