@@ -15,9 +15,9 @@ from gym.spaces import Box
 from predicators import utils
 from predicators.approaches.bilevel_planning_approach import \
     BilevelPlanningApproach
-from predicators.behavior_utils import behavior_utils
 from predicators.envs import get_or_create_env
-from predicators.nsrt_learning.nsrt_learning_main import learn_nsrts_from_data
+from predicators.nsrt_learning.nsrt_learning_main import \
+    get_ground_atoms_dataset, learn_nsrts_from_data
 from predicators.planning import task_plan, task_plan_grounding
 from predicators.settings import CFG
 from predicators.structs import NSRT, Dataset, LiftedAtom, \
@@ -66,7 +66,7 @@ class NSRTLearningApproach(BilevelPlanningApproach):
 
     def _learn_nsrts(self, trajectories: List[LowLevelTrajectory],
                      online_learning_cycle: Optional[int]) -> None:
-        ground_atom_dataset = behavior_utils.get_ground_atoms_dataset(
+        ground_atom_dataset = get_ground_atoms_dataset(
             trajectories, self._get_current_predicates(),
             online_learning_cycle)
 
