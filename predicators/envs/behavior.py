@@ -87,8 +87,6 @@ class BehaviorEnv(BaseEnv):
                 self.get_random_scene_for_task(CFG.behavior_task_list[0],
                                                rng), False, CFG.seed)
         else:
-            assert len(CFG.behavior_train_scene_name) == len(
-                CFG.behavior_test_scene_name) == 1
             self._config_file = modify_config_file(
                 os.path.join(igibson.root_path, CFG.behavior_config_file),
                 CFG.behavior_task_list[0], CFG.behavior_train_scene_name,
