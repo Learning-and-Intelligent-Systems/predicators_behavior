@@ -307,10 +307,11 @@ def create_place_inside_option_model(
                     logging.info(f"PRIMITIVE: place {obj_in_hand.name} inside "
                                  f"{obj_to_place_into.name} success")
 
-                    # If we're not overriding the learned samplers, then we will directly
-                    # use the elements of `plan`, which in turn use the outputs of the
-                    # learned samplers. Otherwise, we will ignore these and use our
-                    # oracle sampler to give us values to use.
+                    # If we're not overriding the learned samplers, then we
+                    # will directly use the elements of `plan`, which in turn
+                    # use the outputs of the learned samplers. Otherwise, we
+                    # will ignore these and use our oracle sampler to give us
+                    # values to use.
                     if not CFG.behavior_override_learned_samplers:
                         target_pos = plan[-1][0:3]
                         target_orn = plan[-1][3:6]
@@ -318,9 +319,10 @@ def create_place_inside_option_model(
                         rng = np.random.default_rng(prng.randint(10000))
                         place_rel_pos = sample_place_inside_params(
                             obj_to_place_into, rng)
-                        target_pos = np.add(place_rel_pos,
+                        target_pos_list = np.add(place_rel_pos,
                                             obj_to_place_into.get_position())
-                        target_pos[2] += 0.2
+                        target_pos_list[2] += 0.2
+                        target_pos = target_pos_list.tolist()
                         target_orn = plan[-1][3:6]
                         logging.info(
                             f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +

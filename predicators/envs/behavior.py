@@ -78,7 +78,8 @@ class BehaviorEnv(BaseEnv):
         # pre-computed scene given by behavior_scene_name or randomly
         # select a valid pre-computed scene.
         if len(CFG.behavior_task_list) != 1:
-            assert CFG.behavior_train_scene_name == CFG.behavior_test_scene_name == "all"
+            assert CFG.behavior_train_scene_name == \
+                CFG.behavior_test_scene_name == "all"
             rng = np.random.default_rng(0)
             self._config_file = modify_config_file(
                 os.path.join(igibson.root_path, CFG.behavior_config_file),
@@ -86,6 +87,8 @@ class BehaviorEnv(BaseEnv):
                 self.get_random_scene_for_task(CFG.behavior_task_list[0],
                                                rng), False, CFG.seed)
         else:
+            assert len(CFG.behavior_train_scene_name) == len(
+                CFG.behavior_test_scene_name) == 1
             self._config_file = modify_config_file(
                 os.path.join(igibson.root_path, CFG.behavior_config_file),
                 CFG.behavior_task_list[0], CFG.behavior_train_scene_name,

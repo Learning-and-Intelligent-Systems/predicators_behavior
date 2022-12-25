@@ -3042,7 +3042,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             state: State, goal: Set[GroundAtom], rng: Generator,
             objects: Union["URDFObject", "RoomFloor"]) -> Array:
         """Sampler for placeOnTop option."""
-        del goal
+        del state, goal
         assert rng is not None
         # objA is the object the robot is currently holding, and
         # objB is the surface that it must place onto.
