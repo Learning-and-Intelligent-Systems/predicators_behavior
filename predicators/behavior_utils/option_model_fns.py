@@ -319,8 +319,8 @@ def create_place_inside_option_model(
                         rng = np.random.default_rng(prng.randint(10000))
                         place_rel_pos = sample_place_inside_params(
                             obj_to_place_into, rng)
-                        target_pos_list = np.add(place_rel_pos,
-                                            obj_to_place_into.get_position())
+                        target_pos_list = np.add(
+                            place_rel_pos, obj_to_place_into.get_position())
                         target_pos_list[2] += 0.2
                         target_pos = target_pos_list.tolist()
                         target_orn = plan[-1][3:6]
