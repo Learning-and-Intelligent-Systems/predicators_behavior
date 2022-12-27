@@ -207,7 +207,7 @@ class GNNApproach(BaseApproach, Generic[_Output]):
         # strip away the classifiers and replace them with dummies before
         # saving. Note that when loading, we will re-associate the correct
         # classifiers with each predicate.
-        if CFG.env == "behavior":
+        if CFG.env == "behavior":  # pragma: no cover
 
             def _make_pred_dict_picklable(
                     in_dict: Dict[Any, int]) -> Dict[Any, int]:
@@ -255,6 +255,57 @@ class GNNApproach(BaseApproach, Generic[_Output]):
         self._edge_feature_to_index = info["edge_feature_to_index"]
         self._input_normalizers = info["input_normalizers"]
         self._target_normalizers = info["target_normalizers"]
+
+        # We must re-associate the correct classifiers with the predicates
+        # here.
+        if CFG.env == "behavior":
+
+            def _create_correct_predicate_dict(
+                in_dict: Dict[Any, int],
+                pred_name_to_correct_pred: Dict[str,
+                                                Predicate]) -> Dict[Any, int]:
+                out_dict: Dict[Any, int] = {}
+                for k, v in in_dict.items():
+                    if not isinstance(k, Predicate):
+                        out_dict[k] = v
+                    else:
+                        k_name = k.name
+                        if "GOAL-REV" == k.name[0:8]:
+                            k_name = k.name[9:]
+                        elif "GOAL" == k.name[0:4]:
+                            k_name = k.name[5:]
+                        elif "REV" == k.name[0:3]:
+                            k_name = k.name[4:]
+                        correct_predicate = Predicate(
+                            k.name, pred_name_to_correct_pred[k_name].types,
+                            pred_name_to_correct_pred[k_name]._classifier)
+                        out_dict[correct_predicate] = v
+                return out_dict
+
+            pred_name_to_correct_pred = {
+                pred.name: pred
+                for pred in self._initial_predicates
+            }
+            correct_nullary_preds: List[Predicate] = []
+            for null_pred in self._nullary_predicates:
+                null_pred_name = null_pred.name
+                if "GOAL-REV" == null_pred.name[0:8]:
+                    null_pred_name = null_pred.name[9:]
+                elif "GOAL" == null_pred.name[0:4]:
+                    null_pred_name = null_pred.name[5:]
+                elif "REV" == null_pred.name[0:3]:
+                    null_pred_name = null_pred.name[4:]
+                correct_predicate = Predicate(
+                    null_pred.name,
+                    pred_name_to_correct_pred[null_pred_name].types,
+                    pred_name_to_correct_pred[null_pred_name]._classifier)
+                correct_nullary_preds.append(correct_predicate)
+            self._nullary_predicates = correct_nullary_preds
+            self._node_feature_to_index = _create_correct_predicate_dict(
+                self._node_feature_to_index, pred_name_to_correct_pred)
+            self._edge_feature_to_index = _create_correct_predicate_dict(
+                self._edge_feature_to_index, pred_name_to_correct_pred)
+
         self._load_output_specific_fields_from_save_info(info)
 
     def _predict(self, state: State, atoms: Set[GroundAtom],
