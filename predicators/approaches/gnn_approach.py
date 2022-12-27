@@ -201,6 +201,39 @@ class GNNApproach(BaseApproach, Generic[_Output]):
             "input_normalizers": self._input_normalizers,
             "target_normalizers": self._target_normalizers,
         }
+
+        # We cannot pickle BEHAVIOR predicates, since their classifiers are
+        # linked to the simulator, which cannot be pickled. Thus, we will
+        # strip away the classifiers and replace them with dummies before
+        # saving. Note that when loading, we will re-associate the correct
+        # classifiers with each predicate.
+        if CFG.env == "behavior":
+
+            def _make_pred_dict_picklable(
+                    in_dict: Dict[Any, int]) -> Dict[Any, int]:
+                picklable_dict = {}
+                for k, v in in_dict.items():
+                    if not isinstance(k, Predicate):
+                        picklable_dict[k] = v
+                    else:
+                        picklable_pred = Predicate(k.name, k.types,
+                                                   lambda s, o: False)
+                        picklable_dict[picklable_pred] = v
+                return picklable_dict
+
+            picklable_nullary_predicates: List[Predicate] = []
+            for pred in self._nullary_predicates:
+                picklable_pred = Predicate(pred.name, pred.types,
+                                           lambda s, o: False)
+                picklable_nullary_predicates.append(picklable_pred)
+            info["nullary_predicates"] = picklable_nullary_predicates
+            picklable_node_feature_to_index = _make_pred_dict_picklable(
+                self._node_feature_to_index)
+            info["node_feature_to_index"] = picklable_node_feature_to_index
+            picklable_edge_feature_to_index = _make_pred_dict_picklable(
+                self._edge_feature_to_index)
+            info["edge_feature_to_index"] = picklable_edge_feature_to_index
+
         self._add_output_specific_fields_to_save_info(info)
         save_path = utils.get_approach_save_path_str()
         with open(f"{save_path}_None.gnn", "wb") as f:
