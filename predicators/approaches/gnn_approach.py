@@ -256,9 +256,10 @@ class GNNApproach(BaseApproach, Generic[_Output]):
         self._input_normalizers = info["input_normalizers"]
         self._target_normalizers = info["target_normalizers"]
 
-        # We must re-associate the correct classifiers with the predicates
-        # here.
-        if CFG.env == "behavior":
+        # Since we cannot pickle BEHAVIOR predicates correctly, we pickle
+        # them with dummy classifiers. Thus, we must re-associate each
+        # predicate with the correct classifier here.
+        if CFG.env == "behavior":  # pragma: no cover
 
             def _get_unmodified_predicate_name(modified_name_str: str) -> str:
                 out_name_str = modified_name_str
