@@ -260,6 +260,16 @@ class GNNApproach(BaseApproach, Generic[_Output]):
         # here.
         if CFG.env == "behavior":
 
+            def _get_unmodified_predicate_name(modified_name_str: str) -> str:
+                out_name_str = modified_name_str
+                if "GOAL-REV" == modified_name_str[0:8]:
+                    out_name_str = modified_name_str[9:]
+                elif "GOAL" == modified_name_str[0:4]:
+                    out_name_str = modified_name_str[5:]
+                elif "REV" == modified_name_str[0:3]:
+                    out_name_str = modified_name_str[4:]
+                return out_name_str
+
             def _create_correct_predicate_dict(
                 in_dict: Dict[Any, int],
                 pred_name_to_correct_pred: Dict[str,
@@ -269,16 +279,10 @@ class GNNApproach(BaseApproach, Generic[_Output]):
                     if not isinstance(k, Predicate):
                         out_dict[k] = v
                     else:
-                        k_name = k.name
-                        if "GOAL-REV" == k.name[0:8]:
-                            k_name = k.name[9:]
-                        elif "GOAL" == k.name[0:4]:
-                            k_name = k.name[5:]
-                        elif "REV" == k.name[0:3]:
-                            k_name = k.name[4:]
+                        k_name = _get_unmodified_predicate_name(k.name)
                         correct_predicate = Predicate(
                             k.name, pred_name_to_correct_pred[k_name].types,
-                            pred_name_to_correct_pred[k_name]._classifier)
+                            pred_name_to_correct_pred[k_name]._classifier)  # pylint: disable=W0212
                         out_dict[correct_predicate] = v
                 return out_dict
 
@@ -288,17 +292,11 @@ class GNNApproach(BaseApproach, Generic[_Output]):
             }
             correct_nullary_preds: List[Predicate] = []
             for null_pred in self._nullary_predicates:
-                null_pred_name = null_pred.name
-                if "GOAL-REV" == null_pred.name[0:8]:
-                    null_pred_name = null_pred.name[9:]
-                elif "GOAL" == null_pred.name[0:4]:
-                    null_pred_name = null_pred.name[5:]
-                elif "REV" == null_pred.name[0:3]:
-                    null_pred_name = null_pred.name[4:]
+                null_pred_name = _get_unmodified_predicate_name(null_pred.name)
                 correct_predicate = Predicate(
                     null_pred.name,
                     pred_name_to_correct_pred[null_pred_name].types,
-                    pred_name_to_correct_pred[null_pred_name]._classifier)
+                    pred_name_to_correct_pred[null_pred_name]._classifier)  # pylint: disable=W0212
                 correct_nullary_preds.append(correct_predicate)
             self._nullary_predicates = correct_nullary_preds
             self._node_feature_to_index = _create_correct_predicate_dict(
