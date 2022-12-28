@@ -430,7 +430,8 @@ class GNNApproach(BaseApproach, Generic[_Output]):
 
         ## Add node features for unary atoms.
         for atom in atoms:
-            if atom.predicate.arity != 1:
+            if atom.predicate.arity != 1 or atom.predicate not in self._node_feature_to_index[
+                    atom.predicate]:
                 continue
             obj_index = object_to_node[atom.objects[0]]
             atom_index = self._node_feature_to_index[atom.predicate]
@@ -462,7 +463,7 @@ class GNNApproach(BaseApproach, Generic[_Output]):
 
         ## Add edge features for binary atoms.
         for atom in atoms:
-            if atom.predicate.arity != 2:
+            if atom.predicate.arity != 2 or atom.predicate not in self._edge_feature_to_index:
                 continue
             pred_index = self._edge_feature_to_index[atom.predicate]
             obj0_index = object_to_node[atom.objects[0]]
@@ -471,7 +472,8 @@ class GNNApproach(BaseApproach, Generic[_Output]):
 
         ## Add edge features for reversed binary atoms.
         for atom in atoms:
-            if atom.predicate.arity != 2:
+            if atom.predicate.arity != 2 or R(
+                    atom.predicate) not in self._edge_feature_to_index:
                 continue
             pred_index = self._edge_feature_to_index[R(atom.predicate)]
             obj0_index = object_to_node[atom.objects[0]]
