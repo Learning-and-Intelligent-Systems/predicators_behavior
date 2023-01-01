@@ -177,8 +177,9 @@ class GNNOptionPolicyApproach(GNNApproach):
             return self._solve_with_shooting(task, timeout)
         return self._solve_without_shooting(task, timeout)
 
-    def _solve_without_shooting(self, task: Task,
-                                timeout: int) -> Callable[[State], Action]:
+    def _solve_without_shooting(
+            self, task: Task,
+            timeout: int) -> Callable[[State], Action]:  # pragma: no cover
         cur_option = DummyOption
         memory: Dict = {}  # optionally updated by predict()
 

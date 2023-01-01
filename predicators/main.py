@@ -330,8 +330,7 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
                 # and would need to run the policy on the option model, not
                 # the plan
                 assert CFG.env == "behavior" and (isinstance(
-                    approach, BilevelPlanningApproach) or \
-                        isinstance(approach, GNNApproach))
+                    approach, (BilevelPlanningApproach, GNNApproach)))
                 last_plan = approach.get_last_plan()
                 last_traj = approach.get_last_traj()
                 option_model_start_time = time.time()
