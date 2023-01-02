@@ -68,6 +68,7 @@ ENVS:
   #     horizon: 50
 ARGS: {}
 FLAGS:  # general flags
+  option_model_name: oracle_behavior
   offline_data_planning_timeout: 300.0
   timeout: 300.0
   plan_only_eval: True
