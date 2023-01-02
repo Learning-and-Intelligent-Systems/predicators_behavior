@@ -790,7 +790,7 @@ class BehaviorEnv(BaseEnv):
     @staticmethod
     def _ig_object_name(ig_obj: "ArticulatedObject") -> str:
         if isinstance(ig_obj, (URDFObject, RoomFloor)):
-            if "board_game" in ig_obj.name or "video_game":
+            if "board_game" in ig_obj.name or "video_game" in ig_obj.name:
                 return ig_obj.name + ".n.01_1"
             return ig_obj.bddl_object_scope
         # Robot does not have a field "bddl_object_scope", so we define
