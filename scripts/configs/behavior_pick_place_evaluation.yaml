@@ -8,10 +8,10 @@
 APPROACHES:
   oracle: # Oracle
     NAME: "oracle"
-  pnad_search: # PNAD search approach.
-    NAME: "nsrt_learning"
-    FLAGS:
-      strips_learner: "pnad_search"
+  # pnad_search: # PNAD search approach.
+  #   NAME: "nsrt_learning"
+  #   FLAGS:
+  #     strips_learner: "pnad_search"
   # cluster_and_intersect:  # Cluster-and-intersect baseline.
   #   NAME: "nsrt_learning"
   #   FLAGS:
@@ -55,22 +55,22 @@ ENVS:
   #     behavior_test_scene_name: Wainscott_0_int
   #     behavior_task_list: "[locking_every_window]"
   #     behavior_option_model_eval: True
-  sorting-books-Pomaria_1_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Pomaria_1_int
-      behavior_test_scene_name: Ihlen_0_int
-      behavior_task_list: "[sorting_books]"
-      behavior_option_model_eval: True
+  # sorting-books-Pomaria_1_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_train_scene_name: Pomaria_1_int
+  #     behavior_test_scene_name: Ihlen_0_int
+  #     behavior_task_list: "[sorting_books]"
+  #     behavior_option_model_eval: True
 ARGS: {}
 FLAGS:  # general flags
   option_model_name: oracle_behavior
-  offline_data_planning_timeout: 1000.0
-  timeout: 1000.0
+  offline_data_planning_timeout: 100.0
+  timeout: 100.0
   plan_only_eval: True
   sesame_task_planner: fdsat
-  num_train_tasks: 10
+  num_train_tasks: 0
   num_test_tasks: 10
 START_SEED: 456
-NUM_SEEDS: 10
+NUM_SEEDS: 1
 USE_GPU: True
