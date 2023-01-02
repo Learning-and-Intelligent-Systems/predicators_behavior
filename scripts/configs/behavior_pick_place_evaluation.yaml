@@ -37,7 +37,7 @@ ENVS:
   collecting-aluminum-cans-Ihlen_1_int:
     NAME: "behavior"
     FLAGS:
-      behavior_train_scene_name: Pumaria_2_int
+      behavior_train_scene_name: Ihlen_1_int
       behavior_test_scene_name: Pomaria_2_int
       behavior_task_list: "[collecting_aluminum_cans]"
       behavior_option_model_eval: True
@@ -66,9 +66,6 @@ ENVS:
   #     behavior_task_list: "[sorting_books]"
   #     behavior_option_model_eval: True
   #     horizon: 50
-ARGS:
-  - "load_data"
-  - "load_atoms"
 FLAGS:  # general flags
   offline_data_planning_timeout: 1000.0
   timeout: 1000.0
