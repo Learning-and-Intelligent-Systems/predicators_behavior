@@ -41,7 +41,6 @@ ENVS:
       behavior_test_scene_name: Pomaria_2_int
       behavior_task_list: "[collecting_aluminum_cans]"
       behavior_option_model_eval: True
-      horizon: 50
   # opening-presents-Pomaria_2_int:
   #   NAME: "behavior"
   #   FLAGS:
