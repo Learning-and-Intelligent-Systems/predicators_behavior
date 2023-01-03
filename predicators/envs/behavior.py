@@ -258,7 +258,7 @@ class BehaviorEnv(BaseEnv):
                    rng: np.random.Generator,
                    testing: bool = False) -> List[Task]:
         tasks = []
-        for _ in range(num):
+        while len(tasks) < num:
             # BEHAVIOR uses np.random everywhere. This is a somewhat
             # hacky workaround for that.
             curr_env_seed = rng.integers(0, (2**32) - 1)
@@ -332,8 +332,11 @@ class BehaviorEnv(BaseEnv):
                 self.igibson_behavior_env.step(
                     np.zeros(self.igibson_behavior_env.action_space.shape))
             init_state = self.current_ig_state_to_state(use_test_scene=testing)
-            goal = self._get_task_goal()
+            goal = self._get_task_goal()            
             task = Task(init_state, goal)
+            # If the goal already happens to hold in the init state, then resample.
+            if task.goal_holds(init_state):
+                continue
             tasks.append(task)
             self.task_num += 1
 
