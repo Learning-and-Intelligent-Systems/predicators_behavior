@@ -215,6 +215,9 @@ def create_place_option_model(
                         else:
                             assert isinstance(obj, (BRBody, BRHand, BREye))
                             obj_name = "agent"
+                        # This checks if our obj type is in _type_name_to_type
+                        # which has all relevant objects. If not, it continues
+                        # and does not add the obj as an offedning_object.
                         if type_name in _type_name_to_type:
                             obj_type = _type_name_to_type[type_name]
                             objs_under.add(Object(obj_name, obj_type))
