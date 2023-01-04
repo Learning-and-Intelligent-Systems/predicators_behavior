@@ -334,7 +334,8 @@ class BehaviorEnv(BaseEnv):
             init_state = self.current_ig_state_to_state(use_test_scene=testing)
             goal = self._get_task_goal()
             task = Task(init_state, goal)
-            # If the goal already happens to hold in the init state, then resample.
+            # If the goal already happens to hold in the init state, then
+            # resample.
             if task.goal_holds(init_state):
                 continue
             tasks.append(task)

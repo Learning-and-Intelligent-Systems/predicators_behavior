@@ -663,13 +663,11 @@ def create_ground_atom_dataset_behavior(
             try:
                 assert train_tasks[traj.train_task_idx].goal.issubset(
                     last_atoms)
-            except AssertionError as e:
+            except AssertionError as err:
                 missing_atoms = train_tasks[
                     traj.train_task_idx].goal - last_atoms
                 print("Train task goal not achieved by demonstration. " +
                       f"Discrepancy: {missing_atoms}")
-                import ipdb
-                ipdb.set_trace()
-                raise e
+                raise err
         print(f"Completed {(i+1)}/{num_traj} trajectories.")
     return ground_atom_dataset
