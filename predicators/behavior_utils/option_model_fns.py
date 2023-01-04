@@ -67,6 +67,11 @@ def create_navigate_option_model(
                          f"navigate to {_obj_to_nav_to.name} with "
                          f"params {sample_arr}")
 
+        import ipdb; ipdb.set_trace()
+        #####
+        # Here we need to run plan
+        #####
+
         target_pos = np.array([desired_xpos, desired_ypos, robot_z])
         target_orn = p.getQuaternionFromEuler(
             np.array([robot_orn[0], robot_orn[1], desired_zrot]))
