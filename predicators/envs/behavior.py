@@ -257,7 +257,7 @@ class BehaviorEnv(BaseEnv):
                    num: int,
                    rng: np.random.Generator,
                    testing: bool = False) -> List[Task]:
-        tasks = []
+        tasks: List[Task] = []
         while len(tasks) < num:
             # BEHAVIOR uses np.random everywhere. This is a somewhat
             # hacky workaround for that.
