@@ -34,13 +34,13 @@ APPROACHES:
   #   FLAGS:
   #     gnn_option_policy_solve_with_shooting: False
 ENVS:
-  collecting-aluminum-cans-Ihlen_1_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Pomaria_2_int
-      behavior_test_scene_name: Pomaria_2_int
-      behavior_task_list: "[collecting_aluminum_cans]"
-      behavior_option_model_eval: True
+  # collecting-aluminum-cans-Ihlen_1_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_train_scene_name: Pomaria_2_int
+  #     behavior_test_scene_name: Pomaria_2_int
+  #     behavior_task_list: "[collecting_aluminum_cans]"
+  #     behavior_option_model_eval: True
   # opening-presents-Pomaria_2_int:
   #   NAME: "behavior"
   #   FLAGS:
