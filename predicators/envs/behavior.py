@@ -332,7 +332,7 @@ class BehaviorEnv(BaseEnv):
                 self.igibson_behavior_env.step(
                     np.zeros(self.igibson_behavior_env.action_space.shape))
             init_state = self.current_ig_state_to_state(use_test_scene=testing)
-            goal = self._get_task_goal()            
+            goal = self._get_task_goal()
             task = Task(init_state, goal)
             # If the goal already happens to hold in the init state, then resample.
             if task.goal_holds(init_state):
