@@ -306,11 +306,11 @@ def make_grasp_plan(
     env.robots[0].parts["left_hand"].set_position(
         env.robots[0].parts["left_hand"].get_position())
 
-    # If RRT planning fails, fail and return None
-    if plan is None:
-        logging.info(f"PRIMITIVE: grasp {obj.name} fail, failed "
-                     f"to find plan to continuous params {grasp_offset}")
-        return None
+    # # If RRT planning fails, fail and return None
+    # if plan is None:
+    #     logging.info(f"PRIMITIVE: grasp {obj.name} fail, failed "
+    #                  f"to find plan to continuous params {grasp_offset}")
+    #     return None
 
     # Grasping Phase 2: Move along the vector from the
     # position the hand ends up in to the object and
@@ -466,11 +466,11 @@ def make_place_plan(
     env.robots[0].parts["left_hand"].set_position(
         env.robots[0].parts["left_hand"].get_position())
 
-    # If RRT planning fails, fail and return None
-    if plan is None:
-        logging.info(f"PRIMITIVE: placeOnTop/inside {obj.name} fail, failed "
-                     f"to find plan to continuous params {place_rel_pos}")
-        return None
+    # # If RRT planning fails, fail and return None
+    # if plan is None:
+    #     logging.info(f"PRIMITIVE: placeOnTop/inside {obj.name} fail, failed "
+    #                  f"to find plan to continuous params {place_rel_pos}")
+    #     return None
 
     original_orientation = list(
         p.getEulerFromQuaternion(
