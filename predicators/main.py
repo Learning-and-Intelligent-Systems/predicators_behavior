@@ -332,7 +332,7 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
                 assert CFG.env == "behavior" and (isinstance(
                     approach, (BilevelPlanningApproach, GNNApproach)))
                 if CFG.behavior_option_model_rrt:
-                    CFG.simulate_nav = True  # This simulates nav option in model.
+                    CFG.simulate_nav = True  # Simulates nav option in model.
                 last_plan = approach.get_last_plan()
                 last_traj = approach.get_last_traj()
                 option_model_start_time = time.time()
