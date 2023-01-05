@@ -66,8 +66,6 @@ def create_navigate_option_model(
                          f", {plan[-1][1]}) and attempting to " +
                          f"navigate to {_obj_to_nav_to.name} with "
                          f"params {sample_arr}")
-
-        #####
         if CFG.simulate_nav:
             done_bit = False
             while not done_bit:
@@ -84,8 +82,6 @@ def create_navigate_option_model(
                                                        expected_orn)
                 env.step(np.zeros(env.action_space.shape))
                 plan.pop(0)
-        #####
-
         target_pos = np.array([desired_xpos, desired_ypos, robot_z])
         target_orn = p.getQuaternionFromEuler(
             np.array([robot_orn[0], robot_orn[1], desired_zrot]))
