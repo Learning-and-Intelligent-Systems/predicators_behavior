@@ -11,7 +11,7 @@ from numpy.random import RandomState
 from predicators import utils
 from predicators.behavior_utils.behavior_utils import \
     ALL_RELEVANT_OBJECT_TYPES, sample_navigation_params, \
-    sample_place_inside_params
+    sample_place_inside_params, get_delta_low_level_base_action
 from predicators.settings import CFG
 from predicators.structs import Object, State, Type
 
@@ -67,9 +67,21 @@ def create_navigate_option_model(
                          f"navigate to {_obj_to_nav_to.name} with "
                          f"params {sample_arr}")
 
-        import ipdb; ipdb.set_trace()
         #####
-        # Here we need to run plan
+        if CFG.simulate_nav:
+            done_bit = False
+            while not done_bit:
+                # Get expected position and orientation from plan.
+                expected_pos = np.array([plan[0][0], plan[0][1], robot_z])
+                expected_orn = p.getQuaternionFromEuler(
+                    np.array([robot_orn[0], robot_orn[1], plan[0][2]]))
+                # In this case, we're at the final position we wanted to reach.
+                if len(plan) == 1:
+                    done_bit = True
+                    logging.info("PRIMITIVE: navigation policy completed execution!")
+                env.robots[0].set_position_orientation(expected_pos, expected_orn)
+                env.step(np.zeros(env.action_space.shape))
+                plan.pop(0)
         #####
 
         target_pos = np.array([desired_xpos, desired_ypos, robot_z])

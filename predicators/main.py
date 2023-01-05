@@ -331,6 +331,8 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
                 # the plan
                 assert CFG.env == "behavior" and (isinstance(
                     approach, (BilevelPlanningApproach, GNNApproach)))
+                import ipdb; ipdb.set_trace()
+                CFG.simulate_nav = True
                 last_plan = approach.get_last_plan()
                 last_traj = approach.get_last_traj()
                 option_model_start_time = time.time()
