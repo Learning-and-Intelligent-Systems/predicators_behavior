@@ -66,6 +66,7 @@ def create_navigate_option_model(
                          f", {plan[-1][1]}) and attempting to " +
                          f"navigate to {_obj_to_nav_to.name} with "
                          f"params {sample_arr}")
+
         if CFG.simulate_nav:
             done_bit = False
             while not done_bit:
