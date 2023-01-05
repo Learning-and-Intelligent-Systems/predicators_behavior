@@ -10,7 +10,7 @@ from numpy.random import RandomState
 
 from predicators import utils
 from predicators.behavior_utils.behavior_utils import \
-    ALL_RELEVANT_OBJECT_TYPES, sample_navigation_params,\
+    ALL_RELEVANT_OBJECT_TYPES, sample_navigation_params, \
     sample_place_inside_params
 from predicators.settings import CFG
 from predicators.structs import Object, State, Type

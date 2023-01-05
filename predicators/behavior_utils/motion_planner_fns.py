@@ -24,7 +24,7 @@ try:
         RoomFloor  # pylint: disable=unused-import
     from igibson.objects.articulated_object import URDFObject
     from igibson.utils.behavior_robot_planning_utils import \
-        plan_base_motion_br #, plan_hand_motion_br
+        plan_base_motion_br  # , plan_hand_motion_br
 
 except (ImportError, ModuleNotFoundError) as e:
     pass
@@ -293,8 +293,7 @@ def make_grasp_plan(
     pos = env.robots[0].parts["right_hand"].get_position()
     plan = [[pos[0], pos[1], pos[2]] + list(
         p.getEulerFromQuaternion(
-            env.robots[0].parts["right_hand"].get_orientation())),
-            end_conf]
+            env.robots[0].parts["right_hand"].get_orientation())), end_conf]
 
     # NOTE: This below line is *VERY* important after the
     # pybullet state is restored. The hands keep an internal
@@ -453,8 +452,7 @@ def make_place_plan(
     pos = env.robots[0].parts["right_hand"].get_position()
     plan = [[pos[0], pos[1], pos[2]] + list(
         p.getEulerFromQuaternion(
-            env.robots[0].parts["right_hand"].get_orientation())),
-            end_conf]
+            env.robots[0].parts["right_hand"].get_orientation())), end_conf]
 
     # NOTE: This below line is *VERY* important after the
     # pybullet state is restored. The hands keep an internal
