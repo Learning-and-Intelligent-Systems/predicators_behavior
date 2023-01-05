@@ -274,7 +274,8 @@ def make_grasp_plan(
         euler_angles[1],
         euler_angles[2],
     ]
-    if False:
+    # if env.use_rrt:
+    if False:  # For now we are not running rrt with grasp.
         # plan a motion to the pose [x, y, z, euler_angles[0],
         # euler_angles[1], euler_angles[2]]
         plan = plan_hand_motion_br(
@@ -436,7 +437,8 @@ def make_place_plan(
         np.pi * 7 / 6,
         0,
     ]
-    if False:
+    # if env.use_rrt:
+    if False:  # For now we are not running rrt with place.
         plan = plan_hand_motion_br(
             robot=env.robots[0],
             obj_in_hand=obj_in_hand,

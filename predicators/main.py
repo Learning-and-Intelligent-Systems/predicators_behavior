@@ -331,8 +331,8 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
                 # the plan
                 assert CFG.env == "behavior" and (isinstance(
                     approach, (BilevelPlanningApproach, GNNApproach)))
-                import ipdb; ipdb.set_trace()
-                CFG.simulate_nav = True
+                if CFG.behavior_option_model_rrt:
+                    CFG.simulate_nav = True  # This simulates nav option in model.
                 last_plan = approach.get_last_plan()
                 last_traj = approach.get_last_traj()
                 option_model_start_time = time.time()
@@ -354,18 +354,20 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
                 solved = task.goal_holds(traj.states[-1])
             exec_time = execution_metrics["policy_call_time"]
             metrics[f"PER_TASK_task{test_task_idx}_exec_time"] = exec_time
-            # if not CFG.plan_only_eval:  # in this case, traj is not defined.
-            #     # Save the successful trajectory, e.g., for playback on a robot.
-            #     traj_file = f"{save_prefix}__task{test_task_idx+1}.traj"
-            #     traj_file_path = Path(CFG.eval_trajectories_dir) / traj_file
-            #     # Include the original task too so we know the goal.
-            #     traj_data = {
-            #         "task": task,
-            #         "trajectory": traj,
-            #         "pybullet_robot": CFG.pybullet_robot
-            #     }
-            #     with open(traj_file_path, "wb") as f:
-            #         pkl.dump(traj_data, f)
+            # In this case, traj is not defined, and env is not behavior.
+            # This is because we cannot save behavior traj_data.
+            if not CFG.plan_only_eval and CFG.env != "behavior":
+                # Save the successful trajectory, e.g., for playback on a robot.
+                traj_file = f"{save_prefix}__task{test_task_idx+1}.traj"
+                traj_file_path = Path(CFG.eval_trajectories_dir) / traj_file
+                # Include the original task too so we know the goal.
+                traj_data = {
+                    "task": task,
+                    "trajectory": traj,
+                    "pybullet_robot": CFG.pybullet_robot
+                }
+                with open(traj_file_path, "wb") as f:
+                    pkl.dump(traj_data, f)
         except utils.EnvironmentFailure as e:
             log_message = f"Environment failed with error: {e}"
             caught_exception = True

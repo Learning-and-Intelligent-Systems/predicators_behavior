@@ -78,8 +78,10 @@ def create_navigate_option_model(
                 # In this case, we're at the final position we wanted to reach.
                 if len(plan) == 1:
                     done_bit = True
-                    logging.info("PRIMITIVE: navigation policy completed execution!")
-                env.robots[0].set_position_orientation(expected_pos, expected_orn)
+                    logging.info(
+                        "PRIMITIVE: navigation policy completed execution!")
+                env.robots[0].set_position_orientation(expected_pos,
+                                                       expected_orn)
                 env.step(np.zeros(env.action_space.shape))
                 plan.pop(0)
         #####
