@@ -1027,7 +1027,7 @@ def _sesame_plan_with_fast_downward(
     if optimal:
         alias_flag = "--alias seq-opt-lmcut"
     else:  # satisficing
-        alias_flag = "--alias lama-first"
+        alias_flag = "--alias seq-sat-fd-autotune-1"
     assert "FD_EXEC_PATH" in os.environ, \
         "Please follow the instructions in the docstring of this method!"
     fd_exec_path = os.environ["FD_EXEC_PATH"]
