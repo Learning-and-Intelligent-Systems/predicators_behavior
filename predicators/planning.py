@@ -1073,11 +1073,8 @@ def _sesame_plan_with_fast_downward(
             logging.info(f"Env Predicates: {env.predicates}")
             logging.info(f"Domain String: {dom_str}")
             logging.info(f"Problem String: {prob_str}")
-            import ipdb
-            ipdb.set_trace()
         metrics["num_nodes_expanded"] = float(num_nodes_expanded[0])
         metrics["num_nodes_created"] = float(num_nodes_created[0])
-        # import ipdb; ipdb.set_trace()
         # Extract the skeleton from the output and compute the atoms_sequence.
         if "Solution found!" not in output:
             raise PlanningFailure(f"Plan not found with FD! Error: {output}")
