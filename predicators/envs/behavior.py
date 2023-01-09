@@ -326,6 +326,14 @@ class BehaviorEnv(BaseEnv):
             load_checkpoint_state(
                 self.current_ig_state_to_state(use_test_scene=testing), self)
 
+            #######
+            print("TASK NUM:", self.task_num)
+            print("TASK INSTANCE ID:", self.task_instance_id)
+            print("ENV SEED:", curr_env_seed)
+            print("TASK NUM INSTANCE ID:", self.task_num_task_instance_id_to_igibson_seed)
+            # import ipdb; ipdb.set_trace()
+            #######
+
             # Initial state objects might not have settled yet, so we step the
             # simulator a few times to let the objects settle.
             for _ in range(15):
