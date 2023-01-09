@@ -69,7 +69,6 @@ ENVS:
 ARGS:
   - "load_data"
   - "load_atoms"
-  - "load_approach"
 FLAGS:  # general flags
   offline_data_planning_timeout: 500.0
   timeout: 500.0
