@@ -6,8 +6,8 @@
 # --supercloud_dir ~/GitHub/predicators_behavior
 ---
 APPROACHES:
-  oracle: # Oracle
-    NAME: "oracle"
+  # oracle: # Oracle
+  #   NAME: "oracle"
   pnad_search: # PNAD search approach.
     NAME: "nsrt_learning"
     FLAGS:
@@ -67,8 +67,6 @@ ENVS:
       behavior_option_model_eval: True
       horizon: 1000
 ARGS:
-  - "load_data"
-  - "load_atoms"
 FLAGS:  # general flags
   offline_data_planning_timeout: 1500.0
   timeout: 1500.0
