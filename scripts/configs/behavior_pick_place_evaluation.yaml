@@ -66,7 +66,7 @@ ENVS:
       behavior_task_list: "[sorting_books]"
       behavior_option_model_eval: True
       horizon: 1000
-ARGS:
+ARGS: {}
 FLAGS:  # general flags
   offline_data_planning_timeout: 1500.0
   timeout: 1500.0
