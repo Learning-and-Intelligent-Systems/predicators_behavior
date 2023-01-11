@@ -9,12 +9,12 @@
 # --supercloud_dir ~/GitHub/predicators_behavior
 ---
 APPROACHES:
-  # oracle: # Oracle
-  #   NAME: "oracle"
-  pnad_search: # PNAD search approach.
-    NAME: "nsrt_learning"
-    FLAGS:
-      strips_learner: pnad_search
+  oracle: # Oracle
+    NAME: "oracle"
+  # pnad_search: # PNAD search approach.
+  #   NAME: "nsrt_learning"
+  #   FLAGS:
+  #     strips_learner: pnad_search
   # cluster_and_intersect:  # Cluster-and-intersect baseline.
   #   NAME: "nsrt_learning"
   #   FLAGS:
@@ -71,8 +71,8 @@ ENVS:
       horizon: 1000
 ARGS: {}
 FLAGS:  # general flags
-  offline_data_planning_timeout: 1500.0
-  timeout: 1500.0
+  offline_data_planning_timeout: 2000.0
+  timeout: 2000.0
   plan_only_eval: True
   sesame_task_planner: fdsat
   behavior_override_learned_samplers: True
