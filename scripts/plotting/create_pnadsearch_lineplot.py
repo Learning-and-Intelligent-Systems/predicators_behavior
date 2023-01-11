@@ -140,9 +140,7 @@ def _main() -> None:
                 ax.set_xlabel(x_label)
                 ax.set_ylabel(y_label)
                 ax.set_ylim(Y_LIM)
-                plt.legend(
-                    loc='lower right',
-                    prop={'size': 12})
+                plt.legend(loc='lower right', prop={'size': 12})
                 plt.tight_layout()
                 filename = f"{plot_title}_{x_key}_{y_key}.png"
                 filename = filename.replace(" ", "_").lower()
