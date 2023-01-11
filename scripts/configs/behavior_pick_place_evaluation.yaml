@@ -1,4 +1,7 @@
-# A configuration file for evaluation on 5 pick and place BEHAVIOR tasks.
+# A configuration file for evaluation on 4 pick and place BEHAVIOR tasks.
+# Note that not all baselines can be run at once. Comment things out, change flags,
+# and run accordingly.
+# Example Usage:
 # python scripts/supercloud/launch.py \
 # --user wmcclinton \
 # --config behavior_pick_place_evaluation.yaml \
