@@ -49,6 +49,7 @@ from predicators.approaches import ApproachFailure, ApproachTimeout, \
     BaseApproach, create_approach
 from predicators.approaches.bilevel_planning_approach import \
     BilevelPlanningApproach
+from predicators.approaches.gnn_approach import GNNApproach
 from predicators.datasets import create_dataset
 from predicators.envs import BaseEnv, create_new_env
 from predicators.planning import _run_plan_with_option_model
@@ -263,6 +264,8 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
 
     save_prefix = utils.get_config_path_str()
     metrics: Metrics = defaultdict(float)
+    curr_num_nodes_created = 0.0
+    curr_num_nodes_expanded = 0.0
     for test_task_idx, task in enumerate(test_tasks):
         # Run the approach's solve() method to get a policy for this task.
         solve_start = time.perf_counter()
@@ -286,6 +289,15 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
             continue
         solve_time = time.perf_counter() - solve_start
         metrics[f"PER_TASK_task{test_task_idx}_solve_time"] = solve_time
+        metrics[
+            f"PER_TASK_task{test_task_idx}_nodes_created"] = approach.metrics[
+                "total_num_nodes_created"] - curr_num_nodes_created
+        metrics[
+            f"PER_TASK_task{test_task_idx}_nodes_expanded"] = approach.metrics[
+                "total_num_nodes_expanded"] - curr_num_nodes_expanded
+        curr_num_nodes_created = approach.metrics["total_num_nodes_created"]
+        curr_num_nodes_expanded = approach.metrics["total_num_nodes_expanded"]
+
         num_found_policy += 1
         make_video = False
         solved = False
@@ -314,10 +326,13 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
                 # To evaluate BEHAVIOR on our option model, we are going
                 # to run our approach's plan on our option model.
                 # Note that if approach is not a BilevelPlanningApproach
-                # we cannot use this method to evaluate and would need to
-                # run the policy on the option model, not the plan
-                assert CFG.env == "behavior" and isinstance(
-                    approach, BilevelPlanningApproach)
+                # or a GNNApproach, we cannot use this method to evaluate
+                # and would need to run the policy on the option model, not
+                # the plan
+                assert CFG.env == "behavior" and (isinstance(
+                    approach, (BilevelPlanningApproach, GNNApproach)))
+                if CFG.behavior_option_model_rrt:
+                    CFG.simulate_nav = True  # Simulates nav option in model.
                 last_plan = approach.get_last_plan()
                 last_traj = approach.get_last_traj()
                 option_model_start_time = time.time()
@@ -339,7 +354,9 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
                 solved = task.goal_holds(traj.states[-1])
             exec_time = execution_metrics["policy_call_time"]
             metrics[f"PER_TASK_task{test_task_idx}_exec_time"] = exec_time
-            if not CFG.plan_only_eval:  # in this case, traj is not defined.
+            # In this case, traj is not defined, and env is not behavior.
+            # This is because we cannot save behavior traj_data.
+            if not CFG.plan_only_eval and CFG.env != "behavior":
                 # Save the successful trajectory, e.g., for playback on a robot.
                 traj_file = f"{save_prefix}__task{test_task_idx+1}.traj"
                 traj_file_path = Path(CFG.eval_trajectories_dir) / traj_file
@@ -425,7 +442,7 @@ def _save_test_results(results: Metrics,
             CFG.behavior_task_list) == 1 else "all"
         outfile = (f"{CFG.results_dir}/{utils.get_config_path_str()}__"
                    f"{online_learning_cycle}__{behavior_task_name}__"
-                   f"{CFG.behavior_scene_name}.pkl")
+                   f"{CFG.behavior_test_scene_name}.pkl")
     else:
         outfile = (f"{CFG.results_dir}/{utils.get_config_path_str()}__"
                    f"{online_learning_cycle}.pkl")

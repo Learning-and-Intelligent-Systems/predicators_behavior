@@ -7,10 +7,10 @@ import numpy as np
 import pybullet as p
 from tqdm import tqdm
 
+from predicators import utils
 from predicators.settings import CFG
 from predicators.structs import Array, GroundAtom, GroundAtomTrajectory, \
-    LowLevelTrajectory, Predicate, Set, State
-from predicators.utils import abstract, abstract_from_last
+    LowLevelTrajectory, Predicate, Set, State, Task
 
 try:
     from igibson.envs.behavior_env import \
@@ -38,7 +38,8 @@ ALL_RELEVANT_OBJECT_TYPES = {
     'document', 'bottom_cabinet_no_top', 'folder', 'bottom_cabinet',
     'top_cabinet', 'sofa', 'oatmeal', 'chip', 'vegetable_oil', 'sugar',
     'cabinet', 'floor', 'pasta', 'sauce', 'electric_refrigerator', 'olive_oil',
-    'sugar_jar', 'spaghetti_sauce', 'mayonnaise', 'fridge', 'board_game'
+    'sugar_jar', 'spaghetti_sauce', 'mayonnaise', 'fridge', 'board_game',
+    'video_game'
 }
 PICK_PLACE_OBJECT_TYPES = {
     'mineral_water', 'oatmeal', 'blueberry', 'headset', 'jug', 'flank',
@@ -123,7 +124,7 @@ PICK_PLACE_OBJECT_TYPES = {
     'peppermint', 'cruciferous_vegetable', 'soup_ladle', 'jean', 'teddy',
     'chestnut', 'sauce', 'piece_of_cloth', 'whitefish', 'siren', 'balloon',
     'celery', 'hot_pepper', 'raisin', 'sugar_jar', 'toy', 'sticky_note',
-    't-shirt', 'board_game'
+    't-shirt', 'board_game', 'video_game'
 }
 PLACE_ONTOP_SURFACE_OBJECT_TYPES = {
     'towel', 'tabletop', 'face', 'brim', 'cheddar', 'chaise_longue', 'stove',
@@ -497,6 +498,57 @@ def sample_navigation_params(igibson_behavior_env: "BehaviorEnv",
     return sampler_output
 
 
+def sample_place_inside_params(obj_to_place_inside: "URDFObject",
+                               rng: np.random.Generator) -> Array:
+    """Main logic for place inside param sampler.
+
+    Implemented in a separate method to enable code reuse in
+    option_model_fns.
+    """
+    # Custom object-specific sampler methods.
+    if obj_to_place_inside.category == "bucket":
+        # # Get the current env for collision checking.
+        # env = get_or_create_env("behavior")
+        # assert isinstance(env, BehaviorEnv)
+        # load_checkpoint_state(state, env)
+        objB_sampling_bounds = obj_to_place_inside.bounding_box / 2
+        # Since the bucket's hole is generally in the center,
+        # we want a very small sampling range around the
+        # object's position in the x and y directions (hence
+        # we divide the x and y bounds futher by 2).
+        sample_params = np.array([
+            rng.uniform(-objB_sampling_bounds[0] / 2,
+                        objB_sampling_bounds[0] / 2),
+            rng.uniform(-objB_sampling_bounds[1] / 2,
+                        objB_sampling_bounds[1] / 2),
+            rng.uniform(objB_sampling_bounds[2] + 0.15,
+                        objB_sampling_bounds[2] + 0.5)
+        ])
+        return sample_params
+    if obj_to_place_inside.category == "trash_can":
+        objB_sampling_bounds = obj_to_place_inside.bounding_box / 2
+        # Since the trash can's hole is generally in the center,
+        # we want a very small sampling range around the
+        # object's position in the x and y directions (hence
+        # we divide the x and y bounds futher by 4).
+        sample_params = np.array([
+            rng.uniform(-objB_sampling_bounds[0] / 4,
+                        objB_sampling_bounds[0] / 4),
+            rng.uniform(-objB_sampling_bounds[1] / 4,
+                        objB_sampling_bounds[1] / 4),
+            rng.uniform(objB_sampling_bounds[2] + 0.05,
+                        objB_sampling_bounds[2] + 0.15)
+        ])
+        return sample_params
+    # If there's no object specific sampler, just return a
+    # random sample.
+    return np.array([
+        rng.uniform(-0.5, 0.5),
+        rng.uniform(-0.5, 0.5),
+        rng.uniform(0.3, 1.0)
+    ])
+
+
 def load_checkpoint_state(s: State,
                           env: "BehaviorEnv",
                           reset: bool = False) -> None:
@@ -539,12 +591,21 @@ def load_checkpoint_state(s: State,
         env.igibson_behavior_env.simulator.frame_count = frame_count
         env.set_options()
         env.current_ig_state_to_state(
-        )  # overwrite the old task_init checkpoint file!
+            use_test_scene=env.task_instance_id >=
+            10)  # overwrite the old task_init checkpoint file!
         env.igibson_behavior_env.reset()
     behavior_task_name = CFG.behavior_task_list[0] if len(
         CFG.behavior_task_list) == 1 else "all"
+    # NOTE: This below logic exploits the fact that we know training
+    # tasks must have a task num below 10 and test tasks must have one
+    # above 10. This is sketchy in general and we should probably come
+    # up with something cleaner!
+    if env.task_instance_id < 10:
+        scene_name = CFG.behavior_train_scene_name
+    else:
+        scene_name = CFG.behavior_test_scene_name
     checkpoint_file_str = (
-        f"tmp_behavior_states/{CFG.behavior_scene_name}__" +
+        f"tmp_behavior_states/{scene_name}__" +
         f"{behavior_task_name}__{CFG.num_train_tasks}__" +
         f"{CFG.seed}__{env.task_num}__{env.task_instance_id}")
     frame_num = int(s.simulator_state.split("-")[2])
@@ -568,9 +629,13 @@ def create_ground_atom_dataset_behavior(
     trajectories: Sequence[LowLevelTrajectory],
     predicates: Set[Predicate],
     env: "BehaviorEnv",
-    use_last_state: bool = True
+    train_tasks: List[Task],
+    use_last_state: bool = False
 ) -> List[GroundAtomTrajectory]:  # pragma: no cover
     """Apply all predicates to all trajectories in the dataset."""
+    # NOTE: setting use_last_state to True is potentially
+    # dangerous (especially if the task involves opening/closing
+    # things). There is currently an issue open to try to resolve this.
     ground_atom_dataset = []
     num_traj = len(trajectories)
     for i, traj in enumerate(trajectories):
@@ -579,15 +644,15 @@ def create_ground_atom_dataset_behavior(
         atoms = []
         first_state = True
         for s in tqdm(traj.states):
-            # If th environment is BEHAVIOR we need to load the state before
+            # If the environment is BEHAVIOR we need to load the state before
             # we call the predicate classifiers.
             load_checkpoint_state(s, env)
             if not use_last_state or first_state:
-                next_atoms = abstract(s, predicates, skip_allclose_check=False)
+                next_atoms = utils.abstract(s, predicates, skip_allclose_check=False)
                 first_state = False
             else:
                 # Get atoms from last abstract state and state change
-                next_atoms = abstract_from_last(s,
+                next_atoms = utils.abstract_from_last(s,
                                                 predicates,
                                                 last_s,
                                                 last_atoms,
@@ -596,5 +661,17 @@ def create_ground_atom_dataset_behavior(
             last_s = s
             last_atoms = next_atoms
         ground_atom_dataset.append((traj, atoms))
+        # Assert here that traj goal is a subset of the final atoms in
+        # each trajectory.
+        if traj.is_demo:
+            try:
+                assert train_tasks[traj.train_task_idx].goal.issubset(
+                    last_atoms)
+            except AssertionError as err:
+                missing_atoms = train_tasks[
+                    traj.train_task_idx].goal - last_atoms
+                print("Train task goal not achieved by demonstration. " +
+                      f"Discrepancy: {missing_atoms}")
+                raise err
         print(f"Completed {(i+1)}/{num_traj} trajectories.")
     return ground_atom_dataset

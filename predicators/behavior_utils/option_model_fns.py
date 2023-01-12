@@ -10,7 +10,8 @@ from numpy.random import RandomState
 
 from predicators import utils
 from predicators.behavior_utils.behavior_utils import \
-    ALL_RELEVANT_OBJECT_TYPES, sample_navigation_params
+    ALL_RELEVANT_OBJECT_TYPES, sample_navigation_params, \
+    sample_place_inside_params
 from predicators.settings import CFG
 from predicators.structs import Object, State, Type
 
@@ -66,6 +67,22 @@ def create_navigate_option_model(
                          f"navigate to {_obj_to_nav_to.name} with "
                          f"params {sample_arr}")
 
+        if CFG.simulate_nav:
+            done_bit = False
+            while not done_bit:
+                # Get expected position and orientation from plan.
+                expected_pos = np.array([plan[0][0], plan[0][1], robot_z])
+                expected_orn = p.getQuaternionFromEuler(
+                    np.array([robot_orn[0], robot_orn[1], plan[0][2]]))
+                # In this case, we're at the final position we wanted to reach.
+                if len(plan) == 1:
+                    done_bit = True
+                    logging.info(
+                        "PRIMITIVE: navigation policy completed execution!")
+                env.robots[0].set_position_orientation(expected_pos,
+                                                       expected_orn)
+                env.step(np.zeros(env.action_space.shape))
+                plan.pop(0)
         target_pos = np.array([desired_xpos, desired_ypos, robot_z])
         target_orn = p.getQuaternionFromEuler(
             np.array([robot_orn[0], robot_orn[1], desired_zrot]))
@@ -206,15 +223,22 @@ def create_place_option_model(
                             )
                             _type_name_to_type[type_name] = obj_type
                         if isinstance(obj, (URDFObject, RoomFloor)):
-                            if "board_game" in obj.name:
+                            if "board_game" in obj.name or \
+                                "video_game" in obj.name:
                                 obj_name = obj.name + ".n.01_1"
                             else:
                                 obj_name = obj.bddl_object_scope
                         else:
                             assert isinstance(obj, (BRBody, BRHand, BREye))
                             obj_name = "agent"
-                        obj_type = _type_name_to_type[type_name]
-                        objs_under.add(Object(obj_name, obj_type))
+                        # This checks if our obj type is in _type_name_to_type
+                        # which has all relevant objects. If not, it continues
+                        # and does not add the obj as an offedning_object.
+                        if type_name in _type_name_to_type:
+                            obj_type = _type_name_to_type[type_name]
+                            objs_under.add(Object(obj_name, obj_type))
+                        else:
+                            continue
         if len(objs_under) != 0:
             raise utils.EnvironmentFailure("collision",
                                            {"offending_objects": objs_under})
@@ -305,8 +329,29 @@ def create_place_inside_option_model(
                                          in obj_to_place_into.states):
                     logging.info(f"PRIMITIVE: place {obj_in_hand.name} inside "
                                  f"{obj_to_place_into.name} success")
-                    target_pos = plan[-1][0:3]
-                    target_orn = plan[-1][3:6]
+
+                    # If we're not overriding the learned samplers, then we
+                    # will directly use the elements of `plan`, which in turn
+                    # use the outputs of the learned samplers. Otherwise, we
+                    # will ignore these and use our oracle sampler to give us
+                    # values to use.
+                    if not CFG.behavior_override_learned_samplers:
+                        target_pos = plan[-1][0:3]
+                        target_orn = plan[-1][3:6]
+                    else:
+                        rng = np.random.default_rng(prng.randint(10000))
+                        place_rel_pos = sample_place_inside_params(
+                            obj_to_place_into, rng)
+                        target_pos_list = np.add(
+                            place_rel_pos, obj_to_place_into.get_position())
+                        target_pos_list[2] += 0.2
+                        target_pos = target_pos_list.tolist()
+                        target_orn = plan[-1][3:6]
+                        logging.info(
+                            f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
+                            f", {plan[-1][3:6]}) and attempting to " +
+                            f"place inside to {obj_to_place_into.name} with "
+                            f"params {target_pos}")
                     env.robots[0].parts["right_hand"].force_release_obj()
                     obj_to_place_into.force_wakeup()
                     obj_in_hand.set_position_orientation(

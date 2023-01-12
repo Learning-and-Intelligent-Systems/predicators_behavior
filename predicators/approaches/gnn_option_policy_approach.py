@@ -14,6 +14,8 @@ from gym.spaces import Box
 from predicators import utils
 from predicators.approaches import ApproachFailure, ApproachTimeout
 from predicators.approaches.gnn_approach import GNNApproach
+from predicators.nsrt_learning.nsrt_learning_main import \
+    get_ground_atoms_dataset
 from predicators.nsrt_learning.segmentation import segment_trajectory
 from predicators.option_model import create_option_model
 from predicators.settings import CFG
@@ -43,8 +45,9 @@ class GNNOptionPolicyApproach(GNNApproach):
         self, dataset: Dataset
     ) -> List[Tuple[State, Set[GroundAtom], Set[GroundAtom], _Option]]:
         data = []
-        ground_atom_dataset = utils.create_ground_atom_dataset(
-            dataset.trajectories, self._initial_predicates)
+        ground_atom_dataset = get_ground_atoms_dataset(
+            dataset.trajectories, self._initial_predicates, None,
+            self._train_tasks)
         # In this approach, we never learned any NSRTs, so we just call
         # segment_trajectory() to segment the given dataset.
         segmented_trajs = [
@@ -173,9 +176,11 @@ class GNNOptionPolicyApproach(GNNApproach):
         assert self._gnn is not None, "Learning hasn't happened yet!"
         if CFG.gnn_option_policy_solve_with_shooting:
             return self._solve_with_shooting(task, timeout)
-        return self._solve_without_shooting(task)
+        return self._solve_without_shooting(task, timeout)
 
-    def _solve_without_shooting(self, task: Task) -> Callable[[State], Action]:
+    def _solve_without_shooting(
+            self, task: Task,
+            timeout: int) -> Callable[[State], Action]:  # pragma: no cover
         cur_option = DummyOption
         memory: Dict = {}  # optionally updated by predict()
 
@@ -193,7 +198,48 @@ class GNNOptionPolicyApproach(GNNApproach):
             act = cur_option.policy(state)
             return act
 
-        return _policy
+        if CFG.env != "behavior":
+            return _policy
+
+        # Most BEHAVIOR skills do not have option policies that are
+        # implemented. Thus, we must use the option model and setup
+        # self._last_traj and self._last_plan.
+        state = task.init
+        total_num_act = 0
+        plan: List[_Option] = []
+        start_time = time.perf_counter()
+        while not task.goal_holds(
+                state) and total_num_act < CFG.horizon and time.perf_counter(
+                ) - start_time < timeout:
+            self._last_traj.append(state)
+            atoms = utils.abstract(state, self._initial_predicates)
+            param_opt, objects, params_mean = self._predict(
+                state, atoms, task.goal, memory)
+            # Just use the mean parameters to ground the option.
+            cur_option = param_opt.ground(objects, params_mean)
+            if not cur_option.initiable(state):
+                raise ApproachFailure(
+                    "GNN option policy chose a non-initiable option")
+            plan.append(cur_option)
+            state, num_act = \
+                        self._option_model.get_next_state_and_num_actions(
+                            state, cur_option)
+            total_num_act += num_act
+
+        if time.perf_counter() - start_time < timeout:
+            raise ApproachTimeout("Shooting timed out!")
+        # The loop breaks before the last state is appended to the trajectory
+        # so we must do this.
+        self._last_traj.append(state)
+
+        def _behavior_option_model_policy(state: State) -> Action:
+            option_policy = utils.option_plan_to_policy(plan)
+            try:
+                return option_policy(state)
+            except utils.OptionExecutionFailure as e:
+                raise ApproachFailure(e.args[0], e.info)
+
+        return _behavior_option_model_policy
 
     def _solve_with_shooting(self, task: Task,
                              timeout: int) -> Callable[[State], Action]:
@@ -210,6 +256,7 @@ class GNNOptionPolicyApproach(GNNApproach):
                     # We found a plan that achieves the goal under the
                     # option model, so return it.
                     option_policy = utils.option_plan_to_policy(plan)
+                    self._last_plan = plan
 
                     def _policy(s: State) -> Action:
                         try:
@@ -218,6 +265,7 @@ class GNNOptionPolicyApproach(GNNApproach):
                             raise ApproachFailure(e.args[0], e.info)
 
                     return _policy
+
                 atoms = utils.abstract(state, self._initial_predicates)
                 param_opt, objects, params_mean = self._predict(
                     state, atoms, task.goal, memory)
@@ -240,6 +288,7 @@ class GNNOptionPolicyApproach(GNNApproach):
                     state, num_act = \
                         self._option_model.get_next_state_and_num_actions(
                             state, opt)
+                    self._last_traj.append(state)
                 except utils.EnvironmentFailure:
                     break
                 # If num_act is zero, that means that the option is stuck in

@@ -141,10 +141,16 @@ class _BehaviorOptionModel(_OptionModelBase):
         assert isinstance(env, BehaviorEnv)
         assert option.memory.get("model_controller") is not None
         assert option.memory.get("planner_result") is not None
-        if not CFG.plan_only_eval:
-            load_checkpoint_state(state, env, reset=True)
+        if not CFG.plan_only_eval and not CFG.simulate_nav:
+            if not state.allclose(
+                    env.current_ig_state_to_state(
+                        save_state=False,
+                        use_test_scene=env.task_instance_id >= 10)):
+                load_checkpoint_state(state, env, reset=True)
         option.memory["model_controller"](state, env.igibson_behavior_env)
-        next_state = env.current_ig_state_to_state()
+        # next_state = env.current_ig_state_to_state()
+        next_state = env.current_ig_state_to_state(
+            use_test_scene=env.task_instance_id >= 10)
         plan, _ = option.memory["planner_result"]
         return next_state, len(plan)
 
@@ -155,4 +161,6 @@ class _BehaviorOptionModel(_OptionModelBase):
         env = get_or_create_env("behavior")
         assert isinstance(env, BehaviorEnv)
         load_checkpoint_state(state, env)
-        return env.current_ig_state_to_state()
+        # return env.current_ig_state_to_state()
+        return env.current_ig_state_to_state(
+            use_test_scene=env.task_instance_id >= 10)
