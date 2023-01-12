@@ -159,7 +159,7 @@ def _create_demo_data_with_loading(env: BaseEnv, train_tasks: List[Task],
         for traj in dataset.trajectories:
             for act in traj.actions:
                 act.get_option().memory = {}
-                
+
     with open(dataset_fname, "wb") as f:
         pkl.dump(dataset, f)
     return dataset
