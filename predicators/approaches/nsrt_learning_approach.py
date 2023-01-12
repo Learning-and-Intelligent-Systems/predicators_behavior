@@ -70,6 +70,24 @@ class NSRTLearningApproach(BilevelPlanningApproach):
             trajectories, self._get_current_predicates(),
             online_learning_cycle, self._train_tasks)
 
+        # CODE to discover problematic trajs:
+        problematic_traj_indices = set()
+        for traj_i, g_traj in enumerate(ground_atom_dataset):
+            for i_atoms in range(len(g_traj[1]) - 1):
+                segment_add_effects = g_traj[1][i_atoms + 1] - g_traj[1][i_atoms]
+                if "PlaceOnTop-shelf" in g_traj[0].actions[i_atoms].get_option().name and "ontop-" not in str(segment_add_effects):
+                    problematic_traj_indices.append(traj_i)
+
+        # NOTE: HACK for temporary debugging.
+        new_ground_atoms_dataset = []
+        new_trajectories = []
+        for i, gtraj in enumerate(ground_atom_dataset):
+            if i not in problematic_traj_indices:
+                new_ground_atoms_dataset.append(gtraj)
+                new_trajectories.append(trajectories[i])
+        ground_atom_dataset = new_ground_atoms_dataset
+        trajectories = new_trajectories
+
         self._nsrts, self._segmented_trajs, self._seg_to_nsrt = \
             learn_nsrts_from_data(trajectories,
                                   self._train_tasks,
@@ -78,6 +96,9 @@ class NSRTLearningApproach(BilevelPlanningApproach):
                                   self._action_space,
                                   ground_atom_dataset,
                                   sampler_learner=CFG.sampler_learner)
+
+        import ipdb; ipdb.set_trace()
+
         save_path = utils.get_approach_save_path_str()
         # Need to save samplers if we are dumping to string
         if CFG.dump_nsrts_as_strings:

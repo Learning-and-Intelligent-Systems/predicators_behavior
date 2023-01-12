@@ -312,6 +312,8 @@ class BaseSTRIPSLearner(abc.ABC):
                 preconditions = lifted_atoms
             else:
                 preconditions &= lifted_atoms
+            # if "hardback" in str(pnad.op.parameters) and "holding-hardback" not in str(preconditions):
+            #     import ipdb; ipdb.set_trace()
         return preconditions
 
     @staticmethod
