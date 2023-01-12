@@ -1777,14 +1777,15 @@ def abstract_from_last(
     # reachable and the agent has moved position we want to recompute it.
     for atom in last_atoms:
         if all(obj not in changed_objs for obj in atom.objects):
-            if not ("reachable" in atom.predicate.name and agent_changed):
+            if not ("reachable" in atom.predicate.name and agent_changed) \
+                and (not "openable" in atom.predicate.name):
                 atoms.add(atom)
     # Computes predicates for atoms with objects whose state has changed.
     for pred in preds:
         for choice in get_object_combinations(list(state), pred.types):
-            if any(obj in changed_objs
-                   for obj in choice) or ("reachable" in pred.name
-                                          and agent_changed):
+            if any(obj in changed_objs for obj in choice) or (
+                    "reachable" in pred.name
+                    and agent_changed) or ("openable" in atom.predicate.name):
                 if pred.holds(state,
                               choice,
                               skip_allclose_check=skip_allclose_check):
