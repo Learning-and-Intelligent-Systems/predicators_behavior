@@ -688,7 +688,10 @@ class BehaviorEnv(BaseEnv):
 
         return _classifier
 
-    def _check_state_closeness_and_load(self, state: State, skip_allclose_check: bool = False) -> None:
+    def _check_state_closeness_and_load(self,
+                                        state: State,
+                                        skip_allclose_check: bool = False
+                                        ) -> None:
         # If we're using a model-free GNN approach, then the states
         # don't have associated simulator states and we thus cannot check
         # `allclose` or load...
@@ -699,14 +702,15 @@ class BehaviorEnv(BaseEnv):
         # skip_allclose_check set to true, then we should simply
         # return without checking anything.
         if skip_allclose_check:
-            return        
+            return
         if not state.allclose(
                 self.current_ig_state_to_state(
                     save_state=False,
                     use_test_scene=self.task_instance_id >= 10)):
             load_checkpoint_state(state, self)
 
-    def _reachable_classifier(self, state: State,
+    def _reachable_classifier(self,
+                              state: State,
                               objs: Sequence[Object],
                               skip_allclose_check: bool = False) -> bool:
         self._check_state_closeness_and_load(state, skip_allclose_check)
@@ -731,9 +735,11 @@ class BehaviorEnv(BaseEnv):
             np.array(robot_obj.get_position()) -
             np.array(ig_obj.get_position())) < 2)
 
-    def _reachable_nothing_classifier(self, state: State,
-                                      objs: Sequence[Object],
-                                      skip_allclose_check: bool = False) -> bool:
+    def _reachable_nothing_classifier(
+            self,
+            state: State,
+            objs: Sequence[Object],
+            skip_allclose_check: bool = False) -> bool:
         self._check_state_closeness_and_load(state, skip_allclose_check)
         assert len(objs) == 0
         for obj in state:
@@ -762,7 +768,8 @@ class BehaviorEnv(BaseEnv):
 
         return grasped_objs
 
-    def _handempty_classifier(self, state: State,
+    def _handempty_classifier(self,
+                              state: State,
                               objs: Sequence[Object],
                               skip_allclose_check: bool = False) -> bool:
         self._check_state_closeness_and_load(state, skip_allclose_check)
@@ -770,7 +777,8 @@ class BehaviorEnv(BaseEnv):
         grasped_objs = self._get_grasped_objects(state)
         return len(grasped_objs) == 0
 
-    def _holding_classifier(self, state: State,
+    def _holding_classifier(self,
+                            state: State,
                             objs: Sequence[Object],
                             skip_allclose_check: bool = False) -> bool:
         self._check_state_closeness_and_load(state, skip_allclose_check)
@@ -778,7 +786,8 @@ class BehaviorEnv(BaseEnv):
         grasped_objs = self._get_grasped_objects(state)
         return objs[0] in grasped_objs
 
-    def _openable_classifier(self, state: State,
+    def _openable_classifier(self,
+                             state: State,
                              objs: Sequence[Object],
                              skip_allclose_check: bool = False) -> bool:
         self._check_state_closeness_and_load(state, skip_allclose_check)
@@ -788,12 +797,16 @@ class BehaviorEnv(BaseEnv):
             ig_obj, "states") and object_states.Open in ig_obj.states
         return obj_openable
 
-    def _not_openable_classifier(self, state: State,
+    def _not_openable_classifier(self,
+                                 state: State,
                                  objs: Sequence[Object],
                                  skip_allclose_check: bool = False) -> bool:
         return not self._openable_classifier(state, objs, skip_allclose_check)
 
-    def _closed_classifier(self, state: State, objs: Sequence[Object], skip_allclose_check: bool = False) -> bool:
+    def _closed_classifier(self,
+                           state: State,
+                           objs: Sequence[Object],
+                           skip_allclose_check: bool = False) -> bool:
         self._check_state_closeness_and_load(state, skip_allclose_check)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
