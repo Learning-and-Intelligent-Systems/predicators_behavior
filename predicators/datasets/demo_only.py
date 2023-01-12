@@ -151,6 +151,15 @@ def _create_demo_data_with_loading(env: BaseEnv, train_tasks: List[Task],
                  "DEMONSTRATIONS")
     logging.info(f"CREATED {len(generated_trajectories)} DEMONSTRATIONS")
     dataset = Dataset(loaded_trajectories + generated_trajectories)
+
+    # NOTE: This is necessary because BEHAVIOR options save
+    # the BEHAVIOR environment object in their memory, and this
+    # can't be pickled.
+    if CFG.env == "behavior":  # pragma: no cover
+        for traj in dataset.trajectories:
+            for act in traj.actions:
+                act.get_option().memory = {}
+                
     with open(dataset_fname, "wb") as f:
         pkl.dump(dataset, f)
     return dataset
