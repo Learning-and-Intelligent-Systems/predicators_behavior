@@ -549,6 +549,9 @@ def sample_place_inside_params(obj_to_place_inside: "URDFObject",
     ])
 
 
+def sample_place_ontop_params() -> Array:
+
+
 def load_checkpoint_state(s: State,
                           env: "BehaviorEnv",
                           reset: bool = False) -> None:

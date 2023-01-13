@@ -174,8 +174,17 @@ def create_place_option_model(
         rh_orig_grasp_position = env.robots[0].parts[
             "right_hand"].get_position()
         rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
-        target_pos = plan[-1][0:3]
-        target_orn = plan[-1][3:6]
+        # If we're not overriding the learned samplers, then we will directly
+        # use the elements of `plan`, which in turn use the outputs of the
+        # learned samplers. Otherwise, we will ignore these and use our
+        # oracle sampler to give us values to use.
+        if not CFG.behavior_override_learned_samplers:
+            target_pos = plan[-1][0:3]
+            target_orn = plan[-1][3:6]
+        else:
+            # TODO:
+ 
+ 
         env.robots[0].parts["right_hand"].set_position_orientation(
             target_pos, p.getQuaternionFromEuler(target_orn))
         env.robots[0].parts["right_hand"].force_release_obj()
