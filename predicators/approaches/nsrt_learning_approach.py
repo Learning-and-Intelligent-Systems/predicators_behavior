@@ -76,7 +76,7 @@ class NSRTLearningApproach(BilevelPlanningApproach):
             for i_atoms in range(len(g_traj[1]) - 1):
                 segment_add_effects = g_traj[1][i_atoms + 1] - g_traj[1][i_atoms]
                 if "PlaceOnTop-shelf" in g_traj[0].actions[i_atoms].get_option().name and "ontop-" not in str(segment_add_effects):
-                    problematic_traj_indices.append(traj_i)
+                    problematic_traj_indices.add(traj_i)
 
         # NOTE: HACK for temporary debugging.
         new_ground_atoms_dataset = []
