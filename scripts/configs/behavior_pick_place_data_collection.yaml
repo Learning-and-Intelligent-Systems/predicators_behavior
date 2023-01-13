@@ -48,6 +48,6 @@ ARGS: {}
 FLAGS:  # general flags
   num_train_tasks: 10
   num_test_tasks: 0
-START_SEED: 461
-NUM_SEEDS: 5
+START_SEED: 465
+NUM_SEEDS: 1
 USE_GPU: True
