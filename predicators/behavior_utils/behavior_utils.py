@@ -648,7 +648,12 @@ def create_ground_atom_dataset_behavior(
             # we call the predicate classifiers.
             load_checkpoint_state(s, env)
             if not use_last_state or first_state:
-                next_atoms = utils.abstract(s,
+                if first_state:
+                    next_atoms = utils.abstract(s,
+                                                predicates,
+                                                skip_allclose_check=False)
+                else:
+                    next_atoms = utils.abstract(s,
                                             predicates,
                                             skip_allclose_check=True)
                 first_state = False
