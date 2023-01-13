@@ -564,10 +564,21 @@ def run_low_level_search(
                         for atom in atoms_sequence[cur_idx]
                         if atom.predicate.name != _NOT_CAUSES_FAILURE
                     }
+
+                    # TODO This is a hack 
+                    safe = True
+                    if "Navigate" in nsrt.option.name and "holding" in str(expected_atoms):
+                        for atom in expected_atoms:
+                            if "holding" in str(atom.predicate):
+                                for g_atom in task.goal:
+                                    if str(atom.objects[0]) in str(g_atom) and g_atom.holds(traj[cur_idx]):
+                                        can_continue_on = False
+                                        safe = False
+
                     # This "if all" statement is equivalent to, but faster
                     # than, checking whether expected_atoms is a subset of
                     # utils.abstract(traj[cur_idx], predicates).
-                    if all(a.holds(traj[cur_idx]) for a in expected_atoms):
+                    if all(a.holds(traj[cur_idx]) for a in expected_atoms) and safe:
                         can_continue_on = True
                         # logging.info("Success: Expected Atoms Check Passed!")
                         if cur_idx == len(skeleton):

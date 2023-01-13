@@ -282,6 +282,7 @@ def _generate_demonstrations(
                     assert CFG.option_learner != "no_learning"
                     act.unset_option()
         trajectories.append(traj)
+        logging.info(f"Tasks generated for dataset: {idx+1} / {len(train_tasks)}")
         if CFG.make_demo_videos:
             assert monitor is not None
             video = monitor.get_video()
