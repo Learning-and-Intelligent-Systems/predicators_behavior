@@ -254,6 +254,8 @@ def create_place_option_model(
                         if type_name in _type_name_to_type:
                             obj_type = _type_name_to_type[type_name]
                             try:
+                                import ipdb
+                                ipdb.set_trace()
                                 objs_under.add(Object(obj_name, obj_type))
                             except:  # pylint: disable=bare-except
                                 print("INVALID OBJECT TYPE:", obj_name,
@@ -262,8 +264,9 @@ def create_place_option_model(
                         else:
                             continue
         if len(objs_under) != 0:
-            raise utils.EnvironmentFailure("collision",
-                                           {"offending_objects": objs_under})
+            if not CFG.behavior_ignore_discover_failures:
+                raise utils.EnvironmentFailure(
+                    "collision", {"offending_objects": objs_under})
 
     return placeOntopObjectOptionModel
 
