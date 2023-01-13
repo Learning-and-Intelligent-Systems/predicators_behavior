@@ -630,7 +630,7 @@ def create_ground_atom_dataset_behavior(
     predicates: Set[Predicate],
     env: "BehaviorEnv",
     train_tasks: List[Task],
-    use_last_state: bool = False
+    use_last_state: bool = True
 ) -> List[GroundAtomTrajectory]:  # pragma: no cover
     """Apply all predicates to all trajectories in the dataset."""
     # NOTE: setting use_last_state to True is potentially
