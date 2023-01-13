@@ -1783,9 +1783,10 @@ def abstract_from_last(
     # Computes predicates for atoms with objects whose state has changed.
     for pred in preds:
         for choice in get_object_combinations(list(state), pred.types):
-            if any(obj in changed_objs for obj in choice) or (
-                    "reachable" in pred.name
-                    and agent_changed) or ("openable" in pred.name):
+            if any(obj in changed_objs
+                   for obj in choice) or ("reachable" in pred.name
+                                          and agent_changed) or ("openable"
+                                                                 in pred.name):
                 if pred.holds(state,
                               choice,
                               skip_allclose_check=skip_allclose_check):
