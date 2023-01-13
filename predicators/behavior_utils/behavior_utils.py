@@ -572,7 +572,7 @@ def sample_place_ontop_params(igibson_behavior_env: "BehaviorEnv",
             rng.uniform(-obj_to_place_ontop_sampling_bounds[1],
                         obj_to_place_ontop_sampling_bounds[1]),
             rng.uniform(-obj_to_place_ontop_sampling_bounds[2] + 0.3,
-                        obj_to_place_ontop_sampling_bounds[1]) + 0.3
+                        obj_to_place_ontop_sampling_bounds[2]) + 0.3
         ])
         logging.info("Sampling params for placeOnTop shelf...")
         num_samples_tried = 0
@@ -584,7 +584,7 @@ def sample_place_ontop_params(igibson_behavior_env: "BehaviorEnv",
                 rng.uniform(-obj_to_place_ontop_sampling_bounds[1],
                             obj_to_place_ontop_sampling_bounds[1]),
                 rng.uniform(-obj_to_place_ontop_sampling_bounds[2] + 0.3,
-                            obj_to_place_ontop_sampling_bounds[1]) + 0.3
+                            obj_to_place_ontop_sampling_bounds[2]) + 0.3
             ])
             # NOTE: In many situations, it is impossible to find a
             # good sample no matter how many times we try. Thus, we
