@@ -464,7 +464,10 @@ def sample_navigation_params(igibson_behavior_env: "BehaviorEnv",
     option_model_fns.
     """
     closeness_limit = 2.00
-    nearness_limit = 0.15
+    if obj_to_sample_near.category == "shelf":
+        nearness_limit = 0.3
+    else:
+        nearness_limit = 0.15
     distance = nearness_limit + (
         (closeness_limit - nearness_limit) * rng.random())
     yaw = rng.random() * (2 * np.pi) - np.pi
@@ -478,7 +481,8 @@ def sample_navigation_params(igibson_behavior_env: "BehaviorEnv",
     num_samples_tried = 0
     while (check_nav_end_pose(igibson_behavior_env, obj_to_sample_near,
                               sampler_output) is None):
-        distance = closeness_limit * rng.random()
+        distance = nearness_limit + (
+            (closeness_limit - nearness_limit) * rng.random())
         yaw = rng.random() * (2 * np.pi) - np.pi
         x = distance * np.cos(yaw)
         y = distance * np.sin(yaw)
