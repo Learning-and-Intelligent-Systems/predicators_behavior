@@ -86,5 +86,5 @@ FLAGS:  # general flags
   num_train_tasks: 10
   num_test_tasks: 10
 START_SEED: 456
-NUM_SEEDS: 10
+NUM_SEEDS: 5
 USE_GPU: True
