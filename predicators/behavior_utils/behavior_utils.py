@@ -739,7 +739,7 @@ def create_ground_atom_dataset_behavior(
                 atoms[-1] |= missing_atoms
                 print(train_tasks[traj.train_task_idx].goal.issubset(
                     last_atoms))
-                import ipdb; ipdb.set_trace()
+                #import ipdb; ipdb.set_trace()
                 
                 # raise err
         print(f"Completed {(i+1)}/{num_traj} trajectories.")
