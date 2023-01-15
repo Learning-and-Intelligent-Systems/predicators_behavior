@@ -11,20 +11,20 @@
 APPROACHES:
   # oracle: # Oracle
   #   NAME: "oracle"
-  pnad_search: # PNAD search approach.
+  # pnad_search: # PNAD search approach.
+  #   NAME: "nsrt_learning"
+  #   FLAGS:
+  #     strips_learner: pnad_search
+  cluster_and_intersect:  # Cluster-and-intersect baseline.
     NAME: "nsrt_learning"
     FLAGS:
-      strips_learner: pnad_search
-  # cluster_and_intersect:  # Cluster-and-intersect baseline.
-  #   NAME: "nsrt_learning"
-  #   FLAGS:
-  #     strips_learner: "cluster_and_intersect"
-  #     disable_harmlessness_check: True
-  # cluster_and_search:  # LOFT baseline.
-  #   NAME: "nsrt_learning"
-  #   FLAGS:
-  #     strips_learner: "cluster_and_search"
-  #     disable_harmlessness_check: True
+      strips_learner: "cluster_and_intersect"
+      disable_harmlessness_check: True
+  cluster_and_search:  # LOFT baseline.
+    NAME: "nsrt_learning"
+    FLAGS:
+      strips_learner: "cluster_and_search"
+      disable_harmlessness_check: True
   # pred_error:  # Prediction error baseline that optimizes via hill climbing.
   #   NAME: "nsrt_learning"
   #   FLAGS: 
@@ -85,6 +85,6 @@ FLAGS:  # general flags
   behavior_ignore_discover_failures: True
   num_train_tasks: 10
   num_test_tasks: 10
-START_SEED: 461
-NUM_SEEDS: 5
+START_SEED: 456
+NUM_SEEDS: 10
 USE_GPU: True
