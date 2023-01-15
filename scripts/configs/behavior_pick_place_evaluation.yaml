@@ -15,21 +15,21 @@ APPROACHES:
   #   NAME: "nsrt_learning"
   #   FLAGS:
   #     strips_learner: pnad_search
-  cluster_and_intersect:  # Cluster-and-intersect baseline.
-    NAME: "nsrt_learning"
-    FLAGS:
-      strips_learner: "cluster_and_intersect"
-      disable_harmlessness_check: True
-  cluster_and_search:  # LOFT baseline.
-    NAME: "nsrt_learning"
-    FLAGS:
-      strips_learner: "cluster_and_search"
-      disable_harmlessness_check: True
-  # pred_error:  # Prediction error baseline that optimizes via hill climbing.
+  # cluster_and_intersect:  # Cluster-and-intersect baseline.
   #   NAME: "nsrt_learning"
-  #   FLAGS: 
-  #     strips_learner: "cluster_and_intersect_sideline_prederror" 
+  #   FLAGS:
+  #     strips_learner: "cluster_and_intersect"
   #     disable_harmlessness_check: True
+  # cluster_and_search:  # LOFT baseline.
+  #   NAME: "nsrt_learning"
+  #   FLAGS:
+  #     strips_learner: "cluster_and_search"
+  #     disable_harmlessness_check: True
+  pred_error:  # Prediction error baseline that optimizes via hill climbing.
+    NAME: "nsrt_learning"
+    FLAGS: 
+      strips_learner: "cluster_and_intersect_sideline_prederror" 
+      disable_harmlessness_check: True
   # NOTE: Set the 'plan_only_eval' flag to false when running either
   # of the below GNN approaches.
   # gnn_shooting:  # Model-based GNN option policy baseline.
