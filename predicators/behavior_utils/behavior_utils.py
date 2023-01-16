@@ -714,12 +714,6 @@ def create_ground_atom_dataset_behavior(
                                                       last_s,
                                                       last_atoms,
                                                       skip_allclose_check=True)
-            # HACK to try to fix weird discrepancy bug
-            if len(atoms) == len(traj.states) - 1:
-                next_atoms = utils.abstract(s,
-                                            predicates,
-                                            skip_allclose_check=True)
-            
             atoms.append(next_atoms)
             last_s = s
             last_atoms = next_atoms
@@ -734,13 +728,7 @@ def create_ground_atom_dataset_behavior(
                 missing_atoms = train_tasks[
                     traj.train_task_idx].goal - last_atoms
                 print("Train task goal not achieved by demonstration. " +
-                      f"Discrepancy: {missing_atoms}")
-                last_atoms |= missing_atoms
-                atoms[-1] |= missing_atoms
-                print(train_tasks[traj.train_task_idx].goal.issubset(
-                    last_atoms))
-                #import ipdb; ipdb.set_trace()
-                
-                # raise err
+                      f"Discrepancy: {missing_atoms}")                
+                raise err
         print(f"Completed {(i+1)}/{num_traj} trajectories.")
     return ground_atom_dataset
