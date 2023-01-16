@@ -250,7 +250,7 @@ class GNNOptionPolicyApproach(GNNApproach):
                              timeout: int) -> Callable[[State], Action]:
         start_time = time.perf_counter()
         memory: Dict = {}  # optionally updated by predict()
-        if CFG.env == 'behavior':
+        if CFG.env == 'behavior':  # pragma: no cover
             # Be sure to reload the behavior env to get the correct one.
             curr_behavior_env = get_or_create_env('behavior')
             load_checkpoint_state(task.init, curr_behavior_env, reset=True)
