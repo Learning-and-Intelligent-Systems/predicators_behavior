@@ -14,6 +14,8 @@ from gym.spaces import Box
 from predicators import utils
 from predicators.approaches import ApproachFailure, ApproachTimeout
 from predicators.approaches.gnn_approach import GNNApproach
+from predicators.behavior_utils.behavior_utils import load_checkpoint_state
+from predicators.envs import get_or_create_env
 from predicators.nsrt_learning.nsrt_learning_main import \
     get_ground_atoms_dataset
 from predicators.nsrt_learning.segmentation import segment_trajectory
@@ -22,8 +24,6 @@ from predicators.settings import CFG
 from predicators.structs import Action, Array, Dataset, DummyOption, \
     GroundAtom, Object, ParameterizedOption, Predicate, State, Task, Type, \
     _Option
-from predicators.envs import get_or_create_env
-from predicators.behavior_utils.behavior_utils import load_checkpoint_state
 
 
 class GNNOptionPolicyApproach(GNNApproach):

@@ -728,7 +728,7 @@ def create_ground_atom_dataset_behavior(
                 missing_atoms = train_tasks[
                     traj.train_task_idx].goal - last_atoms
                 print("Train task goal not achieved by demonstration. " +
-                      f"Discrepancy: {missing_atoms}")                
+                      f"Discrepancy: {missing_atoms}")
                 raise err
         print(f"Completed {(i+1)}/{num_traj} trajectories.")
     return ground_atom_dataset
