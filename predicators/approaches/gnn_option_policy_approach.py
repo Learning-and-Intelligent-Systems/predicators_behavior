@@ -22,6 +22,8 @@ from predicators.settings import CFG
 from predicators.structs import Action, Array, Dataset, DummyOption, \
     GroundAtom, Object, ParameterizedOption, Predicate, State, Task, Type, \
     _Option
+from predicators.envs import get_or_create_env
+from predicators.behavior_utils.behavior_utils import load_checkpoint_state
 
 
 class GNNOptionPolicyApproach(GNNApproach):
@@ -205,6 +207,9 @@ class GNNOptionPolicyApproach(GNNApproach):
         # implemented. Thus, we must use the option model and setup
         # self._last_traj and self._last_plan.
         state = task.init
+        # Be sure to reload the behavior env to get the correct one.
+        curr_behavior_env = get_or_create_env('behavior')
+        load_checkpoint_state(state, curr_behavior_env, reset=True)
         total_num_act = 0
         plan: List[_Option] = []
         start_time = time.perf_counter()
@@ -245,6 +250,10 @@ class GNNOptionPolicyApproach(GNNApproach):
                              timeout: int) -> Callable[[State], Action]:
         start_time = time.perf_counter()
         memory: Dict = {}  # optionally updated by predict()
+        if CFG.env == 'behavior':
+            # Be sure to reload the behavior env to get the correct one.
+            curr_behavior_env = get_or_create_env('behavior')
+            load_checkpoint_state(task.init, curr_behavior_env, reset=True)
         # Keep trying until the timeout.
         while time.perf_counter() - start_time < timeout:
             total_num_act = 0
