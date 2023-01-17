@@ -40,14 +40,14 @@ APPROACHES:
     FLAGS:
       gnn_option_policy_solve_with_shooting: False
 ENVS:
-  collecting-aluminum-cans-Ihlen_1_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Ihlen_1_int
-      behavior_test_scene_name: Pomaria_2_int
-      behavior_task_list: "[collecting_aluminum_cans]"
-      behavior_option_model_eval: True
-      horizon: 1000
+  # collecting-aluminum-cans-Ihlen_1_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_train_scene_name: Ihlen_1_int
+  #     behavior_test_scene_name: Pomaria_2_int
+  #     behavior_task_list: "[collecting_aluminum_cans]"
+  #     behavior_option_model_eval: True
+  #     horizon: 1000
   opening-presents-Pomaria_2_int:
     NAME: "behavior"
     FLAGS:
@@ -56,14 +56,14 @@ ENVS:
       behavior_task_list: "[opening_presents]"
       behavior_option_model_eval: True
       horizon: 1000
-  # locking-every-window-Merom_1_int:
-  #   NAME: "behavior"
-  #   FLAGS:
-  #     behavior_train_scene_name: Merom_1_int
-  #     behavior_test_scene_name: Wainscott_0_int
-  #     behavior_task_list: "[locking_every_window]"
-  #     behavior_option_model_eval: True
-  #     horizon: 1000
+  locking-every-window-Merom_1_int:
+    NAME: "behavior"
+    FLAGS:
+      behavior_train_scene_name: Merom_1_int
+      behavior_test_scene_name: Wainscott_0_int
+      behavior_task_list: "[locking_every_window]"
+      behavior_option_model_eval: True
+      horizon: 1000
   # sorting-books-Pomaria_1_int:
   #   NAME: "behavior"
   #   FLAGS:
