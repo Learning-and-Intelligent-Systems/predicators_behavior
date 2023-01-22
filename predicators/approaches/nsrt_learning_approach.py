@@ -93,6 +93,8 @@ class NSRTLearningApproach(BilevelPlanningApproach):
                 pkl.dump(str(self._nsrts), f)
             else:
                 pkl.dump(self._nsrts, f)
+        with open(f"{save_path}_{online_learning_cycle}_numNSRTs.pkl", "wb") as f:
+            pkl.dump(len(self._nsrts), f)
         if CFG.compute_sidelining_objective_value:
             self._compute_sidelining_objective_value(trajectories)
 
