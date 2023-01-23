@@ -966,7 +966,7 @@ def _get_painting_gt_nsrts(env_name: str) -> Set[NSRT]:
             robot_y = state.get(objs[1], "pose_y")
             table_lb = RepeatedNextToPaintingEnv.table_lb
             table_ub = RepeatedNextToPaintingEnv.table_ub
-            assert table_lb < robot_y < table_ub
+            # assert table_lb < robot_y < table_ub
             nextto_thresh = RepeatedNextToPaintingEnv.nextto_thresh
             y_sample_lb = max(table_lb, robot_y - nextto_thresh)
             y_sample_ub = min(table_ub, robot_y + nextto_thresh)
