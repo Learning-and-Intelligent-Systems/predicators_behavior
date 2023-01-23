@@ -15,16 +15,16 @@ APPROACHES:
   #   NAME: "nsrt_learning"
   #   FLAGS:
   #     strips_learner: pnad_search
-  cluster_and_intersect:  # Cluster-and-intersect baseline.
-    NAME: "nsrt_learning"
-    FLAGS:
-      strips_learner: "cluster_and_intersect"
-      disable_harmlessness_check: True
-  cluster_and_search:  # LOFT baseline.
-    NAME: "nsrt_learning"
-    FLAGS:
-      strips_learner: "cluster_and_search"
-      disable_harmlessness_check: True
+  # cluster_and_intersect:  # Cluster-and-intersect baseline.
+  #   NAME: "nsrt_learning"
+  #   FLAGS:
+  #     strips_learner: "cluster_and_intersect"
+  #     disable_harmlessness_check: True
+  # cluster_and_search:  # LOFT baseline.
+  #   NAME: "nsrt_learning"
+  #   FLAGS:
+  #     strips_learner: "cluster_and_search"
+  #     disable_harmlessness_check: True
   pred_error:  # Prediction error baseline that optimizes via hill climbing.
     NAME: "nsrt_learning"
     FLAGS: 
