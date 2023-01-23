@@ -8,7 +8,7 @@ for filename in glob.glob("saved_approaches/*numNSRTs.pkl"):
     try:
         with open(filename, 'rb') as f:
             data = pkl.load(f)
-        if "satellites" in filename and "simple" in filename:
+        if "repeated" in filename and "painting" in filename:
             if "pnad_search" in exp_name or "pnadsearch" in exp_name:
                 results["pnad_search"].append(data)
             if "cluster_and_search" in exp_name and "random" not in exp_name:
