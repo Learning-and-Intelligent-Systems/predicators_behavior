@@ -18,7 +18,7 @@ Search-then-sample bilevel planning is in `src/planning.py`.
 ## Installation
 ### Pip
 * This repository uses Python versions 3.8+.
-* Run `pip install -r requirements.txt` to install dependencies.
+* Run `pip install -e .` to install dependencies.
 
 ## Instructions For Running Code
 
