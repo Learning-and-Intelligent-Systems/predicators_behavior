@@ -387,3 +387,29 @@ def create_place_inside_option_model(
         env.step(np.zeros(env.action_space.shape))
 
     return placeInsideObjectOptionModel
+
+def create_toggle_on_option_model(
+    plan: List[List[float]], _original_orientation: List[List[float]],
+    obj_to_toggle_on: "URDFObject") -> Callable[[State, "BehaviorEnv"], None]:
+    del plan
+
+    def toggleOnObjectOptionModel(_init_state: State, env: "BehaviorEnv") -> None:
+        logging.info(f"PRIMITIVE: Attempting to toggle on {obj_to_toggle_on.name}")
+        if np.linalg.norm(
+                np.array(obj_to_toggle_on.get_position()) -
+                np.array(env.robots[0].get_position())) < 2:
+            if hasattr(obj_to_toggle_on,
+                       "states") and object_states.ToggleOn in obj_to_toggle_on.states:
+                obj_to_toggle_on.states[object_states.ToggleOn].set_value(True)
+            else:
+                logging.info("PRIMITIVE toggle failed, cannot be toggled on")
+        else:
+            logging.info("PRIMITIVE toggle failed, too far")
+        obj_to_toggle_on.force_wakeup()
+        # Step the simulator to update visuals.
+        env.step(np.zeros(env.action_space.shape))
+
+    return toggleOnObjectOptionModel
+
+    
+    

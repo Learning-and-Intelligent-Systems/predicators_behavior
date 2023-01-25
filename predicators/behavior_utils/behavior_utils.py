@@ -39,7 +39,7 @@ ALL_RELEVANT_OBJECT_TYPES = {
     'top_cabinet', 'sofa', 'oatmeal', 'chip', 'vegetable_oil', 'sugar',
     'cabinet', 'floor', 'pasta', 'sauce', 'electric_refrigerator', 'olive_oil',
     'sugar_jar', 'spaghetti_sauce', 'mayonnaise', 'fridge', 'board_game',
-    'video_game'
+    'video_game', 'facsimile'
 }
 PICK_PLACE_OBJECT_TYPES = {
     'mineral_water', 'oatmeal', 'blueberry', 'headset', 'jug', 'flank',
@@ -186,6 +186,9 @@ OPENABLE_OBJECT_TYPES = {
     'bottom_cabinet', 'trash_can'
 }
 
+TOGGLEABLE_OBJECT_TYPES = {
+    'facsimile',
+}
 
 def get_aabb_volume(lo: Array, hi: Array) -> float:
     """Simple utility function to compute the volume of an aabb.

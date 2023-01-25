@@ -47,7 +47,8 @@ from predicators.behavior_utils.option_fns import create_dummy_policy, \
 from predicators.behavior_utils.option_model_fns import \
     create_close_option_model, create_grasp_option_model, \
     create_navigate_option_model, create_open_option_model, \
-    create_place_inside_option_model, create_place_option_model
+    create_place_inside_option_model, create_place_option_model, \
+    create_toggle_on_option_model
 from predicators.envs import BaseEnv
 from predicators.settings import CFG
 from predicators.structs import Action, Array, GroundAtom, Object, \
@@ -144,7 +145,8 @@ class BehaviorEnv(BaseEnv):
             Callable[[State, "behavior_env.BehaviorEnv"], None]]] = [
                 create_navigate_option_model, create_grasp_option_model,
                 create_place_option_model, create_open_option_model,
-                create_close_option_model, create_place_inside_option_model
+                create_close_option_model, create_place_inside_option_model,
+                create_toggle_on_option_model,
             ]
 
         # name, planner_fn, option_policy_fn, option_model_fn,
@@ -162,6 +164,7 @@ class BehaviorEnv(BaseEnv):
              option_model_fns[4], 3, 1, (-1.0, 1.0)),
             ("PlaceInside", planner_fns[2], option_policy_fns[3],
              option_model_fns[5], 3, 1, (-1.0, 1.0)),
+            ("ToggleOn", planner_fns[3], option_policy_fns[3], option_model_fns[6], 2, 1, (-1.0, 1.0)) 
         ]
         self._options: Set[ParameterizedOption] = set()
         for (name, planner_fn, policy_fn, option_model_fn, param_dim, num_args,
@@ -403,7 +406,7 @@ class BehaviorEnv(BaseEnv):
                 # "dusty",
                 # "stained",
                 # "sliced",
-                # "toggled_on",
+                "toggled_on",
         ]:
             bddl_predicate = SUPPORTED_PREDICATES[bddl_name]
             # We will create one predicate for every combination of types.
@@ -432,6 +435,8 @@ class BehaviorEnv(BaseEnv):
             ("openable", self._openable_classifier, 1),
             ("not-openable", self._not_openable_classifier, 1),
             ("closed", self._closed_classifier, 1),
+            ("toggled-off", self._toggled_off_classifier, 1),
+            ("toggleable", self._toggleable_classifier, 1),
         ]
 
         for name, classifier, arity in custom_predicate_specs:
@@ -785,6 +790,24 @@ class BehaviorEnv(BaseEnv):
         if obj_openable:
             return not ig_obj.states[object_states.Open].get_value()
         return False
+
+    def _toggled_off_classifier(self, state: State, objs: Sequence[Object]) -> bool:
+        self._check_state_closeness_and_load(state)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        # obj_toggleable = self._toggleable_classifier(state, objs)
+        import ipdb; ipdb.set_trace()
+        # if obj_toggleable:
+        # return not ig_obj.states[object_states.ToggledOn].get_value()
+        return object_states.ToggledOn not in ig_obj.states
+        # return False
+
+    def _toggleable_classifier(self, state: State, objs: Sequence[Object]) -> bool:
+        self._check_state_closeness_and_load(state)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_toggleable = hasattr(ig_obj, "states") and object_states.ToggledOn in ig_obj.states
+        return obj_toggleable
 
     @staticmethod
     def _ig_object_name(ig_obj: "ArticulatedObject") -> str:
