@@ -406,7 +406,7 @@ class BehaviorEnv(BaseEnv):
                 # "dusty",
                 # "stained",
                 # "sliced",
-                "toggled_on",
+                # "toggled_on", # This pred is broken, changes num of objs
         ]:
             bddl_predicate = SUPPORTED_PREDICATES[bddl_name]
             # We will create one predicate for every combination of types.
@@ -438,6 +438,7 @@ class BehaviorEnv(BaseEnv):
             ("openable", self._openable_classifier, 1),
             ("not-openable", self._not_openable_classifier, 1),
             ("closed", self._closed_classifier, 1),
+            ("toggled_on", self._toggled_on_classifier, 1),
             ("toggled-off", self._toggled_off_classifier, 1),
             ("toggleable", self._toggleable_classifier, 1),
         ]
@@ -794,15 +795,20 @@ class BehaviorEnv(BaseEnv):
             return not ig_obj.states[object_states.Open].get_value()
         return False
 
-    def _toggled_off_classifier(self, state: State, objs: Sequence[Object]) -> bool:
+    def _toggled_on_classifier(self, state: State, objs: Sequence[Object]) -> bool:
         self._check_state_closeness_and_load(state)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
         obj_toggleable = self._toggleable_classifier(state, objs)
         if obj_toggleable:
             if ig_obj.states[object_states.ToggledOn].get_value():
-                return False
-        return True
+                return True
+        return False
+
+    def _toggled_off_classifier(self, state: State, objs: Sequence[Object]) -> bool:
+        self._check_state_closeness_and_load(state)
+        assert len(objs) == 1
+        return not self._toggled_on_classifier(state, objs)
 
     def _toggleable_classifier(self, state: State, objs: Sequence[Object]) -> bool:
         self._check_state_closeness_and_load(state)

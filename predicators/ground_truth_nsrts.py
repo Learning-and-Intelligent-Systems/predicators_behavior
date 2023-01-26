@@ -3391,9 +3391,9 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             parameters = [toggle_obj]
             option_vars = [toggle_obj]
             preconditions = {
-                # _get_lifted_atom("reachable", [toggle_obj]),
+                _get_lifted_atom("reachable", [toggle_obj]),
                 _get_lifted_atom("toggled-off", [toggle_obj]),
-                # _get_lifted_atom("toggleable", [toggle_obj]),
+                _get_lifted_atom("toggleable", [toggle_obj]),
             }
             add_effects = {_get_lifted_atom("toggled_on", [toggle_obj])}
             delete_effects = {_get_lifted_atom("toggled-off", [toggle_obj])}
