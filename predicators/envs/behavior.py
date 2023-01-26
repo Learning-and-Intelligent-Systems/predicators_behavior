@@ -436,7 +436,6 @@ class BehaviorEnv(BaseEnv):
             ("not-openable", self._not_openable_classifier, 1),
             ("closed", self._closed_classifier, 1),
             ("toggled-off", self._toggled_off_classifier, 1),
-            ("toggleable", self._toggleable_classifier, 1),
         ]
 
         for name, classifier, arity in custom_predicate_specs:
@@ -795,19 +794,11 @@ class BehaviorEnv(BaseEnv):
         self._check_state_closeness_and_load(state)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
-        # obj_toggleable = self._toggleable_classifier(state, objs)
-        import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
         # if obj_toggleable:
         # return not ig_obj.states[object_states.ToggledOn].get_value()
         return object_states.ToggledOn not in ig_obj.states
-        # return False
 
-    def _toggleable_classifier(self, state: State, objs: Sequence[Object]) -> bool:
-        self._check_state_closeness_and_load(state)
-        assert len(objs) == 1
-        ig_obj = self.object_to_ig_object(objs[0])
-        obj_toggleable = hasattr(ig_obj, "states") and object_states.ToggledOn in ig_obj.states
-        return obj_toggleable
 
     @staticmethod
     def _ig_object_name(ig_obj: "ArticulatedObject") -> str:
