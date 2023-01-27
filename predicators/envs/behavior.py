@@ -140,32 +140,34 @@ class BehaviorEnv(BaseEnv):
                                   create_navigate_policy, create_grasp_policy,
                                   create_place_policy, create_dummy_policy
                               ]
-        option_model_fns: List[Callable[
-            [List[List[float]], List[List[float]], "URDFObject"],
-            Callable[[State, "behavior_env.BehaviorEnv"], None]]] = [
-                create_navigate_option_model, create_grasp_option_model,
-                create_place_option_model, create_open_option_model,
-                create_close_option_model, create_place_inside_option_model,
-                create_toggle_on_option_model,
-            ]
+        option_model_fns: List[
+            Callable[[List[List[float]], List[List[float]], "URDFObject"],
+                     Callable[[State, "behavior_env.BehaviorEnv"], None]]] = [
+                         create_navigate_option_model,
+                         create_grasp_option_model,
+                         create_place_option_model,
+                         create_open_option_model,
+                         create_close_option_model,
+                         create_place_inside_option_model,
+                         create_toggle_on_option_model,
+                     ]
 
         # name, planner_fn, option_policy_fn, option_model_fn,
         # param_dim, arity, parameter upper and lower bounds
-        option_elems = [
-            ("NavigateTo", planner_fns[0], option_policy_fns[0],
-             option_model_fns[0], 2, 1, (-5.0, 5.0)),
-            ("Grasp", planner_fns[1], option_policy_fns[1],
-             option_model_fns[1], 3, 1, (-np.pi, np.pi)),
-            ("PlaceOnTop", planner_fns[2], option_policy_fns[2],
-             option_model_fns[2], 3, 1, (-1.0, 1.0)),
-            ("Open", planner_fns[3], option_policy_fns[3], option_model_fns[3],
-             3, 1, (-1.0, 1.0)),
-            ("Close", planner_fns[3], option_policy_fns[3],
-             option_model_fns[4], 3, 1, (-1.0, 1.0)),
-            ("PlaceInside", planner_fns[2], option_policy_fns[3],
-             option_model_fns[5], 3, 1, (-1.0, 1.0)),
-            ("ToggleOn", planner_fns[3], option_policy_fns[3], option_model_fns[6], 3, 1, (-1.0, 1.0)) 
-        ]
+        option_elems = [("NavigateTo", planner_fns[0], option_policy_fns[0],
+                         option_model_fns[0], 2, 1, (-5.0, 5.0)),
+                        ("Grasp", planner_fns[1], option_policy_fns[1],
+                         option_model_fns[1], 3, 1, (-np.pi, np.pi)),
+                        ("PlaceOnTop", planner_fns[2], option_policy_fns[2],
+                         option_model_fns[2], 3, 1, (-1.0, 1.0)),
+                        ("Open", planner_fns[3], option_policy_fns[3],
+                         option_model_fns[3], 3, 1, (-1.0, 1.0)),
+                        ("Close", planner_fns[3], option_policy_fns[3],
+                         option_model_fns[4], 3, 1, (-1.0, 1.0)),
+                        ("PlaceInside", planner_fns[2], option_policy_fns[3],
+                         option_model_fns[5], 3, 1, (-1.0, 1.0)),
+                        ("ToggleOn", planner_fns[3], option_policy_fns[3],
+                         option_model_fns[6], 3, 1, (-1.0, 1.0))]
         self._options: Set[ParameterizedOption] = set()
         for (name, planner_fn, policy_fn, option_model_fn, param_dim, num_args,
              parameter_limits) in option_elems:
@@ -795,7 +797,8 @@ class BehaviorEnv(BaseEnv):
             return not ig_obj.states[object_states.Open].get_value()
         return False
 
-    def _toggled_on_classifier(self, state: State, objs: Sequence[Object]) -> bool:
+    def _toggled_on_classifier(self, state: State,
+                               objs: Sequence[Object]) -> bool:
         self._check_state_closeness_and_load(state)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
@@ -805,16 +808,19 @@ class BehaviorEnv(BaseEnv):
                 return True
         return False
 
-    def _toggled_off_classifier(self, state: State, objs: Sequence[Object]) -> bool:
+    def _toggled_off_classifier(self, state: State,
+                                objs: Sequence[Object]) -> bool:
         self._check_state_closeness_and_load(state)
         assert len(objs) == 1
         return not self._toggled_on_classifier(state, objs)
 
-    def _toggleable_classifier(self, state: State, objs: Sequence[Object]) -> bool:
+    def _toggleable_classifier(self, state: State,
+                               objs: Sequence[Object]) -> bool:
         self._check_state_closeness_and_load(state)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
-        obj_toggleable = hasattr(ig_obj, "states") and object_states.ToggledOn in ig_obj.states
+        obj_toggleable = hasattr(
+            ig_obj, "states") and object_states.ToggledOn in ig_obj.states
         return obj_toggleable
 
     @staticmethod

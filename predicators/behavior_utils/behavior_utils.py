@@ -190,6 +190,7 @@ TOGGLEABLE_OBJECT_TYPES = {
     'facsimile',
 }
 
+
 def get_aabb_volume(lo: Array, hi: Array) -> float:
     """Simple utility function to compute the volume of an aabb.
 
