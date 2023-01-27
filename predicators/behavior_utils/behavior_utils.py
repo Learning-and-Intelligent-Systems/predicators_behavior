@@ -41,7 +41,9 @@ ALL_RELEVANT_OBJECT_TYPES = {
     'sugar_jar', 'spaghetti_sauce', 'mayonnaise', 'fridge', 'board_game',
     'video_game', 'facsimile', 'ice_cube', 'ginger', 'gym_shoe', 'car', 'mug',
     'toy', 'hanger', 'candle', 'basket', 'spoon', 'tile', 'pool', 'sock', 
-    'straight_chair', 'sticky_note', 'carton'
+    'straight_chair', 'sticky_note', 'carton', 'cologne', 'cup', 'ball',
+    'lipstick', 'newspaper', 'pretzel', 'necklace', 'candy_cane', 'briefcase',
+    'sushi', 'sweater', 'rag', 'rag', 'scrub_brush', 'cookie', 'bowl'
 }
 
 PICK_PLACE_OBJECT_TYPES = {
@@ -127,7 +129,7 @@ PICK_PLACE_OBJECT_TYPES = {
     'peppermint', 'cruciferous_vegetable', 'soup_ladle', 'jean', 'teddy',
     'chestnut', 'sauce', 'piece_of_cloth', 'whitefish', 'siren', 'balloon',
     'celery', 'hot_pepper', 'raisin', 'sugar_jar', 'toy', 'sticky_note',
-    't-shirt', 'board_game', 'video_game', 'ginger', 'gym_shoe', 'tile'
+    't-shirt', 'board_game', 'video_game', 'ginger', 'gym_shoe', 'tile',
 }
 
 PLACE_ONTOP_SURFACE_OBJECT_TYPES = {
