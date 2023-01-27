@@ -45,7 +45,9 @@ ALL_RELEVANT_OBJECT_TYPES = {
     'lipstick', 'newspaper', 'pretzel', 'necklace', 'candy_cane', 'briefcase',
     'sushi', 'sweater', 'rag', 'rag', 'scrub_brush', 'cookie', 'bowl',
     't-shirt', 'cheese', 'detergent', 'catsup', 'pencil_box', 'bracelet',
-    'saucepan', 'soap', 'wine_bottle', 'dishwasher', 'lollipop', 'cinnamon'
+    'saucepan', 'soap', 'wine_bottle', 'dishwasher', 'lollipop', 'cinnamon',
+    'pen', 'sink', 'bow', 'bath_towel', 'sink', 'cruet', 'headset', 
+    'coffee_cup', 'dishtowel', 'mouse'
 }
 
 PICK_PLACE_OBJECT_TYPES = {
