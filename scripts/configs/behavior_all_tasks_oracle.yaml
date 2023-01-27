@@ -70,13 +70,13 @@ ENVS:
       behavior_test_scene_name: Merom_1_int
       behavior_task_list: "[collect_misplaced_items]"
       behavior_option_model_eval: True
-  collecting_aluminum_cans-Benevolence_2_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Benevolence_2_int
-      behavior_test_scene_name: Benevolence_2_int
-      behavior_task_list: "[collecting_aluminum_cans]"
-      behavior_option_model_eval: True
+  # collecting_aluminum_cans-Benevolence_2_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_train_scene_name: Benevolence_2_int
+  #     behavior_test_scene_name: Benevolence_2_int
+  #     behavior_task_list: "[collecting_aluminum_cans]"
+  #     behavior_option_model_eval: True
   filling_a_Christmas_stocking-Rs_int:
     NAME: "behavior"
     FLAGS:
@@ -97,20 +97,20 @@ ENVS:
       behavior_test_scene_name: Pomaria_1_int
       behavior_task_list: "[loading_the_dishwasher]"
       behavior_option_model_eval: True
-  locking_every_door-Pomaria_0_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Pomaria_0_int
-      behavior_test_scene_name: Pomaria_0_int
-      behavior_task_list: "[locking_every_door]"
-      behavior_option_model_eval: True
-  locking_every_window-Rs_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Rs_int
-      behavior_test_scene_name: Rs_int
-      behavior_task_list: "[locking_every_window]"
-      behavior_option_model_eval: True
+  # locking_every_door-Pomaria_0_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_train_scene_name: Pomaria_0_int
+  #     behavior_test_scene_name: Pomaria_0_int
+  #     behavior_task_list: "[locking_every_door]"
+  #     behavior_option_model_eval: True
+  # locking_every_window-Rs_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_train_scene_name: Rs_int
+  #     behavior_test_scene_name: Rs_int
+  #     behavior_task_list: "[locking_every_window]"
+  #     behavior_option_model_eval: True
   moving_boxes_to_storage-Merom_0_int:
     NAME: "behavior"
     FLAGS:
@@ -118,20 +118,20 @@ ENVS:
       behavior_test_scene_name: Merom_0_int
       behavior_task_list: "[moving_boxes_to_storage]"
       behavior_option_model_eval: True
-  opening_packages-Pomaria_2_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Pomaria_2_int
-      behavior_test_scene_name: Pomaria_2_int
-      behavior_task_list: "[opening_packages]"
-      behavior_option_model_eval: True
-  opening_presents-Pomaria_2_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Pomaria_2_int
-      behavior_test_scene_name: Pomaria_2_int
-      behavior_task_list: "[opening_presents]"
-      behavior_option_model_eval: True
+  # opening_packages-Pomaria_2_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_train_scene_name: Pomaria_2_int
+  #     behavior_test_scene_name: Pomaria_2_int
+  #     behavior_task_list: "[opening_packages]"
+  #     behavior_option_model_eval: True
+  # opening_presents-Pomaria_2_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_train_scene_name: Pomaria_2_int
+  #     behavior_test_scene_name: Pomaria_2_int
+  #     behavior_task_list: "[opening_presents]"
+  #     behavior_option_model_eval: True
   organizing_boxes_in_garage-Ihlen_0_int:
     NAME: "behavior"
     FLAGS:
@@ -139,13 +139,13 @@ ENVS:
       behavior_test_scene_name: Ihlen_0_int
       behavior_task_list: "[organizing_boxes_in_garage]"
       behavior_option_model_eval: True
-  organizing_file_cabinet-Pomaria_0_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Pomaria_0_int
-      behavior_test_scene_name: Pomaria_0_int
-      behavior_task_list: "[organizing_file_cabinet]"
-      behavior_option_model_eval: True
+  # organizing_file_cabinet-Pomaria_0_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_train_scene_name: Pomaria_0_int
+  #     behavior_test_scene_name: Pomaria_0_int
+  #     behavior_task_list: "[organizing_file_cabinet]"
+  #     behavior_option_model_eval: True
   packing_adult_s_bags-Benevolence_2_int:
     NAME: "behavior"
     FLAGS:
@@ -216,27 +216,27 @@ ENVS:
       behavior_test_scene_name: Ihlen_1_int
       behavior_task_list: "[putting_away_toys]"
       behavior_option_model_eval: True
-  putting_dishes_away_after_cleaning-Beechwood_0_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Beechwood_0_int
-      behavior_test_scene_name: Beechwood_0_int
-      behavior_task_list: "[putting_dishes_away_after_cleaning]"
-      behavior_option_model_eval: True
-  putting_leftovers_away-Ihlen_1_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Ihlen_1_int
-      behavior_test_scene_name: Ihlen_1_int
-      behavior_task_list: "[putting_leftovers_away]"
-      behavior_option_model_eval: True
-  re-shelving_library_books-Pomaria_1_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Pomaria_1_int
-      behavior_test_scene_name: Pomaria_1_int
-      behavior_task_list: "[re-shelving_library_books]"
-      behavior_option_model_eval: True
+  # putting_dishes_away_after_cleaning-Beechwood_0_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_train_scene_name: Beechwood_0_int
+  #     behavior_test_scene_name: Beechwood_0_int
+  #     behavior_task_list: "[putting_dishes_away_after_cleaning]"
+  #     behavior_option_model_eval: True
+  # putting_leftovers_away-Ihlen_1_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_train_scene_name: Ihlen_1_int
+  #     behavior_test_scene_name: Ihlen_1_int
+  #     behavior_task_list: "[putting_leftovers_away]"
+  #     behavior_option_model_eval: True
+  # re-shelving_library_books-Pomaria_1_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_train_scene_name: Pomaria_1_int
+  #     behavior_test_scene_name: Pomaria_1_int
+  #     behavior_task_list: "[re-shelving_library_books]"
+  #     behavior_option_model_eval: True
   setting_up_candles-Beechwood_0_int:
     NAME: "behavior"
     FLAGS:
@@ -244,27 +244,27 @@ ENVS:
       behavior_test_scene_name: Beechwood_0_int
       behavior_task_list: "[setting_up_candles]"
       behavior_option_model_eval: True
-  sorting_books-Pomaria_1_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Pomaria_1_int
-      behavior_test_scene_name: Pomaria_1_int
-      behavior_task_list: "[sorting_books]"
-      behavior_option_model_eval: True
-  storing_food-Beechwood_0_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Beechwood_0_int
-      behavior_test_scene_name: Beechwood_0_int
-      behavior_task_list: "[storing_food]"
-      behavior_option_model_eval: True
-  throwing_away_leftovers-Ihlen_1_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Ihlen_1_int
-      behavior_test_scene_name: Ihlen_1_int
-      behavior_task_list: "[throwing_away_leftovers]"
-      behavior_option_model_eval: True
+  # sorting_books-Pomaria_1_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_train_scene_name: Pomaria_1_int
+  #     behavior_test_scene_name: Pomaria_1_int
+  #     behavior_task_list: "[sorting_books]"
+  #     behavior_option_model_eval: True
+  # storing_food-Beechwood_0_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_train_scene_name: Beechwood_0_int
+  #     behavior_test_scene_name: Beechwood_0_int
+  #     behavior_task_list: "[storing_food]"
+  #     behavior_option_model_eval: True
+  # throwing_away_leftovers-Ihlen_1_int:
+  #   NAME: "behavior"
+  #   FLAGS:
+  #     behavior_train_scene_name: Ihlen_1_int
+  #     behavior_test_scene_name: Ihlen_1_int
+  #     behavior_task_list: "[throwing_away_leftovers]"
+  #     behavior_option_model_eval: True
   unpacking_suitcase-Ihlen_1_int:
     NAME: "behavior"
     FLAGS:
