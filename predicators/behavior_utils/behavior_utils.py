@@ -39,8 +39,11 @@ ALL_RELEVANT_OBJECT_TYPES = {
     'top_cabinet', 'sofa', 'oatmeal', 'chip', 'vegetable_oil', 'sugar',
     'cabinet', 'floor', 'pasta', 'sauce', 'electric_refrigerator', 'olive_oil',
     'sugar_jar', 'spaghetti_sauce', 'mayonnaise', 'fridge', 'board_game',
-    'video_game', 'facsimile'
+    'video_game', 'facsimile', 'ice_cube', 'ginger', 'gym_shoe', 'car', 'mug',
+    'toy', 'hanger', 'candle', 'basket', 'spoon', 'tile', 'pool', 'sock', 
+    'straight_chair', 'sticky_note', 'carton'
 }
+
 PICK_PLACE_OBJECT_TYPES = {
     'mineral_water', 'oatmeal', 'blueberry', 'headset', 'jug', 'flank',
     'baseball', 'crab', 'dressing', 'cranberry', 'trout', 'kale', 'shoe',
@@ -124,8 +127,9 @@ PICK_PLACE_OBJECT_TYPES = {
     'peppermint', 'cruciferous_vegetable', 'soup_ladle', 'jean', 'teddy',
     'chestnut', 'sauce', 'piece_of_cloth', 'whitefish', 'siren', 'balloon',
     'celery', 'hot_pepper', 'raisin', 'sugar_jar', 'toy', 'sticky_note',
-    't-shirt', 'board_game', 'video_game'
+    't-shirt', 'board_game', 'video_game', 'ginger', 'gym_shoe', 'tile'
 }
+
 PLACE_ONTOP_SURFACE_OBJECT_TYPES = {
     'towel', 'tabletop', 'face', 'brim', 'cheddar', 'chaise_longue', 'stove',
     'gaming_table', 'rocking_chair', 'swivel_chair', 'car', 'dartboard',
