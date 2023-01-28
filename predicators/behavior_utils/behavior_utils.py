@@ -47,7 +47,8 @@ ALL_RELEVANT_OBJECT_TYPES = {
     't-shirt', 'cheese', 'detergent', 'catsup', 'pencil_box', 'bracelet',
     'saucepan', 'soap', 'wine_bottle', 'dishwasher', 'lollipop', 'cinnamon',
     'pen', 'sink', 'bow', 'bath_towel', 'sink', 'cruet', 'headset', 
-    'coffee_cup', 'dishtowel', 'mouse'
+    'coffee_cup', 'dishtowel', 'mouse', 'stove', 'duffel_bag', 'broom',
+    'stocking'
 }
 
 PICK_PLACE_OBJECT_TYPES = {
