@@ -9,8 +9,7 @@ from numpy.random._generator import Generator
 from predicators.behavior_utils.behavior_utils import OPENABLE_OBJECT_TYPES, \
     PICK_PLACE_OBJECT_TYPES, PLACE_INTO_SURFACE_OBJECT_TYPES, \
     PLACE_ONTOP_SURFACE_OBJECT_TYPES, TOGGLEABLE_OBJECT_TYPES, \
-    check_hand_end_pose, load_checkpoint_state, sample_navigation_params, \
-    sample_place_inside_params
+    sample_navigation_params, sample_place_inside_params
 from predicators.envs import get_or_create_env
 from predicators.envs.behavior import BehaviorEnv
 from predicators.envs.doors import DoorsEnv
