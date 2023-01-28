@@ -668,13 +668,15 @@ class BehaviorEnv(BaseEnv):
         bddl_predicate: "bddl.AtomicFormula",
     ) -> Callable[[State, Sequence[Object]], bool]:
 
-        def _classifier(s: State, o: Sequence[Object]) -> bool:
+        def _classifier(s: State,
+                        o: Sequence[Object],
+                        skip_allclose_check: bool = False) -> bool:
             # Behavior's predicates store the current object states
             # internally and use them to classify groundings of the
             # predicate. Because of this, we will assert that whenever
             # a predicate classifier is called, the internal simulator
             # state is equal to the state input to the classifier.
-            self._check_state_closeness_and_load(s)
+            self.check_state_closeness_and_load(s, skip_allclose_check)
 
             arity = self._bddl_predicate_arity(bddl_predicate)
             if arity == 1:
@@ -697,12 +699,23 @@ class BehaviorEnv(BaseEnv):
 
         return _classifier
 
-    def _check_state_closeness_and_load(self, state: State) -> None:
+    def check_state_closeness_and_load(self,
+                                       state: State,
+                                       skip_allclose_check: bool = False
+                                       ) -> None:
+        """Method that checks if the current iGibson BEHAVIOR state is close to
+        the one passed in, and loads checkpoint to match the one passed in if
+        not."""
         # If we're using a model-free GNN approach, then the states
         # don't have associated simulator states and we thus cannot check
         # `allclose` or load...
         if CFG.approach == "gnn_option_policy" and not \
             CFG.gnn_option_policy_solve_with_shooting:
+            return
+        # Additionally, if this function has been called with
+        # skip_allclose_check set to true, then we should simply
+        # return without checking anything.
+        if skip_allclose_check:
             return
         if not state.allclose(
                 self.current_ig_state_to_state(
@@ -710,9 +723,11 @@ class BehaviorEnv(BaseEnv):
                     use_test_scene=self.task_instance_id >= 10)):
             load_checkpoint_state(state, self)
 
-    def _reachable_classifier(self, state: State,
-                              objs: Sequence[Object]) -> bool:
-        self._check_state_closeness_and_load(state)
+    def _reachable_classifier(self,
+                              state: State,
+                              objs: Sequence[Object],
+                              skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
         # We assume we're running BEHAVIOR with only 1 agent
@@ -722,7 +737,9 @@ class BehaviorEnv(BaseEnv):
         # If the two objects are the same (i.e reachable(agent, agent)),
         # we always want to return False so that when we learn
         # operators, such predicates don't needlessly appear in preconditions.
-        if self._holding_classifier(state=state, objs=[objs[0]]):
+        if self._holding_classifier(state=state,
+                                    objs=[objs[0]],
+                                    skip_allclose_check=skip_allclose_check):
             return False
         # We also always want reachable-agent to be False so it doesn't
         # appear in any preconditions.
@@ -732,12 +749,18 @@ class BehaviorEnv(BaseEnv):
             np.array(robot_obj.get_position()) -
             np.array(ig_obj.get_position())) < 2)
 
-    def _reachable_nothing_classifier(self, state: State,
-                                      objs: Sequence[Object]) -> bool:
-        self._check_state_closeness_and_load(state)
+    def _reachable_nothing_classifier(
+            self,
+            state: State,
+            objs: Sequence[Object],
+            skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
         assert len(objs) == 0
         for obj in state:
-            if self._reachable_classifier(state=state, objs=[obj]):
+            if self._reachable_classifier(
+                    state=state,
+                    objs=[obj],
+                    skip_allclose_check=skip_allclose_check):
                 return False
         return True
 
@@ -759,40 +782,52 @@ class BehaviorEnv(BaseEnv):
 
         return grasped_objs
 
-    def _handempty_classifier(self, state: State,
-                              objs: Sequence[Object]) -> bool:
-        self._check_state_closeness_and_load(state)
+    def _handempty_classifier(self,
+                              state: State,
+                              objs: Sequence[Object],
+                              skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
         assert len(objs) == 0
         grasped_objs = self._get_grasped_objects(state)
         return len(grasped_objs) == 0
 
-    def _holding_classifier(self, state: State,
-                            objs: Sequence[Object]) -> bool:
-        self._check_state_closeness_and_load(state)
+    def _holding_classifier(self,
+                            state: State,
+                            objs: Sequence[Object],
+                            skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
         assert len(objs) == 1
         grasped_objs = self._get_grasped_objects(state)
         return objs[0] in grasped_objs
 
-    def _openable_classifier(self, state: State,
-                             objs: Sequence[Object]) -> bool:
-        self._check_state_closeness_and_load(state)
+    def _openable_classifier(self,
+                             state: State,
+                             objs: Sequence[Object],
+                             skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
         obj_openable = hasattr(
             ig_obj, "states") and object_states.Open in ig_obj.states
         return obj_openable
 
-    def _not_openable_classifier(self, state: State,
-                                 objs: Sequence[Object]) -> bool:
-        return not self._openable_classifier(state, objs)
+    def _not_openable_classifier(self,
+                                 state: State,
+                                 objs: Sequence[Object],
+                                 skip_allclose_check: bool = False) -> bool:
+        return not self._openable_classifier(state, objs, skip_allclose_check)
 
-    def _closed_classifier(self, state: State, objs: Sequence[Object]) -> bool:
-        self._check_state_closeness_and_load(state)
+    def _closed_classifier(self,
+                           state: State,
+                           objs: Sequence[Object],
+                           skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
         # NOTE: If an object is not openable, we default to setting
         # it to not be closed. It will also not be open.
-        obj_openable = self._openable_classifier(state, objs)
+        obj_openable = self._openable_classifier(
+            state, objs, skip_allclose_check=skip_allclose_check)
         if obj_openable:
             return not ig_obj.states[object_states.Open].get_value()
         return False

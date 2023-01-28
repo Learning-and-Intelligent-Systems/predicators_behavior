@@ -989,7 +989,7 @@ def _sesame_plan_with_fast_downward(
 
     Usage: Build and compile the Fast Downward planner, then set the environment
     variable FD_EXEC_PATH to point to the `downward` directory. For example:
-    1) git clone https://github.com/ronuchit/downward.git
+    1) git clone https://github.com/aibasel/downward.git
     2) cd downward && ./build.py
     3) export FD_EXEC_PATH="<your path here>/downward"
 
@@ -1073,6 +1073,7 @@ def _sesame_plan_with_fast_downward(
             logging.info(f"Env Predicates: {env.predicates}")
             logging.info(f"Domain String: {dom_str}")
             logging.info(f"Problem String: {prob_str}")
+            raise PlanningFailure(f"Plan not found with FD! Error: {output}")
         metrics["num_nodes_expanded"] = float(num_nodes_expanded[0])
         metrics["num_nodes_created"] = float(num_nodes_created[0])
         # Extract the skeleton from the output and compute the atoms_sequence.

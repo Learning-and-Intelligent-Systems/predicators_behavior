@@ -1,7 +1,6 @@
 """Definitions of ground truth NSRTs for all environments."""
 
 import itertools
-import logging
 from typing import List, Sequence, Set, Union, cast
 
 import numpy as np
@@ -48,7 +47,7 @@ def get_gt_nsrts(env_name: str, predicates: Set[Predicate],
         nsrts = _get_cluttered_table_gt_nsrts(env_name)
     elif env_name == "cluttered_table_place":
         nsrts = _get_cluttered_table_gt_nsrts(env_name, with_place=True)
-    elif env_name in ("blocks", "pybullet_blocks"):
+    elif env_name in ("blocks", "pybullet_blocks", "blocks_clear"):
         nsrts = _get_blocks_gt_nsrts(env_name)
     elif env_name == "behavior":
         nsrts = _get_behavior_gt_nsrts()  # pragma: no cover
@@ -968,12 +967,14 @@ def _get_painting_gt_nsrts(env_name: str) -> Set[NSRT]:
             robot_y = state.get(objs[1], "pose_y")
             table_lb = RepeatedNextToPaintingEnv.table_lb
             table_ub = RepeatedNextToPaintingEnv.table_ub
-            assert table_lb < robot_y < table_ub
-            nextto_thresh = RepeatedNextToPaintingEnv.nextto_thresh
-            y_sample_lb = max(table_lb, robot_y - nextto_thresh)
-            y_sample_ub = min(table_ub, robot_y + nextto_thresh)
-            y = rng.uniform(y_sample_lb, y_sample_ub)
-            z = RepeatedNextToPaintingEnv.obj_z
+            y = state.get(objs[0], "pose_y")
+            z = state.get(objs[0], "pose_z")
+            if table_lb < robot_y < table_ub:
+                nextto_thresh = RepeatedNextToPaintingEnv.nextto_thresh
+                y_sample_lb = max(table_lb, robot_y - nextto_thresh)
+                y_sample_ub = min(table_ub, robot_y + nextto_thresh)
+                y = rng.uniform(y_sample_lb, y_sample_ub)
+                z = RepeatedNextToPaintingEnv.obj_z
         return np.array([x, y, z], dtype=np.float32)
 
     placeontable_nsrt = NSRT("PlaceOnTable", parameters, preconditions,
@@ -2934,7 +2935,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         # Get the current env for collision checking.
         env = get_or_create_env("behavior")
         assert isinstance(env, BehaviorEnv)
-        load_checkpoint_state(state, env)
+        env.check_state_closeness_and_load(state)
         # The navigation nsrts are designed such that the target
         # obj is always last in the params list.
         obj_to_sample_near = objects[-1]
@@ -2953,8 +2954,6 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         return np.array([x_offset, y_offset, z_offset])
 
     # Place OnTop sampler definition.
-    MAX_PLACEONTOP_SAMPLES = 25
-
     def place_ontop_obj_pos_sampler(
             state: State, goal: Set[GroundAtom], rng: Generator,
             objects: Union["URDFObject", "RoomFloor"]) -> Array:
@@ -2989,50 +2988,14 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             **params,
         )
 
+        # If we cannot find a sample using BEHAVIOR's utility, fall back onto
+        # our custom-written samplers.
         if sampling_results[0] is None or sampling_results[0][0] is None:
-            # If sampling fails, fall back onto custom-defined object-specific
-            # samplers
-            if objB.category == "shelf":
-                # Get the current env for collision checking.
-                env = get_or_create_env("behavior")
-                assert isinstance(env, BehaviorEnv)
-                load_checkpoint_state(state, env)
-                objB_sampling_bounds = objB.bounding_box / 2
-                sample_params = np.array([
-                    rng.uniform(-objB_sampling_bounds[0],
-                                objB_sampling_bounds[0]),
-                    rng.uniform(-objB_sampling_bounds[1],
-                                objB_sampling_bounds[1]),
-                    rng.uniform(-objB_sampling_bounds[2] + 0.3,
-                                objB_sampling_bounds[1]) + 0.3
-                ])
-                logging.info("Sampling params for placeOnTop shelf...")
-                num_samples_tried = 0
-                while not check_hand_end_pose(env.igibson_behavior_env, objB,
-                                              sample_params):
-                    sample_params = np.array([
-                        rng.uniform(-objB_sampling_bounds[0],
-                                    objB_sampling_bounds[0]),
-                        rng.uniform(-objB_sampling_bounds[1],
-                                    objB_sampling_bounds[1]),
-                        rng.uniform(-objB_sampling_bounds[2] + 0.3,
-                                    objB_sampling_bounds[1]) + 0.3
-                    ])
-                    # NOTE: In many situations, it is impossible to find a
-                    # good sample no matter how many times we try. Thus, we
-                    # break this loop after a certain number of tries so the
-                    # planner will backtrack.
-                    if num_samples_tried > MAX_PLACEONTOP_SAMPLES:
-                        break
-                    num_samples_tried += 1
-                return sample_params
-            # If there's no object specific sampler, just return a
-            # random sample.
-            return np.array([
-                rng.uniform(-0.5, 0.5),
-                rng.uniform(-0.5, 0.5),
-                rng.uniform(0.3, 1.0)
-            ])
+            env = get_or_create_env("behavior")
+            assert isinstance(env, BehaviorEnv)
+            env.check_state_closeness_and_load(state)
+            return sample_place_ontop_params(env.igibson_behavior_env, objB,
+                                             rng)
 
         rnd_params = np.subtract(sampling_results[0][0], objB.get_position())
         return rnd_params

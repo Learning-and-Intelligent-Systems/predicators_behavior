@@ -1115,7 +1115,8 @@ def get_object_combinations(objects: Collection[Object],
 def get_variable_combinations(
         variables: Collection[Variable],
         types: Sequence[Type]) -> Iterator[List[Variable]]:
-    """Get all combinations of objects satisfying the given types sequence."""
+    """Get all combinations of variables satisfying the given types
+    sequence."""
     return _get_entity_combinations(variables, types)
 
 
@@ -1733,7 +1734,9 @@ def strip_task(task: Task, included_predicates: Set[Predicate]) -> Task:
     return Task(task.init, stripped_goal)
 
 
-def abstract(state: State, preds: Collection[Predicate]) -> Set[GroundAtom]:
+def abstract(state: State,
+             preds: Collection[Predicate],
+             skip_allclose_check: bool = False) -> Set[GroundAtom]:
     """Get the atomic representation of the given state (i.e., a set of ground
     atoms), using the given set of predicates.
 
@@ -1742,14 +1745,20 @@ def abstract(state: State, preds: Collection[Predicate]) -> Set[GroundAtom]:
     atoms = set()
     for pred in preds:
         for choice in get_object_combinations(list(state), pred.types):
-            if pred.holds(state, choice):
+            if pred.holds(state,
+                          choice,
+                          skip_allclose_check=skip_allclose_check):
                 atoms.add(GroundAtom(pred, choice))
     return atoms
 
 
 def abstract_from_last(
-        state: State, preds: Collection[Predicate], last_state: State,
-        last_atoms: Set[GroundAtom]) -> Set[GroundAtom]:  # pragma: no cover
+        state: State,
+        preds: Collection[Predicate],
+        last_state: State,
+        last_atoms: Set[GroundAtom],
+        skip_allclose_check: bool = False
+) -> Set[GroundAtom]:  # pragma: no cover
     """Get the atomic representation of the given state (i.e., a set of ground
     atoms), using the given set of predicates and the last state and atoms.
 
@@ -1769,15 +1778,19 @@ def abstract_from_last(
     # reachable and the agent has moved position we want to recompute it.
     for atom in last_atoms:
         if all(obj not in changed_objs for obj in atom.objects):
-            if not ("reachable" in atom.predicate.name and agent_changed):
+            if not ("reachable" in atom.predicate.name and agent_changed) \
+                and (not "openable" in atom.predicate.name) \
+                and (not "handempty" in atom.predicate.name):
                 atoms.add(atom)
     # Computes predicates for atoms with objects whose state has changed.
     for pred in preds:
         for choice in get_object_combinations(list(state), pred.types):
-            if any(obj in changed_objs
-                   for obj in choice) or ("reachable" in pred.name
-                                          and agent_changed):
-                if pred.holds(state, choice):
+            if any(obj in changed_objs for obj in choice) or (
+                    "reachable" in pred.name and agent_changed) or (
+                        "openable" in pred.name) or ("handempty" in pred.name):
+                if pred.holds(state,
+                              choice,
+                              skip_allclose_check=skip_allclose_check):
                     atoms.add(GroundAtom(pred, choice))
     return atoms
 
