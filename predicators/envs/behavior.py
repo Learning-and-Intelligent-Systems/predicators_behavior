@@ -167,6 +167,8 @@ class BehaviorEnv(BaseEnv):
                         ("PlaceInside", planner_fns[2], option_policy_fns[3],
                          option_model_fns[5], 3, 1, (-1.0, 1.0)),
                         ("ToggleOn", planner_fns[3], option_policy_fns[3],
+                         option_model_fns[6], 3, 1, (-1.0, 1.0)),
+                        ("Slice", planner_fns[3], option_policy_fns[3],
                          option_model_fns[6], 3, 1, (-1.0, 1.0))]
         self._options: Set[ParameterizedOption] = set()
         for (name, planner_fn, policy_fn, option_model_fn, param_dim, num_args,
@@ -443,6 +445,10 @@ class BehaviorEnv(BaseEnv):
             ("toggled_on", self._toggled_on_classifier, 1),
             ("toggled-off", self._toggled_off_classifier, 1),
             ("toggleable", self._toggleable_classifier, 1),
+            ("sliceable", self._sliceable_classifier, 1),
+            ("slicer", self._slicer_classifier, 1),
+            ("not-sliced", self._not_sliced_classifier, 1),
+            ("sliced", self._sliced_classifier, 1),
         ]
 
         for name, classifier, arity in custom_predicate_specs:
@@ -863,6 +869,46 @@ class BehaviorEnv(BaseEnv):
         obj_toggleable = hasattr(
             ig_obj, "states") and object_states.ToggledOn in ig_obj.states
         return obj_toggleable
+
+    def _sliceable_classifier(self, state: State,
+                              objs: Sequence[Object], skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_sliceable = hasattr(
+            ig_obj, "states") and object_states.Sliced in ig_obj.states
+        return obj_sliceable
+
+    def _slicer_classifier(self, state: State,
+                              objs: Sequence[Object], skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_slicer = hasattr(
+            ig_obj, "states") and object_states.Slicer in ig_obj.states
+        return obj_slicer
+
+    def _not_sliced_classifier(self, state: State, objs: Sequence[Object], skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        # NOTE: If an object is not sliceable, we default to setting
+        # it be not_sliced, since that's a precondition for grasping
+        obj_sliceable = self._sliceable_classifier(state, objs)
+        if obj_sliceable:
+            return not ig_obj.states[object_states.Sliced].get_value()
+        return True
+
+    def _sliced_classifier(self, state: State, objs: Sequence[Object], skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        # NOTE: If an object is not sliceable, we default to setting
+        # it to not be not_sliced and not be sliced
+        obj_sliceable = self._sliceable_classifier(state, objs)
+        if obj_sliceable:
+            return ig_obj.states[object_states.Sliced].get_value()
+        return False
 
     @staticmethod
     def _ig_object_name(ig_obj: "ArticulatedObject") -> str:

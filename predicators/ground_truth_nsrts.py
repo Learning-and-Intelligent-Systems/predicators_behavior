@@ -8,7 +8,7 @@ from numpy.random._generator import Generator
 
 from predicators.behavior_utils.behavior_utils import OPENABLE_OBJECT_TYPES, \
     PICK_PLACE_OBJECT_TYPES, PLACE_INTO_SURFACE_OBJECT_TYPES, \
-    PLACE_ONTOP_SURFACE_OBJECT_TYPES, TOGGLEABLE_OBJECT_TYPES, \
+    PLACE_ONTOP_SURFACE_OBJECT_TYPES, TOGGLEABLE_OBJECT_TYPES, SLICEABLE_OBJECT_TYPES, SLICER_OBJECT_TYPES, \
     sample_navigation_params, sample_place_inside_params, \
     sample_place_ontop_params
 from predicators.envs import get_or_create_env
@@ -2912,6 +2912,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
     op_name_count_open = itertools.count()
     op_name_count_close = itertools.count()
     op_name_count_place_inside = itertools.count()
+    op_name_count_slice = itertools.count()
 
     # Dummy sampler definition. Useful for open and close.
     def dummy_param_sampler(state: State, goal: Set[GroundAtom],
@@ -3373,6 +3374,46 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     ],
                 ))
             nsrts.add(nsrt)
+
+        elif base_option_name == "Slice":
+            assert len(option_arg_type_names) == 1
+            slice_obj_type_name = option_arg_type_names[0]
+            slice_obj_type = type_name_to_type[slice_obj_type_name]
+            slice_obj = Variable("?obj", slice_obj_type)
+            # We don't need an NSRT to slice objects that are not
+            # sliceable.
+            if slice_obj_type.name not in SLICEABLE_OBJECT_TYPES:
+                continue
+
+            for held_obj_types in sorted(env.task_relevant_types):
+                # If the held object cannot slice, then we don't need
+                # to make an NSRT for it
+                if held_obj_types.name not in SLICER_OBJECT_TYPES:
+                    continue
+                held_obj = Variable("?held", held_obj_types)
+                parameters = [held_obj, slice_obj]
+                option_vars = [slice_obj]
+                preconditions = {
+                    _get_lifted_atom("reachable", [slice_obj]),
+                    _get_lifted_atom("holding", [held_obj]),
+                    _get_lifted_atom("not-sliced", [slice_obj]),
+                    _get_lifted_atom("sliceable", [slice_obj]),
+                }
+                add_effects = {_get_lifted_atom("sliced", [slice_obj])}
+                delete_effects = {_get_lifted_atom("not-sliced", [slice_obj])}
+                nsrt = NSRT(
+                    f"{option.name}-{next(op_name_count_slice)}", parameters,
+                    preconditions, add_effects, delete_effects, set(), option,
+                    option_vars, lambda s, g, r, o: dummy_param_sampler(
+                        s,
+                        g,
+                        r,
+                        [
+                            env.object_to_ig_object(o_i)
+                            if isinstance(o_i, Object) else o_i for o_i in o
+                        ],
+                        ))
+                nsrts.add(nsrt)
 
         else:
             raise ValueError(

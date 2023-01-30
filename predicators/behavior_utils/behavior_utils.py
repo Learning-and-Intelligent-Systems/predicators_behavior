@@ -191,6 +191,48 @@ TOGGLEABLE_OBJECT_TYPES = {
     'facsimile',
 }
 
+SLICEABLE_OBJECT_TYPES = {
+    'cucumber', 'cheddar', 'kabob', 'lime', 'gauze', 'cotton', 'bulbous_plant', 
+    'french_bread', 'mango', 'cauliflower', 'gumbo', 'salami', 'fish', 'blueberry', 
+    'flank', 'hot_pepper', 'sweet_pepper', 'sauerkraut', 'chickpea', 'trout', 'kale',
+    'bun', 'vascular_plant', 'licorice', 'walnut', 'muskmelon', 'shrub', 'drupelet', 
+    'shank', 'frozen_dessert', 'cherry', 'bell_pepper', 'pork', 'sandwich', 'pumpkin', 
+    'turkey', 'pepper', 'winter_melon', 'rib', 'pretzel', 'curd', 'summer_squash', 
+    'melon', 'lettuce', 'honeydew', 'nectarine', 'bean_curd', 'dish', 'gouda', 
+    'cayenne', 'pear', 'gingerbread', 'apricot', 'noodle', 'sausage', 'plum', 'salmon', 
+    'cheese', 'mint', 'eggplant', 'marjoram', 'gorgonzola', 'beefsteak', 'cabbage', 
+    'hazelnut', 'saltwater_fish', 'cupcake', 'solanaceous_vegetable', 'turnip', 
+    'venison', 'breast', 'bird', 'artichoke', 'pomegranate', 'brownie', 'pea', 
+    'white_bread', 'soy_sauce', 'taco', 'egg', 'brie', 'ginger', 'rosemary', 'poultry', 
+    'butter', 'citrus', 'anchovy', 'burrito', 'cornbread', 'grape', 'foil', 'lemon', 
+    'chicory_escarole', 'marshmallow', 'ham', 'sushi', 'prosciutto', 'chicken', 
+    'biscuit', 'rayon', 'parsley', 'red_salmon', 'fillet', 'chives', 'pepperoni', 
+    'muffin', 'thyme', 'baguet', 'potato', 'radish', 'cracker', 'clove', 
+    'alliaceous_plant', 'beef', 'peanut', 'tinfoil', 'julienne', 'garlic', 'scone', 
+    'crust', 'cantaloup', 'porterhouse', 'avocado', 'pasta', 'pie', 'lint', 'pineapple', 
+    'gooseberry', 'cut_of_pork', 'cheesecake', 'tomato', 'dried_fruit', 'banana', 
+    'shallot', 'bow', 'chocolate', 'lasagna', 'blackberry', 'piece', 'salad_green', 
+    'meat_loaf', 'pizza', 'brisket', 'bagel', 'freshwater_fish', 'dill', 'ice_lolly', 
+    'asparagus', 'toast', 'watermelon', 'cut_of_beef', 'quick_bread', 'mushroom', 
+    'olive', 'date', 'sheet_metal', 'saute', 'bacon', 'raspberry', 'alfalfa', 'tart', 
+    'dough', 'pancake', 'tortilla', 'fig', 'strawberry', 'chili', 'knitwear', 'coconut', 
+    'onion', 'spinach', 'carrot', 'grapefruit', 'mozzarella', 'pomelo', 'peach', 
+    'drumstick', 'prawn', 'silver_salmon', 'parmesan', 'feijoa', 'pome', 'papaya', 
+    'basil', 'chicory', 'almond', 'green_onion', 'woody_plant', 'head_cabbage', 'meatball', 
+    'comfrey', 'drupe', 'currant', 'crouton', 'bleu', 'cos', 'margarine', 'radicchio', 
+    'pita', 'nut', 'tuna', 'sirloin', 'veal', 'flatbread', 'steak', 'broccoli', 'casserole', 
+    'peppermint', 'cruciferous_vegetable', 'cornice', 'loaf_of_bread', 'coriander', 'lamb', 
+    'chestnut', 'liliaceous_plant', 'rump', 'zucchini', 'whitefish', 'vidalia_onion', 
+    'kiwi', 'mandarin', 'game', 'celery', 'squash', 'hamburger', 'acetate_rayon', 'orange', 
+    'cutlet', 'apple', 'tenderloin', 'fudge', 'raisin'
+}
+
+SLICER_OBJECT_TYPES = {
+    'hacksaw', 'stiletto', 'carving_knife', 'clipper', 'garden_tool', 'dagger', 
+    'table_knife', 'razor', 'shaver', 'pruning_saw', 'knife', 'chisel', 'lawn_mower', 
+    'saw', 'edge_tool', 'cleaver', 'scissors', 'handsaw', 'pocketknife', 'trimmer', 
+    'shear', 'pruner', 'cutter'
+}
 
 def get_aabb_volume(lo: Array, hi: Array) -> float:
     """Simple utility function to compute the volume of an aabb.
