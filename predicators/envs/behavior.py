@@ -834,7 +834,7 @@ class BehaviorEnv(BaseEnv):
 
     def _toggled_on_classifier(self, state: State,
                                objs: Sequence[Object]) -> bool:
-        self._check_state_closeness_and_load(state)
+        self.check_state_closeness_and_load(state)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
         obj_toggleable = self._toggleable_classifier(state, objs)
@@ -845,13 +845,13 @@ class BehaviorEnv(BaseEnv):
 
     def _toggled_off_classifier(self, state: State,
                                 objs: Sequence[Object]) -> bool:
-        self._check_state_closeness_and_load(state)
+        self.check_state_closeness_and_load(state)
         assert len(objs) == 1
         return not self._toggled_on_classifier(state, objs)
 
     def _toggleable_classifier(self, state: State,
                                objs: Sequence[Object]) -> bool:
-        self._check_state_closeness_and_load(state)
+        self.check_state_closeness_and_load(state)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
         obj_toggleable = hasattr(
