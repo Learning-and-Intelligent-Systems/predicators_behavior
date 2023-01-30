@@ -832,9 +832,11 @@ class BehaviorEnv(BaseEnv):
             return not ig_obj.states[object_states.Open].get_value()
         return False
 
-    def _toggled_on_classifier(self, state: State,
-                               objs: Sequence[Object]) -> bool:
-        self.check_state_closeness_and_load(state)
+    def _toggled_on_classifier(self,
+                               state: State,
+                               objs: Sequence[Object],
+                               skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
         obj_toggleable = self._toggleable_classifier(state, objs)
@@ -843,15 +845,19 @@ class BehaviorEnv(BaseEnv):
                 return True
         return False
 
-    def _toggled_off_classifier(self, state: State,
-                                objs: Sequence[Object]) -> bool:
-        self.check_state_closeness_and_load(state)
+    def _toggled_off_classifier(self,
+                                state: State,
+                                objs: Sequence[Object],
+                                skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
         assert len(objs) == 1
         return not self._toggled_on_classifier(state, objs)
 
-    def _toggleable_classifier(self, state: State,
-                               objs: Sequence[Object]) -> bool:
-        self.check_state_closeness_and_load(state)
+    def _toggleable_classifier(self,
+                               state: State,
+                               objs: Sequence[Object],
+                               skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
         obj_toggleable = hasattr(
