@@ -48,7 +48,7 @@ from predicators.behavior_utils.option_model_fns import \
     create_close_option_model, create_grasp_option_model, \
     create_navigate_option_model, create_open_option_model, \
     create_place_inside_option_model, create_place_option_model, \
-    create_toggle_on_option_model
+    create_toggle_on_option_model, create_clean_dusty_option_model
 from predicators.envs import BaseEnv
 from predicators.settings import CFG
 from predicators.structs import Action, Array, GroundAtom, Object, \
@@ -150,6 +150,7 @@ class BehaviorEnv(BaseEnv):
                          create_close_option_model,
                          create_place_inside_option_model,
                          create_toggle_on_option_model,
+                         create_clean_dusty_option_model,
                      ]
 
         # name, planner_fn, option_policy_fn, option_model_fn,
@@ -167,7 +168,8 @@ class BehaviorEnv(BaseEnv):
                         ("PlaceInside", planner_fns[2], option_policy_fns[3],
                          option_model_fns[5], 3, 1, (-1.0, 1.0)),
                         ("ToggleOn", planner_fns[3], option_policy_fns[3],
-                         option_model_fns[6], 3, 1, (-1.0, 1.0))]
+                         option_model_fns[6], 3, 1, (-1.0, 1.0)), 
+                        ("CleanDusty", planner_fns[3], option_policy_fns[3], option_model_fns[7], 3, 1, (-1.0, 1.0))]
         self._options: Set[ParameterizedOption] = set()
         for (name, planner_fn, policy_fn, option_model_fn, param_dim, num_args,
              parameter_limits) in option_elems:
@@ -362,8 +364,13 @@ class BehaviorEnv(BaseEnv):
             if head_expr.terms[0] == 'not':
                 # Currently, the only goals that include 'not' are those that
                 # include 'not open' statements, so turn these into 'closed'.
-                assert head_expr.terms[1] == 'open'
-                bddl_name = 'closed'
+                # import ipdb; ipdb.set_trace()
+                if head_expr.terms[1] == 'open':
+                    bddl_name = 'closed'
+                elif head_expr.terms[1] == "dusty":
+                    bddl_name = "not-dusty"
+                else:
+                    raise AssertionError()
                 obj_start_idx = 2
             else:
                 bddl_name = head_expr.terms[0]  # untyped
@@ -393,7 +400,7 @@ class BehaviorEnv(BaseEnv):
                 "inside",
                 # "nextto",
                 "ontop",
-                # "under",
+                "under",
                 # "touching",
                 # NOTE: OnFloor(robot, floor) does not evaluate to true
                 # even though it's in the initial BDDL state, because
@@ -443,6 +450,10 @@ class BehaviorEnv(BaseEnv):
             ("toggled_on", self._toggled_on_classifier, 1),
             ("toggled-off", self._toggled_off_classifier, 1),
             ("toggleable", self._toggleable_classifier, 1),
+            ("cleaner", self._cleaner_classifier, 1),
+            ("dustyable", self._dustyable_classifier, 1),
+            ("dusty", self._dusty_classifier, 1),
+            ("not-dusty", self._not_dusty_classifier, 1),
         ]
 
         for name, classifier, arity in custom_predicate_specs:
@@ -863,6 +874,40 @@ class BehaviorEnv(BaseEnv):
         obj_toggleable = hasattr(
             ig_obj, "states") and object_states.ToggledOn in ig_obj.states
         return obj_toggleable
+
+    def _cleaner_classifier(self, state: State, objs: Sequence[Object], skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_cleaner = hasattr(
+             ig_obj, "states") and object_states.CleaningTool in ig_obj.states
+        return obj_cleaner
+
+    def _dustyable_classifier(self, state: State, objs: Sequence[Object], skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_dustyable = hasattr(
+            ig_obj, "states") and object_states.Dusty in ig_obj.states
+        return obj_dustyable
+
+    def _dusty_classifier(self, state: State, objs: Sequence[Object], skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_dustyable = self._dustyable_classifier(state, objs)
+        if obj_dustyable:
+            return ig_obj.states[object_states.Dusty].get_value()
+        return False
+
+    def _not_dusty_classifier(self, state: State, objs: Sequence[Object], skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_dustyable = self._dustyable_classifier(state, objs)
+        if obj_dustyable:
+            return not ig_obj.states[object_states.Dusty].get_value()
+        return False
 
     @staticmethod
     def _ig_object_name(ig_obj: "ArticulatedObject") -> str:
