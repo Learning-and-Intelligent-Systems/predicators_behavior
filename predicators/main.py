@@ -237,6 +237,7 @@ def _generate_interaction_results(
                 utils.RequestActPolicyFailure
             },
             monitor=monitor)
+        import ipdb; ipdb.set_trace()
         request_responses = monitor.get_responses()
         query_cost += monitor.get_query_cost()
         result = InteractionResult(traj.states, traj.actions,
@@ -352,6 +353,7 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
                     max_num_steps=CFG.horizon,
                     monitor=monitor)
                 solved = task.goal_holds(traj.states[-1])
+            import ipdb; ipdb.set_trace()
             exec_time = execution_metrics["policy_call_time"]
             metrics[f"PER_TASK_task{test_task_idx}_exec_time"] = exec_time
             # In this case, traj is not defined, and env is not behavior.

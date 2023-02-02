@@ -365,12 +365,14 @@ class BehaviorEnv(BaseEnv):
                 # Currently, the only goals that include 'not' are those that
                 # include 'not open' statements, so turn these into 'closed'.
                 # import ipdb; ipdb.set_trace()
+                # assert head_expr.terms[1] == 'open'
+                # bddl_name = 'closed'
                 if head_expr.terms[1] == 'open':
                     bddl_name = 'closed'
                 elif head_expr.terms[1] == "dusty":
                     bddl_name = "not-dusty"
                 else:
-                    raise AssertionError()
+                    raise ValueError()
                 obj_start_idx = 2
             else:
                 bddl_name = head_expr.terms[0]  # untyped
