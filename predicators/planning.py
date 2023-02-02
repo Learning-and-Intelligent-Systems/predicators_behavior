@@ -504,7 +504,6 @@ def run_low_level_search(
         None for _ in skeleton
     ]
     while cur_idx < len(skeleton):
-        import ipdb; ipdb.set_trace()
         if time.perf_counter() - start_time > timeout:
             return longest_failed_refinement, False, traj
         assert num_tries[cur_idx] < max_tries[cur_idx]
@@ -631,7 +630,6 @@ def run_low_level_search(
                                     longest_failed_refinement
                                 })
                     return longest_failed_refinement, False, traj
-        import ipdb; ipdb.set_trace()
     # Should only get here if the skeleton was empty.
     assert not skeleton
     return [], True, traj

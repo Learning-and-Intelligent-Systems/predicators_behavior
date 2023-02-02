@@ -48,7 +48,7 @@ from predicators.behavior_utils.option_model_fns import \
     create_close_option_model, create_grasp_option_model, \
     create_navigate_option_model, create_open_option_model, \
     create_place_inside_option_model, create_place_option_model, \
-    create_toggle_on_option_model, create_clean_dusty_option_model
+    create_toggle_on_option_model, create_clean_dusty_option_model, create_place_under_option_model
 from predicators.envs import BaseEnv
 from predicators.settings import CFG
 from predicators.structs import Action, Array, GroundAtom, Object, \
@@ -151,6 +151,7 @@ class BehaviorEnv(BaseEnv):
                          create_place_inside_option_model,
                          create_toggle_on_option_model,
                          create_clean_dusty_option_model,
+                         create_place_under_option_model,
                      ]
 
         # name, planner_fn, option_policy_fn, option_model_fn,
@@ -169,7 +170,8 @@ class BehaviorEnv(BaseEnv):
                          option_model_fns[5], 3, 1, (-1.0, 1.0)),
                         ("ToggleOn", planner_fns[3], option_policy_fns[3],
                          option_model_fns[6], 3, 1, (-1.0, 1.0)), 
-                        ("CleanDusty", planner_fns[3], option_policy_fns[3], option_model_fns[7], 3, 1, (-1.0, 1.0))]
+                        ("CleanDusty", planner_fns[3], option_policy_fns[3], option_model_fns[7], 3, 1, (-1.0, 1.0)), 
+                        ("PlaceUnder", planner_fns[2], option_policy_fns[2], option_policy_fns[2], 3, 1, (-1.0, 1.0))]
         self._options: Set[ParameterizedOption] = set()
         for (name, planner_fn, policy_fn, option_model_fn, param_dim, num_args,
              parameter_limits) in option_elems:
@@ -341,11 +343,12 @@ class BehaviorEnv(BaseEnv):
             init_state = self.current_ig_state_to_state(use_test_scene=testing)
             goal = self._get_task_goal()
             #### TODO Kathryn
-            new_goal = set()
-            for atom in goal:
-                if "under" not in str(atom):
-                    new_goal.add(atom)
-            goal = new_goal
+            # new_goal = set()
+            # for atom in goal:
+            #     if "under" in str(atom):
+            #         new_goal.add(atom)
+            # goal = new_goal
+            # import ipdb; ipdb.set_trace()
             ####
             task = Task(init_state, goal)
             # If the goal already happens to hold in the init state, then
