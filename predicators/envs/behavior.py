@@ -340,6 +340,13 @@ class BehaviorEnv(BaseEnv):
                     np.zeros(self.igibson_behavior_env.action_space.shape))
             init_state = self.current_ig_state_to_state(use_test_scene=testing)
             goal = self._get_task_goal()
+            #### TODO Kathryn
+            new_goal = set()
+            for atom in goal:
+                if "under" not in str(atom):
+                    new_goal.add(atom)
+            goal = new_goal
+            ####
             task = Task(init_state, goal)
             # If the goal already happens to hold in the init state, then
             # resample.
