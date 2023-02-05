@@ -10,6 +10,7 @@ from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple, Union
 import matplotlib
 import numpy as np
 from numpy.random._generator import Generator
+from pathlib import Path
 
 try:
     import bddl
@@ -347,6 +348,99 @@ class BehaviorEnv(BaseEnv):
             self.task_num += 1
 
         return tasks
+
+    def _get_language_goal_prompt_prefix(self) -> str:
+        # pylint:disable=line-too-long
+        # pred_list_str = '"inside(?obj1, ?obj2)", "nextto(?obj)",  "ontop(?obj1, ?obj2)",  "under(?obj1, ?obj2)", "touching(?obj1, ?obj2)",  "cooked(?obj)", "burnt(?obj)", "frozen(?obj)", "soaked(?obj)", "open(?obj)", "dusty(?obj)", "stained(?obj)",  "sliced(?obj)", and  "toggled_on(?obj)"'
+        pred_list_str = '"inside(?obj1, ?obj2)",  "ontop(?obj1, ?obj2)", "open(?obj)", "dusty(?obj)", and "sliced(?obj)"'
+        obj_list_str = '"' + '", "'.join([obj.name for obj in self._get_task_relevant_objects() if "BR" not in obj.name]) + '"'
+        return (
+            f'Given that I’m trying to create a Goal in PDDL from a text description. The goal should use these predicates: {pred_list_str}. Given a one line description of the goal represented as predicates with grounded objects, for example:\n'
+            'Put object 1 on top of object 2 and object 2 on table\n'
+            '(and (ontop object_1 object_2) (ontop object_2 table))\n'
+            'Dust the fridge and layout sliced fruit for snacks later\n'
+            '(and (not (dusty fridge_1)) (sliced apple_18) (inside apple_18 fridge_1))"\n\n'
+            f'When giving your goal response only use objects in this list: {obj_list_str}. The text description of the goal is as follows:"\n'
+        )
+
+    def _load_task_from_json(self, json_file: Path) -> Task:
+        id_to_obj: Dict[str, Object] = {}  # used in the goal construction
+
+        curr_env_seed = 0
+        # ID used to generate scene in BEHAVIOR default scene is 11
+        self.task_instance_id = 0
+        scene_name = CFG.behavior_test_scene_name
+        if CFG.behavior_randomize_init_state:
+            self.task_instance_id = 11
+            # Check to see if task_instance_id is in broken_instances.
+            assert len(CFG.behavior_task_list) == 1
+            task_name = CFG.behavior_task_list[0]
+            if task_name in self.task_to_broken_instances:
+                if scene_name in self.task_to_broken_instances[task_name]:
+                    broken_instances = self.task_to_broken_instances[task_name][scene_name]
+                    assert self.task_instance_id not in broken_instances['test']
+            if (CFG.behavior_train_scene_name != CFG.behavior_test_scene_name):
+                self._config_file = modify_config_file(
+                    os.path.join(igibson.root_path,
+                                    CFG.behavior_config_file),
+                    CFG.behavior_task_list[0], scene_name, False, CFG.seed)
+            self.set_igibson_behavior_env(
+                task_num=self.task_num,
+                task_instance_id=self.task_instance_id,
+                seed=curr_env_seed)
+            self.set_options()
+        self.igibson_behavior_env.reset()
+        self.task_num_task_instance_id_to_igibson_seed[(
+            self.task_num, self.task_instance_id)] = curr_env_seed
+        behavior_task_name = CFG.behavior_task_list[0] if len(
+            CFG.behavior_task_list) == 1 else "all"
+        os.makedirs(f"tmp_behavior_states/{scene_name}__" +
+                    f"{behavior_task_name}__{CFG.num_train_tasks}__" +
+                    f"{CFG.seed}__{self.task_num}__" +
+                    f"{self.task_instance_id}",
+                    exist_ok=True)
+
+        # NOTE: We load_checkpoint_state here because there appears to
+        # be a subtle difference between calling the predicate classifiers
+        # on a particular state, and calling them after loading checkpoint
+        # on that particular state. Doing this resolves that discrepancy.
+        load_checkpoint_state(
+            self.current_ig_state_to_state(use_test_scene=True), self)
+
+        # Initial state objects might not have settled yet, so we step the
+        # simulator a few times to let the objects settle.
+        for _ in range(15):
+            self.igibson_behavior_env.step(
+                np.zeros(self.igibson_behavior_env.action_space.shape))
+        init_state = self.current_ig_state_to_state(use_test_scene=True)
+
+        # TODO Get Behavior id_to_obj
+        for obj in self._get_task_relevant_objects():
+            id_to_obj[obj.name] = self._ig_object_to_object(obj)
+
+        # If input response make json file
+        if CFG.llm_input:
+            print(init_state.pretty_str() + "\n")
+            language_goal = input(f"[ChatGPT] With these objects: {', '.join(id_to_obj.keys())}\n\n[ChatGPT] What do you want the robot to do? >> ")
+            task_spec = {
+                "problem_name": "behavior_test_problem",
+                "language_goal": language_goal
+            }
+        else:
+            with open(json_file, "r", encoding="utf-8") as f:
+                task_spec = json.load(f)
+
+        # Create the goal from the task spec.
+        if "goal" in task_spec:
+            goal = self._parse_goal_from_json(task_spec["goal"], id_to_obj)
+        elif "language_goal" in task_spec:
+            goal = self._parse_language_goal_from_json(
+                task_spec["language_goal"], id_to_obj)
+        else:
+            raise ValueError("JSON task spec must include 'goal'.")
+        task = Task(init_state, goal)
+        assert not task.goal_holds(init_state)
+        return task
 
     def _get_task_goal(self) -> Set[GroundAtom]:
         # Currently assumes that the goal is a single AND of

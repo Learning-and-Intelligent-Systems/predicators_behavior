@@ -239,7 +239,34 @@ class BaseEnv(abc.ABC):
         # Currently assumes that the LLM is perfect. In the future, will need
         # to handle various errors and perhaps query the LLM for multiple
         # responses until we find one that can be parsed.
-        goal_spec = json.loads(response)
+        try:
+            goal_spec = json.loads(response)
+        except json.decoder.JSONDecodeError:
+            import re
+            goal_spec = {}
+            all_atom_str = re.findall(r'\((.*?)\)', response.strip().replace("(and", ""))
+            for atom_str in all_atom_str:
+                if "not (" in atom_str:
+                    atom_str = atom_str.replace("not (", "not-")
+                pred_str = atom_str.split(" ")[0]
+                objs_str = atom_str.split(" ")[1:]
+                if CFG.env == "behavior":
+                    new_objs_str = []
+                    for o in objs_str:
+                        if 'room_floor' in o :
+                            new_objs_str.append('room_floor')
+                        else:
+                            if "-" in o:
+                                new_objs_str.append(o.split("-")[0])
+                            else:
+                                new_objs_str.append("_".join(o.split("_")[:-1]))
+                    pred_str = pred_str + "-" + "-".join(new_objs_str)
+                if pred_str in goal_spec:
+                    goal_spec[pred_str].append(objs_str)
+                else:
+                    goal_spec[pred_str] = [objs_str]
+        if CFG.env == "behavior":
+            print(goal_spec)
         return self._parse_goal_from_json(goal_spec, id_to_obj)
 
     def get_task(self, train_or_test: str, task_idx: int) -> Task:

@@ -125,7 +125,7 @@ PICK_PLACE_OBJECT_TYPES = {
     'peppermint', 'cruciferous_vegetable', 'soup_ladle', 'jean', 'teddy',
     'chestnut', 'sauce', 'piece_of_cloth', 'whitefish', 'siren', 'balloon',
     'celery', 'hot_pepper', 'raisin', 'sugar_jar', 'toy', 'sticky_note',
-    't-shirt', 'board_game', 'video_game'
+    't-shirt', 'board_game', 'video_game', 'package'
 }
 PLACE_ONTOP_SURFACE_OBJECT_TYPES = {
     'towel', 'tabletop', 'face', 'brim', 'cheddar', 'chaise_longue', 'stove',
@@ -141,7 +141,7 @@ PLACE_ONTOP_SURFACE_OBJECT_TYPES = {
     'paper_towel', 'dishtowel', 'dial', 'folding_chair', 'deck', 'chair',
     'hamper', 'bed', 'plate', 'work_surface', 'board', 'pallet',
     'console_table', 'pool_table', 'electric_refrigerator', 'stand',
-    'room_floor', 'notebook', 'hardback'
+    'room_floor', 'notebook', 'hardback', 'package'
 }
 PLACE_INTO_SURFACE_OBJECT_TYPES = {
     'shelf', 'sack', 'basket', 'dredging_bucket', 'cabinet', 'crock', 'bucket',
@@ -149,7 +149,7 @@ PLACE_INTO_SURFACE_OBJECT_TYPES = {
     'bathtub', 'car', 'vase', 'jar', 'bin', 'mantel', 'stocking', 'ashcan',
     'electric_refrigerator', 'clamshell', 'backpack', 'sink', 'carton', 'dish',
     'trash_can', 'bottom_cabinet_no_top', 'fridge', 'bottom_cabinet',
-    'top_cabinet'
+    'top_cabinet', 'package'
 }
 OPENABLE_OBJECT_TYPES = {
     'sack', 'storage_space', 'trap', 'turnbuckle', 'lock', 'trailer_truck',
