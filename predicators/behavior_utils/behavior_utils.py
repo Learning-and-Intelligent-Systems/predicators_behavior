@@ -49,7 +49,10 @@ ALL_RELEVANT_OBJECT_TYPES = {
     'saucepan', 'soap', 'wine_bottle', 'dishwasher', 'lollipop', 'cinnamon',
     'pen', 'sink', 'bow', 'bath_towel', 'sink', 'cruet', 'headset', 
     'coffee_cup', 'dishtowel', 'mouse', 'stove', 'duffel_bag', 'broom',
-    'stocking', 'parsley', 'yogurt', 'guacamole', 'paper_towel'
+    'stocking', 'parsley', 'yogurt', 'guacamole', 'paper_towel', 'gym_shoe',
+    'sock', 'modem', 'spoon', 'sticky_note', 'scanner', 'carton', 'rag', 
+    'printer'
+
 }
 PICK_PLACE_OBJECT_TYPES = {
     'mineral_water', 'oatmeal', 'blueberry', 'headset', 'jug', 'flank',
