@@ -427,58 +427,73 @@ def create_place_under_option_model(
         rh_orig_grasp_position = env.robots[0].parts[
             "right_hand"].get_position()
         rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
-        # If we're not overriding the learned samplers, then we will directly
-        # use the elements of `plan`, which in turn use the outputs of the
-        # learned samplers. Otherwise, we will ignore these and use our
-        # oracle sampler to give us values to use.
-        if not CFG.behavior_override_learned_samplers:
-            target_pos = plan[-1][0:3]
-            target_orn = plan[-1][3:6]
-        else:
-            rng = np.random.default_rng(prng.randint(10000))
-            sample_arr = sample_place_under_params(env, obj_to_place_under, rng)
-            target_pos = np.add(sample_arr, \
-                obj_to_place_under.get_position()).tolist()
-            target_orn = [0, np.pi * 7 / 6, 0]
-            logging.info(f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
-                         "and attempting to " +
-                         f"place under {obj_to_place_under.name} with "
-                         f"params {target_pos}")
+        if obj_in_hand is not None and obj_in_hand != obj_to_place_under and \
+            isinstance(obj_to_place_under, URDFObject):
+            logging.info(
+                f"PRIMITIVE: attempt to place {obj_in_hand.name} under "
+                f"{obj_to_place_under.name}")
+            if np.linalg.norm(
+                    np.array(obj_to_place_under.get_position()) -
+                    np.array(env.robots[0].get_position())) < 2:
+                # import ipdb; ipdb.set_trace()
+                if (hasattr(obj_to_place_under, "states")
+                        and object_states.Under in obj_to_place_under.states
+                        and (obj_in_hand.states[object_states.Under].get_value(obj_to_place_under) or obj_to_place_under.states[object_states.Under].get_value(obj_in_hand))):
+                    logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
+                                 f"{obj_to_place_under.name} success")
 
-        env.robots[0].parts["right_hand"].set_position_orientation(
-            target_pos, p.getQuaternionFromEuler(target_orn))
-        env.robots[0].parts["right_hand"].force_release_obj()
-        obj_in_hand.set_position_orientation(
-            target_pos, p.getQuaternionFromEuler(target_orn))
-        obj_to_place_under.force_wakeup()
-        # this is running a zero action to step simulator
-        env.step(np.zeros(env.action_space.shape))
-        # reset the released object to zero velocity so it doesn't
-        # fly away because of residual warp speeds from teleportation!
-        p.resetBaseVelocity(
-            obj_in_hand_idx,
-            linearVelocity=[0, 0, 0],
-            angularVelocity=[0, 0, 0],
-        )
-        env.robots[0].parts["right_hand"].set_position_orientation(
-            rh_orig_grasp_position, rh_orig_grasp_orn)
-        # this is running a series of zero action to step simulator
-        # to let the object fall into its place
-        for _ in range(15):
-            env.step(np.zeros(env.action_space.shape))
-        
-        if np.linalg.norm(
-                np.array(obj_to_place_under.get_position()) -
-                np.array(env.robots[0].get_position())) < 2:
-            if hasattr(
-                    obj_to_place_under, "states"
-            ) and object_states.Under in obj_to_place_under.states:
-                obj_to_place_under.states[object_states.Under].set_value(
-                    True)
+                    # If we're not overriding the learned samplers, then we
+                    # will directly use the elements of `plan`, which in turn
+                    # use the outputs of the learned samplers. Otherwise, we
+                    # will ignore these and use our oracle sampler to give us
+                    # values to use.
+                    if not CFG.behavior_override_learned_samplers:
+                        target_pos = plan[-1][0:3]
+                        target_orn = plan[-1][3:6]
+                    else:
+                        rng = np.random.default_rng(prng.randint(10000))
+                        place_rel_pos = sample_place_inside_params(
+                            obj_to_place_under, rng)
+                        target_pos_list = np.add(
+                            place_rel_pos, obj_to_place_under.get_position())
+                        target_pos_list[2] += 0.2
+                        target_pos = target_pos_list.tolist()
+                        target_orn = plan[-1][3:6]
+                        logging.info(
+                            f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
+                            f", {plan[-1][3:6]}) and attempting to " +
+                            f"place under to {obj_to_place_under.name} with "
+                            f"params {target_pos}")
+                    env.robots[0].parts["right_hand"].force_release_obj()
+                    obj_to_place_under.force_wakeup()
+                    obj_in_hand.set_position_orientation(
+                        target_pos, p.getQuaternionFromEuler(target_orn))
+                    # this is running a zero action to step simulator
+                    env.step(np.zeros(env.action_space.shape))
+                    # reset the released object to zero velocity so it
+                    # doesn't fly away because of residual warp speeds
+                    # from teleportation!
+                    p.resetBaseVelocity(
+                        obj_in_hand_idx,
+                        linearVelocity=[0, 0, 0],
+                        angularVelocity=[0, 0, 0],
+                    )
+                    env.robots[0].parts["right_hand"].set_position_orientation(
+                        rh_orig_grasp_position, rh_orig_grasp_orn)
+                    # this is running a series of zero action to step
+                    # simulator to let the object fall into its place
+                    for _ in range(15):
+                        env.step(np.zeros(env.action_space.shape))
+                else:
+                    logging.info(
+                        f"PRIMITIVE: place {obj_in_hand.name} under "
+                        f"{obj_to_place_under.name} fail, not under")
+                    # import ipdb; ipdb.set_trace()
             else:
-                logging.info("PRIMITIVE toggle failed, cannot be placed under")
+                logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
+                             f"{obj_to_place_under.name} fail, too far")
         else:
-            logging.info("PRIMITIVE PlaceUnder failed, too far")
+            logging.info("PRIMITIVE: place under failed with invalid obj params.")
 
         obj_to_place_under.force_wakeup()
         # Step the simulator to update visuals.

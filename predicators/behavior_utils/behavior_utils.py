@@ -649,7 +649,7 @@ def sample_place_under_params(igibson_behavior_env: "BehaviorEnv",
             rng.uniform(-obj_to_place_under_sampling_bounds[1],
                         obj_to_place_under_sampling_bounds[1]),
             rng.uniform(-obj_to_place_under_sampling_bounds[2] - 0.3,
-                        obj_to_place_under_sampling_bounds[2]) - 0.3
+                        -obj_to_place_under_sampling_bounds[2])
         ])
 
         logging.info("Sampling params for placeUnder table...")

@@ -171,7 +171,7 @@ class BehaviorEnv(BaseEnv):
                         ("ToggleOn", planner_fns[3], option_policy_fns[3],
                          option_model_fns[6], 3, 1, (-1.0, 1.0)), 
                         ("CleanDusty", planner_fns[3], option_policy_fns[3], option_model_fns[7], 3, 1, (-1.0, 1.0)), 
-                        ("PlaceUnder", planner_fns[2], option_policy_fns[2], option_policy_fns[2], 3, 1, (-1.0, 1.0))]
+                        ("PlaceUnder", planner_fns[2], option_policy_fns[3], option_model_fns[8], 3, 1, (-1.0, 1.0))]
         self._options: Set[ParameterizedOption] = set()
         for (name, planner_fn, policy_fn, option_model_fn, param_dim, num_args,
              parameter_limits) in option_elems:
