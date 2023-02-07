@@ -48,7 +48,7 @@ from predicators.behavior_utils.option_model_fns import \
     create_close_option_model, create_grasp_option_model, \
     create_navigate_option_model, create_open_option_model, \
     create_place_inside_option_model, create_place_option_model, \
-    create_toggle_on_option_model
+    create_toggle_on_option_model, create_slice_option_model
 from predicators.envs import BaseEnv
 from predicators.settings import CFG
 from predicators.structs import Action, Array, GroundAtom, Object, \
@@ -150,6 +150,7 @@ class BehaviorEnv(BaseEnv):
                          create_close_option_model,
                          create_place_inside_option_model,
                          create_toggle_on_option_model,
+                         create_slice_option_model,
                      ]
 
         # name, planner_fn, option_policy_fn, option_model_fn,
@@ -169,7 +170,7 @@ class BehaviorEnv(BaseEnv):
                         ("ToggleOn", planner_fns[3], option_policy_fns[3],
                          option_model_fns[6], 3, 1, (-1.0, 1.0)),
                         ("Slice", planner_fns[3], option_policy_fns[3],
-                         option_model_fns[6], 3, 1, (-1.0, 1.0))]
+                         option_model_fns[7], 3, 1, (-1.0, 1.0))]
         self._options: Set[ParameterizedOption] = set()
         for (name, planner_fn, policy_fn, option_model_fn, param_dim, num_args,
              parameter_limits) in option_elems:
@@ -552,8 +553,23 @@ class BehaviorEnv(BaseEnv):
             obj for obj in self.igibson_behavior_env.scene.get_objects()
             if "board_game" in obj.name or "video_game" in obj.name
         ]
+
+        # NOTE: sliceable objects are multiplexers with one URDFObject (which
+        # is used as the object while not_sliced) and one GroupedObject (which
+        # contains two halves of the object to be treated as individual objects)
+        # after slicing. Therefore, we add the multiplexer as a single object
+        # (handled above in initial_list) and each of the two elements in the
+        # grouped object (handled below)
+        multiplexed_list = []
+        for obj in initial_list:
+            if isinstance(obj, ObjectMultiplexer):
+                obj.multiplexer.set_selection(1)
+                for sub_obj in obj.objects:
+                    multiplexed_list.append(sub_obj)
+                    obj.multiplexer.set_selection(0)
+
         return list(self.igibson_behavior_env.task.object_scope.values()
-                    ) + additional_objs
+                    ) + additional_objs + multiplexed_list
 
     def set_igibson_behavior_env(self, task_num: int, task_instance_id: int,
                                  seed: int) -> None:

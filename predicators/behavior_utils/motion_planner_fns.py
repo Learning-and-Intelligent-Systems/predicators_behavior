@@ -25,6 +25,7 @@ try:
     from igibson.objects.articulated_object import URDFObject
     from igibson.utils.behavior_robot_planning_utils import \
         plan_base_motion_br  # , plan_hand_motion_br
+    from igibson.objects.multi_object_wrappers import ObjectMultiplexer 
 
 except (ImportError, ModuleNotFoundError) as e:
     pass
