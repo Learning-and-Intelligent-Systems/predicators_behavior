@@ -435,12 +435,11 @@ def create_place_under_option_model(
             if np.linalg.norm(
                     np.array(obj_to_place_under.get_position()) -
                     np.array(env.robots[0].get_position())) < 2:
-                # import ipdb; ipdb.set_trace()
                 if (hasattr(obj_to_place_under, "states")
-                        and object_states.Under in obj_to_place_under.states
-                        and (obj_in_hand.states[object_states.Under].get_value(obj_to_place_under) or obj_to_place_under.states[object_states.Under].get_value(obj_in_hand))):
-                    logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
-                                 f"{obj_to_place_under.name} success")
+                        and object_states.Under in obj_to_place_under.states):
+                    if obj_in_hand.states[object_states.Under].get_value(obj_to_place_under) or obj_to_place_under.states[object_states.Under].get_value(obj_in_hand):
+                        logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
+                                    f"{obj_to_place_under.name} success")
 
                     # If we're not overriding the learned samplers, then we
                     # will directly use the elements of `plan`, which in turn

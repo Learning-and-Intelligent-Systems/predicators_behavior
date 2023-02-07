@@ -640,7 +640,7 @@ def sample_place_under_params(igibson_behavior_env: "BehaviorEnv",
     Implemented in a separate method to enable code reuse in
     option_model_fns.
     """
-    if obj_to_place_under.category == "table":
+    if obj_to_place_under.category == "coffee_table":
         # Get the current env for collision checking.
         obj_to_place_under_sampling_bounds = obj_to_place_under.bounding_box / 2
         sample_params = np.array([
@@ -663,7 +663,7 @@ def sample_place_under_params(igibson_behavior_env: "BehaviorEnv",
                 rng.uniform(-obj_to_place_under_sampling_bounds[1],
                             obj_to_place_under_sampling_bounds[1]),
                 rng.uniform(-obj_to_place_under_sampling_bounds[2] - 0.3,
-                            obj_to_place_under_sampling_bounds[2]) - 0.3
+                            -obj_to_place_under_sampling_bounds[2])
             ])
             # NOTE: In many situations, it is impossible to find a
             # good sample no matter how many times we try. Thus, we
