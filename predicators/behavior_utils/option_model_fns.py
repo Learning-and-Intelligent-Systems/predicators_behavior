@@ -11,7 +11,8 @@ from numpy.random import RandomState
 from predicators import utils
 from predicators.behavior_utils.behavior_utils import \
     ALL_RELEVANT_OBJECT_TYPES, sample_navigation_params, \
-    sample_place_inside_params, sample_place_ontop_params, sample_place_under_params
+    sample_place_inside_params, sample_place_ontop_params, \
+    sample_place_under_params
 from predicators.settings import CFG
 from predicators.structs import Object, State, Type
 
@@ -411,12 +412,14 @@ def create_place_inside_option_model(
 
     return placeInsideObjectOptionModel
 
+
 def create_place_under_option_model(
-        plan: List[List[float]], _original_orientation: List[List[float]],
-        obj_to_place_under: "URDFObject"
+    plan: List[List[float]], _original_orientation: List[List[float]],
+    obj_to_place_under: "URDFObject"
 ) -> Callable[[State, "BehaviorEnv"], None]:
     """Instantiates and returns an placeUnder option model given a dummy
     plan."""
+
     def placeUnderObjectOptionModel(_init_state: State,
                                     env: "BehaviorEnv") -> None:
         obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
@@ -437,9 +440,12 @@ def create_place_under_option_model(
                     np.array(env.robots[0].get_position())) < 2:
                 if (hasattr(obj_to_place_under, "states")
                         and object_states.Under in obj_to_place_under.states):
-                    if obj_in_hand.states[object_states.Under].get_value(obj_to_place_under) or obj_to_place_under.states[object_states.Under].get_value(obj_in_hand):
-                        logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
-                                    f"{obj_to_place_under.name} success")
+                    if obj_in_hand.states[object_states.Under].get_value(
+                            obj_to_place_under) or obj_to_place_under.states[
+                                object_states.Under].get_value(obj_in_hand):
+                        logging.info(
+                            f"PRIMITIVE: place {obj_in_hand.name} under "
+                            f"{obj_to_place_under.name} success")
 
                     # If we're not overriding the learned samplers, then we
                     # will directly use the elements of `plan`, which in turn
@@ -451,8 +457,8 @@ def create_place_under_option_model(
                         target_orn = plan[-1][3:6]
                     else:
                         rng = np.random.default_rng(prng.randint(10000))
-                        place_rel_pos = sample_place_inside_params(
-                            obj_to_place_under, rng)
+                        place_rel_pos = sample_place_under_params(
+                            env, obj_to_place_under, rng)
                         target_pos_list = np.add(
                             place_rel_pos, obj_to_place_under.get_position())
                         target_pos_list[2] += 0.2
@@ -484,21 +490,22 @@ def create_place_under_option_model(
                     for _ in range(15):
                         env.step(np.zeros(env.action_space.shape))
                 else:
-                    logging.info(
-                        f"PRIMITIVE: place {obj_in_hand.name} under "
-                        f"{obj_to_place_under.name} fail, not under")
+                    logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
+                                 f"{obj_to_place_under.name} fail, not under")
                     # import ipdb; ipdb.set_trace()
             else:
                 logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
                              f"{obj_to_place_under.name} fail, too far")
         else:
-            logging.info("PRIMITIVE: place under failed with invalid obj params.")
+            logging.info(
+                "PRIMITIVE: place under failed with invalid obj params.")
 
         obj_to_place_under.force_wakeup()
         # Step the simulator to update visuals.
         env.step(np.zeros(env.action_space.shape))
 
     return placeUnderObjectOptionModel
+
 
 def create_toggle_on_option_model(
         plan: List[List[float]], _original_orientation: List[List[float]],
@@ -529,19 +536,23 @@ def create_toggle_on_option_model(
 
     return toggleOnObjectOptionModel
 
+
 def create_clean_dusty_option_model(
         plan: List[List[float]], _original_orientation: List[List[float]],
         obj_to_clean: "URDFObject") -> Callable[[State, "BehaviorEnv"], None]:
-    """Instantiates and returns an clean dusty option model given a dummy plan."""
+    """Instantiates and returns an clean dusty option model given a dummy
+    plan."""
     del plan
 
-    def cleanDustyObjectOptionModel(_init_state: State, env: "BehaviorEnv") -> None:
+    def cleanDustyObjectOptionModel(_init_state: State,
+                                    env: "BehaviorEnv") -> None:
         logging.info(f"PRIMITIVE: Attempting to clean {obj_to_clean.name}")
         if np.linalg.norm(
                 np.array(obj_to_clean.get_position()) -
                 np.array(env.robots[0].get_position())) < 2:
-            if hasattr(obj_to_clean,
-                       "states") and object_states.Dusty in obj_to_clean.states:
+            if hasattr(
+                    obj_to_clean,
+                    "states") and object_states.Dusty in obj_to_clean.states:
                 obj_to_clean.states[object_states.Dusty].set_value(False)
             else:
                 logging.info("PRIMITIVE clean failed, cannot be cleaned")

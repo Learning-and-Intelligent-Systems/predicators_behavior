@@ -6,10 +6,10 @@ from typing import List, Sequence, Set, Union, cast
 import numpy as np
 from numpy.random._generator import Generator
 
-from predicators.behavior_utils.behavior_utils import OPENABLE_OBJECT_TYPES, \
-    PICK_PLACE_OBJECT_TYPES, PLACE_INTO_SURFACE_OBJECT_TYPES, \
-    PLACE_ONTOP_SURFACE_OBJECT_TYPES, TOGGLEABLE_OBJECT_TYPES, CLEANING_OBJECT_TYPES, \
-    DUSTYABLE_OBJECT_TYPES, PLACE_UNDER_SURFACE_OBJECT_TYPES, \
+from predicators.behavior_utils.behavior_utils import CLEANING_OBJECT_TYPES, \
+    DUSTYABLE_OBJECT_TYPES, OPENABLE_OBJECT_TYPES, PICK_PLACE_OBJECT_TYPES, \
+    PLACE_INTO_SURFACE_OBJECT_TYPES, PLACE_ONTOP_SURFACE_OBJECT_TYPES, \
+    PLACE_UNDER_SURFACE_OBJECT_TYPES, TOGGLEABLE_OBJECT_TYPES, \
     sample_navigation_params, sample_place_inside_params, \
     sample_place_ontop_params, sample_place_under_params
 from predicators.envs import get_or_create_env
@@ -3057,14 +3057,12 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         # objB is the surface that it must be placed under.
         # The BEHAVIOR NSRT's are designed such that objA is the 0th
         # argument, and objB is the last.
-        objA = objects[0]
         objB = objects[-1]
 
         env = get_or_create_env("behavior")
         assert isinstance(env, BehaviorEnv)
         env.check_state_closeness_and_load(state)
         return sample_place_under_params(env.igibson_behavior_env, objB, rng)
-
 
     for option in env.options:
         split_name = option.name.split("-")
@@ -3378,7 +3376,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             # have to make a NSRT with this type.
             if surf_obj_type.name not in PLACE_UNDER_SURFACE_OBJECT_TYPES:
                 continue
-            # We need to place the object we're holding. 
+            # We need to place the object we're holding.
             for held_obj_types in sorted(env.task_relevant_types):
                 # If the held object is not in these object types, we do not
                 # have to make a NSRT with this type.
@@ -3397,18 +3395,19 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                 add_effects = {under, handempty, held_reachable}
                 delete_effects = {held_holding}
                 nsrt = NSRT(
-                f"{option.name}-{next(op_name_count_place_under)}", parameters,
-                preconditions, add_effects, delete_effects, set(), option,
-                option_vars, lambda s, g, r, o: place_under_obj_pos_sampler(
-                    s,
-                    g,
-                    r,
-                    [
-                        env.object_to_ig_object(o_i)
-                        if isinstance(o_i, Object) else o_i for o_i in o
-                    ],
-                ))
-                nsrts.add(nsrt)   
+                    f"{option.name}-{next(op_name_count_place_under)}",
+                    parameters, preconditions, add_effects, delete_effects,
+                    set(), option, option_vars,
+                    lambda s, g, r, o: place_under_obj_pos_sampler(
+                        s,
+                        g,
+                        r,
+                        [
+                            env.object_to_ig_object(o_i)
+                            if isinstance(o_i, Object) else o_i for o_i in o
+                        ],
+                    ))
+                nsrts.add(nsrt)
 
         elif base_option_name == "ToggleOn":
             assert len(option_arg_type_names) == 1
@@ -3468,9 +3467,10 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                 add_effects = {_get_lifted_atom("not-dusty", [clean_obj])}
                 delete_effects = {_get_lifted_atom("dusty", [clean_obj])}
                 nsrt = NSRT(
-                    f"{option.name}-{next(op_name_count_clean)}", parameters,
-                    preconditions, add_effects, delete_effects, set(), option,
-                    option_vars, lambda s, g, r, o: dummy_param_sampler(
+                    f"{option.name}-{next(op_name_count_clean)}",
+                    parameters, preconditions, add_effects, delete_effects,
+                    set(), option, option_vars,
+                    lambda s, g, r, o: dummy_param_sampler(
                         s,
                         g,
                         r,

@@ -45,10 +45,11 @@ from predicators.behavior_utils.motion_planner_fns import make_dummy_plan, \
 from predicators.behavior_utils.option_fns import create_dummy_policy, \
     create_grasp_policy, create_navigate_policy, create_place_policy
 from predicators.behavior_utils.option_model_fns import \
-    create_close_option_model, create_grasp_option_model, \
-    create_navigate_option_model, create_open_option_model, \
-    create_place_inside_option_model, create_place_option_model, \
-    create_toggle_on_option_model, create_clean_dusty_option_model, create_place_under_option_model
+    create_clean_dusty_option_model, create_close_option_model, \
+    create_grasp_option_model, create_navigate_option_model, \
+    create_open_option_model, create_place_inside_option_model, \
+    create_place_option_model, create_place_under_option_model, \
+    create_toggle_on_option_model
 from predicators.envs import BaseEnv
 from predicators.settings import CFG
 from predicators.structs import Action, Array, GroundAtom, Object, \
@@ -169,9 +170,11 @@ class BehaviorEnv(BaseEnv):
                         ("PlaceInside", planner_fns[2], option_policy_fns[3],
                          option_model_fns[5], 3, 1, (-1.0, 1.0)),
                         ("ToggleOn", planner_fns[3], option_policy_fns[3],
-                         option_model_fns[6], 3, 1, (-1.0, 1.0)), 
-                        ("CleanDusty", planner_fns[3], option_policy_fns[3], option_model_fns[7], 3, 1, (-1.0, 1.0)), 
-                        ("PlaceUnder", planner_fns[2], option_policy_fns[3], option_model_fns[8], 3, 1, (-1.0, 1.0))]
+                         option_model_fns[6], 3, 1, (-1.0, 1.0)),
+                        ("CleanDusty", planner_fns[3], option_policy_fns[3],
+                         option_model_fns[7], 3, 1, (-1.0, 1.0)),
+                        ("PlaceUnder", planner_fns[2], option_policy_fns[3],
+                         option_model_fns[8], 3, 1, (-1.0, 1.0))]
         self._options: Set[ParameterizedOption] = set()
         for (name, planner_fn, policy_fn, option_model_fn, param_dim, num_args,
              parameter_limits) in option_elems:
@@ -342,14 +345,6 @@ class BehaviorEnv(BaseEnv):
                     np.zeros(self.igibson_behavior_env.action_space.shape))
             init_state = self.current_ig_state_to_state(use_test_scene=testing)
             goal = self._get_task_goal()
-            #### TODO Kathryn
-            # new_goal = set()
-            # for atom in goal:
-            #     if "under" in str(atom):
-            #         new_goal.add(atom)
-            # goal = new_goal
-            # import ipdb; ipdb.set_trace()
-            ####
             task = Task(init_state, goal)
             # If the goal already happens to hold in the init state, then
             # resample.
@@ -887,15 +882,21 @@ class BehaviorEnv(BaseEnv):
             ig_obj, "states") and object_states.ToggledOn in ig_obj.states
         return obj_toggleable
 
-    def _cleaner_classifier(self, state: State, objs: Sequence[Object], skip_allclose_check: bool = False) -> bool:
+    def _cleaner_classifier(self,
+                            state: State,
+                            objs: Sequence[Object],
+                            skip_allclose_check: bool = False) -> bool:
         self.check_state_closeness_and_load(state, skip_allclose_check)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
         obj_cleaner = hasattr(
-             ig_obj, "states") and object_states.CleaningTool in ig_obj.states
+            ig_obj, "states") and object_states.CleaningTool in ig_obj.states
         return obj_cleaner
 
-    def _dustyable_classifier(self, state: State, objs: Sequence[Object], skip_allclose_check: bool = False) -> bool:
+    def _dustyable_classifier(self,
+                              state: State,
+                              objs: Sequence[Object],
+                              skip_allclose_check: bool = False) -> bool:
         self.check_state_closeness_and_load(state, skip_allclose_check)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
@@ -903,7 +904,10 @@ class BehaviorEnv(BaseEnv):
             ig_obj, "states") and object_states.Dusty in ig_obj.states
         return obj_dustyable
 
-    def _dusty_classifier(self, state: State, objs: Sequence[Object], skip_allclose_check: bool = False) -> bool:
+    def _dusty_classifier(self,
+                          state: State,
+                          objs: Sequence[Object],
+                          skip_allclose_check: bool = False) -> bool:
         self.check_state_closeness_and_load(state, skip_allclose_check)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
@@ -912,7 +916,10 @@ class BehaviorEnv(BaseEnv):
             return ig_obj.states[object_states.Dusty].get_value()
         return False
 
-    def _not_dusty_classifier(self, state: State, objs: Sequence[Object], skip_allclose_check: bool = False) -> bool:
+    def _not_dusty_classifier(self,
+                              state: State,
+                              objs: Sequence[Object],
+                              skip_allclose_check: bool = False) -> bool:
         self.check_state_closeness_and_load(state, skip_allclose_check)
         assert len(objs) == 1
         ig_obj = self.object_to_ig_object(objs[0])
