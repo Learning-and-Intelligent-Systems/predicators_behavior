@@ -371,18 +371,21 @@ class BehaviorEnv(BaseEnv):
             # BDDL expresses negative goals (such as 'not open').
             # Since our implementation of SeSamE assumes positive preconditions
             # and goals, we must parse these into positive expressions.
-            if head_expr.terms[0] == 'not':
+            if head_expr.terms[0] == "not":
                 # Currently, the only goals that include 'not' are those that
                 # include 'not open' statements, so turn these into 'closed'.
                 # import ipdb; ipdb.set_trace()
                 # assert head_expr.terms[1] == 'open'
                 # bddl_name = 'closed'
-                if head_expr.terms[1] == 'open':
-                    bddl_name = 'closed'
+                if head_expr.terms[1] == "open":
+                    bddl_name = "closed"
                 elif head_expr.terms[1] == "dusty":
                     bddl_name = "not-dusty"
+                elif head_expr.terms[1] == "inside":
+                    bddl_name = "not-inside"
                 else:
                     raise ValueError()
+
                 obj_start_idx = 2
             else:
                 bddl_name = head_expr.terms[0]  # untyped
@@ -449,6 +452,11 @@ class BehaviorEnv(BaseEnv):
                 classifier = self._create_classifier_from_bddl(bddl_predicate)
                 pred = Predicate(pred_name, list(type_combo), classifier)
                 predicates.add(pred)
+                if 'inside' == bddl_name:
+                    pred_name = self._create_type_combo_name('not-' + bddl_name, type_combo)
+                    classifier = self._create_classifier_from_bddl(bddl_predicate, is_not=True)
+                    pred = Predicate(pred_name, list(type_combo), classifier)
+                    predicates.add(pred)
 
         # Second, add in custom predicates.
         custom_predicate_specs = [
@@ -689,6 +697,7 @@ class BehaviorEnv(BaseEnv):
     def _create_classifier_from_bddl(
         self,
         bddl_predicate: "bddl.AtomicFormula",
+        is_not: bool = False
     ) -> Callable[[State, Sequence[Object]], bool]:
 
         def _classifier(s: State,
@@ -708,7 +717,10 @@ class BehaviorEnv(BaseEnv):
                 bddl_ground_atom = bddl_predicate.STATE_CLASS(ig_obj)
                 bddl_ground_atom.initialize(
                     self.igibson_behavior_env.simulator)
-                return bddl_ground_atom.get_value()
+                if is_not:
+                    return not bddl_ground_atom.get_value()
+                else:
+                    return bddl_ground_atom.get_value()
             if arity == 2:
                 assert len(o) == 2
                 ig_obj = self.object_to_ig_object(o[0])
@@ -716,7 +728,10 @@ class BehaviorEnv(BaseEnv):
                 bddl_partial_ground_atom = bddl_predicate.STATE_CLASS(ig_obj)
                 bddl_partial_ground_atom.initialize(
                     self.igibson_behavior_env.simulator)
-                return bddl_partial_ground_atom.get_value(other_ig_obj)
+                if is_not:
+                    return not bddl_partial_ground_atom.get_value(other_ig_obj)
+                else:
+                    return bddl_partial_ground_atom.get_value(other_ig_obj)
 
             raise ValueError("BDDL predicate has unexpected arity.")
 

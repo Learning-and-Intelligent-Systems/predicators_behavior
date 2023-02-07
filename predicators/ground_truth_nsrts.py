@@ -3129,9 +3129,11 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                 targ_holding = _get_lifted_atom("holding", [target_obj])
                 ontop = _get_lifted_atom("ontop", [target_obj, surf_obj])
                 inside = _get_lifted_atom("inside", [target_obj, surf_obj])
+                not_inside = _get_lifted_atom("not-inside", [target_obj, surf_obj])
                 preconditions_ontop = {handempty, targ_reachable, ontop}
                 preconditions_inside = {handempty, targ_reachable, inside}
-                add_effects = {targ_holding}
+                add_effects_ontop = {targ_holding}
+                add_effects_inside = {targ_holding, not_inside}
                 delete_effects_ontop = {handempty, ontop, targ_reachable}
                 delete_effects_inside = {handempty, inside, targ_reachable}
                 # NSRT for grasping an object from ontop an object.
@@ -3139,7 +3141,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     f"{option.name}-{next(op_name_count_pick)}",
                     parameters,
                     preconditions_ontop,
-                    add_effects,
+                    add_effects_ontop,
                     delete_effects_ontop,
                     set(),
                     option,
@@ -3152,7 +3154,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     f"{option.name}-{next(op_name_count_pick)}",
                     parameters,
                     preconditions_inside,
-                    add_effects,
+                    add_effects_inside,
                     delete_effects_inside,
                     set(),
                     option,

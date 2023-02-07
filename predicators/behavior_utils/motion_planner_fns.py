@@ -104,7 +104,7 @@ def make_navigation_plan(
     # during test time iff we're using the learned sampler. Right now,
     # this code will also run during oracle execution.
     if not CFG.behavior_override_learned_samplers:
-        valid_position = check_nav_end_pose(env, obj, pos_offset)
+        valid_position = check_nav_end_pose(env, obj, pos_offset, ignore_blocked=True)
     else:
         rob_pos = env.robots[0].get_position()
         valid_position = ([rob_pos[0], rob_pos[1],
