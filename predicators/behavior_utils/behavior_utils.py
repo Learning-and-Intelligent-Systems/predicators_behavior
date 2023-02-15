@@ -40,7 +40,7 @@ ALL_RELEVANT_OBJECT_TYPES = {
     'top_cabinet', 'sofa', 'oatmeal', 'chip', 'vegetable_oil', 'sugar',
     'cabinet', 'floor', 'pasta', 'sauce', 'electric_refrigerator', 'olive_oil',
     'sugar_jar', 'spaghetti_sauce', 'mayonnaise', 'fridge', 'board_game',
-    'video_game', 'facsimile', 'mousetrap', 'toilet', 'sink',
+    'video_game', 'facsimile', 'mousetrap', 'sink', 'toilet',
 }
 PICK_PLACE_OBJECT_TYPES = {
     'mineral_water', 'oatmeal', 'blueberry', 'headset', 'jug', 'flank',
