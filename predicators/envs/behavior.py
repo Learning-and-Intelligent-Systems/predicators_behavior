@@ -48,7 +48,7 @@ from predicators.behavior_utils.option_model_fns import \
     create_close_option_model, create_grasp_option_model, \
     create_navigate_option_model, create_open_option_model, \
     create_place_inside_option_model, create_place_option_model, \
-    create_toggle_on_option_model
+    create_toggle_on_option_model, create_place_nextto_option_model
 from predicators.envs import BaseEnv
 from predicators.settings import CFG
 from predicators.structs import Action, Array, GroundAtom, Object, \
@@ -150,6 +150,7 @@ class BehaviorEnv(BaseEnv):
                          create_close_option_model,
                          create_place_inside_option_model,
                          create_toggle_on_option_model,
+                         create_place_nextto_option_model,
                      ]
 
         # name, planner_fn, option_policy_fn, option_model_fn,
@@ -167,7 +168,8 @@ class BehaviorEnv(BaseEnv):
                         ("PlaceInside", planner_fns[2], option_policy_fns[3],
                          option_model_fns[5], 3, 1, (-1.0, 1.0)),
                         ("ToggleOn", planner_fns[3], option_policy_fns[3],
-                         option_model_fns[6], 3, 1, (-1.0, 1.0))]
+                         option_model_fns[6], 3, 1, (-1.0, 1.0)),
+                        ("PlaceNextTo", planner_fns[2], option_policy_fns[3], option_model_fns[7], 3, 1, (-1.0, 1.0))]
         self._options: Set[ParameterizedOption] = set()
         for (name, planner_fn, policy_fn, option_model_fn, param_dim, num_args,
              parameter_limits) in option_elems:
@@ -391,7 +393,7 @@ class BehaviorEnv(BaseEnv):
         # First, extract predicates from iGibson
         for bddl_name in [
                 "inside",
-                # "nextto",
+                "nextto",
                 "ontop",
                 # "under",
                 # "touching",
