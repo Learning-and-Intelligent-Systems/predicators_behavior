@@ -169,7 +169,7 @@ class BehaviorEnv(BaseEnv):
                          option_model_fns[5], 3, 1, (-1.0, 1.0)),
                         ("ToggleOn", planner_fns[3], option_policy_fns[3],
                          option_model_fns[6], 3, 1, (-1.0, 1.0)),
-                        ("PlaceNextTo", planner_fns[2], option_policy_fns[3], option_model_fns[7], 3, 1, (-1.0, 1.0))]
+                        ("PlaceNextToOnTop", planner_fns[2], option_policy_fns[3], option_model_fns[7], 3, 1, (-1.0, 1.0))]
         self._options: Set[ParameterizedOption] = set()
         for (name, planner_fn, policy_fn, option_model_fn, param_dim, num_args,
              parameter_limits) in option_elems:
@@ -378,6 +378,7 @@ class BehaviorEnv(BaseEnv):
                 for t in head_expr.terms[obj_start_idx:]
             ]
             objects = [self._ig_object_to_object(i) for i in ig_objs]
+            # import ipdb; ipdb.set_trace()
             pred_name = self._create_type_combo_name(bddl_name,
                                                      [o.type for o in objects])
             pred = self._name_to_predicate(pred_name)

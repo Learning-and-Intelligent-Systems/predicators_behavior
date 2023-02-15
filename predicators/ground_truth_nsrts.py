@@ -3392,7 +3392,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                 ))
             nsrts.add(nsrt)
 
-        elif base_option_name == "PlaceNextTo":
+        elif base_option_name == "PlaceNextToOnTop":
             assert len(option_arg_type_names) == 1
             surf_obj_type_name = option_arg_type_names[0]
             surf_obj_type = type_name_to_type[surf_obj_type_name]
@@ -3413,30 +3413,37 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     held_obj_types.name == surf_obj_type.name:
                     continue
                 held_obj = Variable("?held", held_obj_types)
-                parameters = [held_obj, surf_obj]
-                option_vars = [surf_obj]
-                handempty = _get_lifted_atom("handempty", [])
-                held_holding = _get_lifted_atom("holding", [held_obj])
-                surf_reachable = _get_lifted_atom("reachable", [surf_obj])
-                held_reachable = _get_lifted_atom("reachable", [held_obj])
-                nextto = _get_lifted_atom("nextto", [held_obj, surf_obj])
-                preconditions = {held_holding, surf_reachable}
-                add_effects = {nextto, handempty, held_reachable}
-                delete_effects = {held_holding}
-                nsrt = NSRT(
-                    f"{option.name}-{next(op_name_count_place_next_to)}",
-                    parameters, preconditions, add_effects, delete_effects,
-                    set(), option, option_vars,
-                    lambda s, g, r, o: place_next_to_obj_pos_sampler(
-                        s,
-                        g,
-                        r,
-                        [
-                            env.object_to_ig_object(o_i)
-                            if isinstance(o_i, Object) else o_i for o_i in o
-                        ],
-                    ))
-                nsrts.add(nsrt)
+                for ontop_obj_types in sorted(env.task_relevant_types):
+                    if ontop_obj_types.name not in PLACE_ONTOP_SURFACE_OBJECT_TYPES:
+                        continue
+                        
+                    ontop_obj = Variable("?ontop", ontop_obj_types)
+                    parameters = [held_obj, surf_obj, ontop_obj]
+                    option_vars = [surf_obj]
+                    handempty = _get_lifted_atom("handempty", [])
+                    held_holding = _get_lifted_atom("holding", [held_obj])
+                    surf_reachable = _get_lifted_atom("reachable", [surf_obj])
+                    held_reachable = _get_lifted_atom("reachable", [held_obj])
+                    nextto = _get_lifted_atom("nextto", [held_obj, surf_obj])
+                    ontop_surf = _get_lifted_atom("ontop", [surf_obj, ontop_obj])
+                    ontop_held = _get_lifted_atom("ontop", [held_obj, ontop_obj])
+                    preconditions = {held_holding, surf_reachable}
+                    add_effects = {nextto, handempty, held_reachable, ontop_held}
+                    delete_effects = {held_holding}
+                    nsrt = NSRT(
+                        f"{option.name}-{next(op_name_count_place_next_to)}",
+                        parameters, preconditions, add_effects, delete_effects,
+                        set(), option, option_vars,
+                        lambda s, g, r, o: place_next_to_obj_pos_sampler(
+                            s,
+                            g,
+                            r,
+                            [
+                                env.object_to_ig_object(o_i)
+                                if isinstance(o_i, Object) else o_i for o_i in o
+                            ],
+                        ))
+                    nsrts.add(nsrt)
 
         else:
             raise ValueError(

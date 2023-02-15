@@ -141,7 +141,7 @@ PLACE_ONTOP_SURFACE_OBJECT_TYPES = {
     'paper_towel', 'dishtowel', 'dial', 'folding_chair', 'deck', 'chair',
     'hamper', 'bed', 'plate', 'work_surface', 'board', 'pallet',
     'console_table', 'pool_table', 'electric_refrigerator', 'stand',
-    'room_floor', 'notebook', 'hardback'
+    'room_floor', 'notebook', 'hardback', 'toilet'
 }
 PLACE_INTO_SURFACE_OBJECT_TYPES = {
     'shelf', 'sack', 'basket', 'dredging_bucket', 'cabinet', 'crock', 'bucket',
