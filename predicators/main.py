@@ -132,77 +132,85 @@ def _run_pipeline(env: BaseEnv,
     # If agent is learning-based, allow the agent to learn from the generated
     # offline dataset, and then proceed with the online learning loop. Test
     # after each learning call. If agent is not learning-based, just test once.
-    if approach.is_learning_based:
-        assert offline_dataset is not None, "Missing offline dataset"
-        num_offline_transitions = sum(
-            len(traj.actions) for traj in offline_dataset.trajectories)
-        num_online_transitions = 0
-        total_query_cost = 0.0
-        if CFG.load_approach:
-            approach.load(online_learning_cycle=None)
-            learning_time = 0.0  # ignore loading time
-        else:
-            learning_start = time.perf_counter()
-            approach.learn_from_offline_dataset(offline_dataset)
-            learning_time = time.perf_counter() - learning_start
-        offline_learning_metrics = {
-            f"offline_learning_{k}": v
-            for k, v in approach.metrics.items()
-        }
-        # Run evaluation once before online learning starts.
-        if CFG.skip_until_cycle < 0:
-            results = _run_testing(env, approach)
-            results["num_offline_transitions"] = num_offline_transitions
-            results["num_online_transitions"] = num_online_transitions
-            results["query_cost"] = total_query_cost
-            results["learning_time"] = learning_time
-            results.update(offline_learning_metrics)
-            _save_test_results(results, online_learning_cycle=None)
-        teacher = Teacher(train_tasks)
-        # The online learning loop.
-        for i in range(CFG.num_online_learning_cycles):
-            if i < CFG.skip_until_cycle:
-                continue
-            logging.info(f"\n\nONLINE LEARNING CYCLE {i}\n")
-            logging.info("Getting interaction requests...")
-            if num_online_transitions >= CFG.online_learning_max_transitions:
-                logging.info("Reached online_learning_max_transitions, "
-                             "terminating")
-                break
-            interaction_requests = approach.get_interaction_requests()
-            if not interaction_requests:
-                logging.info("Did not receive any interaction requests, "
-                             "terminating")
-                break  # agent doesn't want to learn anything more; terminate
-            interaction_results, query_cost = _generate_interaction_results(
-                env, teacher, interaction_requests, i)
-            num_online_transitions += sum(
-                len(result.actions) for result in interaction_results)
-            total_query_cost += query_cost
-            logging.info(f"Query cost incurred this cycle: {query_cost}")
+    epoch = 0
+    while True:
+        if approach.is_learning_based:
+            assert offline_dataset is not None, "Missing offline dataset"
+            num_offline_transitions = sum(
+                len(traj.actions) for traj in offline_dataset.trajectories)
+            num_online_transitions = 0
+            total_query_cost = 0.0
             if CFG.load_approach:
-                approach.load(online_learning_cycle=i)
-                learning_time += 0.0  # ignore loading time
+                approach.load(online_learning_cycle=None)
+                learning_time = 0.0  # ignore loading time
             else:
                 learning_start = time.perf_counter()
-                logging.info("Learning from interaction results...")
-                approach.learn_from_interaction_results(interaction_results)
-                learning_time += time.perf_counter() - learning_start
-            # Evaluate approach after every online learning cycle.
+                approach.learn_from_offline_dataset(offline_dataset)
+                learning_time = time.perf_counter() - learning_start
+            offline_learning_metrics = {
+                f"offline_learning_{k}": v
+                for k, v in approach.metrics.items()
+            }
+            # Run evaluation once before online learning starts.
+            if CFG.skip_until_cycle < 0:
+                results = _run_testing(env, approach)
+                results["num_offline_transitions"] = num_offline_transitions
+                results["num_online_transitions"] = num_online_transitions
+                results["query_cost"] = total_query_cost
+                results["learning_time"] = learning_time
+                results.update(offline_learning_metrics)
+                _save_test_results(results, online_learning_cycle=None)
+            teacher = Teacher(train_tasks)
+            # The online learning loop.
+            for i in range(CFG.num_online_learning_cycles):
+                if i < CFG.skip_until_cycle:
+                    continue
+                logging.info(f"\n\nONLINE LEARNING CYCLE {i}\n")
+                logging.info("Getting interaction requests...")
+                if num_online_transitions >= CFG.online_learning_max_transitions:
+                    logging.info("Reached online_learning_max_transitions, "
+                                "terminating")
+                    break
+                interaction_requests = approach.get_interaction_requests()
+                if not interaction_requests:
+                    logging.info("Did not receive any interaction requests, "
+                                "terminating")
+                    break  # agent doesn't want to learn anything more; terminate
+                interaction_results, query_cost = _generate_interaction_results(
+                    env, teacher, interaction_requests, i)
+                num_online_transitions += sum(
+                    len(result.actions) for result in interaction_results)
+                total_query_cost += query_cost
+                logging.info(f"Query cost incurred this cycle: {query_cost}")
+                if CFG.load_approach:
+                    approach.load(online_learning_cycle=i)
+                    learning_time += 0.0  # ignore loading time
+                else:
+                    learning_start = time.perf_counter()
+                    logging.info("Learning from interaction results...")
+                    approach.learn_from_interaction_results(interaction_results)
+                    learning_time += time.perf_counter() - learning_start
+                # Evaluate approach after every online learning cycle.
+                results = _run_testing(env, approach)
+                results["num_offline_transitions"] = num_offline_transitions
+                results["num_online_transitions"] = num_online_transitions
+                results["query_cost"] = total_query_cost
+                results["learning_time"] = learning_time
+                results.update(offline_learning_metrics)
+                _save_test_results(results, online_learning_cycle=i)
+        else:
             results = _run_testing(env, approach)
-            results["num_offline_transitions"] = num_offline_transitions
-            results["num_online_transitions"] = num_online_transitions
-            results["query_cost"] = total_query_cost
-            results["learning_time"] = learning_time
-            results.update(offline_learning_metrics)
-            _save_test_results(results, online_learning_cycle=i)
-    else:
-        results = _run_testing(env, approach)
-        results["num_offline_transitions"] = 0
-        results["num_online_transitions"] = 0
-        results["query_cost"] = 0.0
-        results["learning_time"] = 0.0
-        _save_test_results(results, online_learning_cycle=None)
+            results["num_offline_transitions"] = 0
+            results["num_online_transitions"] = 0
+            results["query_cost"] = 0.0
+            results["learning_time"] = 0.0
+            _save_test_results(results, online_learning_cycle=None)
+
+        epoch += 1
+        if not CFG.lifelong_learning or epoch >= CFG.lifetime:
+            break
+        _save_test_results(results, online_learning_cycle=None, lifetime=CFG.lifetime)
+        import ipdb; ipdb.set_trace()
 
 
 def _generate_interaction_results(
@@ -431,7 +439,8 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
 
 
 def _save_test_results(results: Metrics,
-                       online_learning_cycle: Optional[int]) -> None:
+                       online_learning_cycle: Optional[int],
+                       lifetime: int=None) -> None:
     num_solved = results["num_solved"]
     num_total = results["num_total"]
     avg_suc_time = results["avg_suc_time"]
@@ -446,6 +455,10 @@ def _save_test_results(results: Metrics,
     else:
         outfile = (f"{CFG.results_dir}/{utils.get_config_path_str()}__"
                    f"{online_learning_cycle}.pkl")
+    
+    if lifetime is not None:
+        outfile = outfile.split(".pkl")[0] + "_lifetime_" + str(lifetime) + ".pkl"
+
     # Save CFG alongside results.
     outdata = {
         "config": CFG,
