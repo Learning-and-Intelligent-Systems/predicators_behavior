@@ -48,7 +48,7 @@ from predicators.behavior_utils.option_model_fns import \
     create_close_option_model, create_grasp_option_model, \
     create_navigate_option_model, create_open_option_model, \
     create_place_inside_option_model, create_place_option_model, \
-    create_toggle_on_option_model
+    create_toggle_on_option_model, create_soak_option_model
 from predicators.envs import BaseEnv
 from predicators.settings import CFG
 from predicators.structs import Action, Array, GroundAtom, Object, \
@@ -150,6 +150,7 @@ class BehaviorEnv(BaseEnv):
                          create_close_option_model,
                          create_place_inside_option_model,
                          create_toggle_on_option_model,
+                         create_soak_option_model,
                      ]
 
         # name, planner_fn, option_policy_fn, option_model_fn,
@@ -167,7 +168,8 @@ class BehaviorEnv(BaseEnv):
                         ("PlaceInside", planner_fns[2], option_policy_fns[3],
                          option_model_fns[5], 3, 1, (-1.0, 1.0)),
                         ("ToggleOn", planner_fns[3], option_policy_fns[3],
-                         option_model_fns[6], 3, 1, (-1.0, 1.0))]
+                         option_model_fns[6], 3, 1, (-1.0, 1.0)),
+                         ("Soak", planner_fns[3], option_policy_fns[3], option_model_fns[7], 3, 1, (-1.0, 1.0))]
         self._options: Set[ParameterizedOption] = set()
         for (name, planner_fn, policy_fn, option_model_fn, param_dim, num_args,
              parameter_limits) in option_elems:
@@ -403,7 +405,7 @@ class BehaviorEnv(BaseEnv):
                 # "cooked",
                 # "burnt",
                 # "frozen",
-                # "soaked",
+                "soaked",
                 "open",
                 # "dusty",
                 # "stained",
@@ -443,6 +445,8 @@ class BehaviorEnv(BaseEnv):
             ("toggled_on", self._toggled_on_classifier, 1),
             ("toggled-off", self._toggled_off_classifier, 1),
             ("toggleable", self._toggleable_classifier, 1),
+            ("soakable", self._soakable_classifier, 1),
+            ("dry", self._dry_classifier, 1)
         ]
 
         for name, classifier, arity in custom_predicate_specs:
@@ -863,6 +867,30 @@ class BehaviorEnv(BaseEnv):
         obj_toggleable = hasattr(
             ig_obj, "states") and object_states.ToggledOn in ig_obj.states
         return obj_toggleable
+
+    def _soakable_classifier(self,
+                               state: State,
+                               objs: Sequence[Object],
+                               skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_soakable = hasattr(
+            ig_obj, "states") and object_states.Soaked in ig_obj.states
+        return obj_soakable
+
+    def _dry_classifier(self,
+                            state: State,
+                            objs: Sequence[Object],
+                            skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_soakable = self._soakable_classifier(state, objs)
+        if obj_soakable:
+            if not ig_obj.states[object_states.Soaked].get_value():
+                return True
+        return False
 
     @staticmethod
     def _ig_object_name(ig_obj: "ArticulatedObject") -> str:
