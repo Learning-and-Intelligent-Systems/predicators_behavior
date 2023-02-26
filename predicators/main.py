@@ -133,6 +133,7 @@ def _run_pipeline(env: BaseEnv,
     # offline dataset, and then proceed with the online learning loop. Test
     # after each learning call. If agent is not learning-based, just test once.
     epoch = 0
+    next_state = None
     while True:
         if approach.is_learning_based:
             assert offline_dataset is not None, "Missing offline dataset"
@@ -207,10 +208,18 @@ def _run_pipeline(env: BaseEnv,
             _save_test_results(results, online_learning_cycle=None)
 
         epoch += 1
-        if not CFG.lifelong_learning or epoch >= CFG.lifetime:
+        if CFG.lifelong_learning:
+            next_task = env.get_test_tasks()[0] # TODO Generate Curriculum of goals
+            if next_state is not None:
+                next_goal = env._get_task_goal() # TODO Generate Curriculum of goals
+                next_task = Task(next_state, next_goal)
+            # Run Life.
+            results, next_state = _run_life(env, approach, next_task=next_task)
+            _save_test_results(results, online_learning_cycle=None, lifetime=epoch)
+            if epoch >= CFG.lifetime:
+                break
+        else:
             break
-        _save_test_results(results, online_learning_cycle=None, lifetime=CFG.lifetime)
-        import ipdb; ipdb.set_trace()
 
 
 def _generate_interaction_results(
@@ -436,6 +445,185 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
         metrics[f"avg_{metric_name}"] = (
             total / num_found_policy if num_found_policy > 0 else float("inf"))
     return metrics
+
+def _run_life(env: BaseEnv, approach: BaseApproach, next_task) -> Metrics:
+    last_state = None
+    num_found_policy = 0
+    num_solved = 0
+    approach.reset_metrics()
+    total_suc_time = 0.0
+    total_num_solve_timeouts = 0
+    total_num_solve_failures = 0
+    total_num_execution_timeouts = 0
+    total_num_execution_failures = 0
+
+    save_prefix = utils.get_config_path_str()
+    metrics: Metrics = defaultdict(float)
+    curr_num_nodes_created = 0.0
+    curr_num_nodes_expanded = 0.0
+    # Run the approach's solve() method to get a policy for this task.
+    solve_start = time.perf_counter()
+    try:
+        policy = approach.solve(next_task, timeout=CFG.timeout)
+    except (ApproachTimeout, ApproachFailure) as e:
+        logging.info(f"Task 1 / 1: "
+                        f"Approach failed to solve with error: {e}")
+        if isinstance(e, ApproachTimeout):
+            total_num_solve_timeouts += 1
+        elif isinstance(e, ApproachFailure):
+            total_num_solve_failures += 1
+        if CFG.make_failure_videos and e.info.get("partial_refinements"):
+            video = utils.create_video_from_partial_refinements(
+                e.info["partial_refinements"], env, "test", 0,
+                CFG.horizon)
+            outfile = f"{save_prefix}__task1_failure.mp4"
+            utils.save_video(outfile, video)
+        if CFG.crash_on_failure:
+            raise e
+    solve_time = time.perf_counter() - solve_start
+    metrics[f"PER_TASK_task0_solve_time"] = solve_time
+    metrics[
+        f"PER_TASK_task0_nodes_created"] = approach.metrics[
+            "total_num_nodes_created"] - curr_num_nodes_created
+    metrics[
+        f"PER_TASK_task0_nodes_expanded"] = approach.metrics[
+            "total_num_nodes_expanded"] - curr_num_nodes_expanded
+    curr_num_nodes_created = approach.metrics["total_num_nodes_created"]
+    curr_num_nodes_expanded = approach.metrics["total_num_nodes_expanded"]
+
+    num_found_policy += 1
+    make_video = False
+    solved = False
+    caught_exception = False
+    if CFG.make_test_videos or CFG.make_failure_videos:
+        monitor = utils.VideoMonitor(env.render)
+    else:
+        monitor = None
+    try:
+        # Now, measure success by running the policy in the environment.
+        # There are two special cases that we handle first. In the if,
+        # we consider the case where plan_only_eval is True, in which
+        # case we only check whether this BilevelPlanningApproach found
+        # a plan. In the elif, we consider the case where
+        # behavior_option_model_eval is True, in which case for BEHAVIOR
+        # we evaluate on option models instead of the low-level simulator.
+        # Finally, the else handles the default case, where we use
+        # utils.run_policy to roll out the policy in the environment.
+        if CFG.plan_only_eval:
+            assert isinstance(approach, BilevelPlanningApproach)
+            if approach.get_last_plan() != [] or next_task.goal_holds(
+                    next_task.init):
+                solved = True
+            last_state = approach.get_last_traj()[-1]
+            execution_metrics = {"policy_call_time": 0.0}
+        elif CFG.behavior_option_model_eval:  # pragma: no cover
+            # To evaluate BEHAVIOR on our option model, we are going
+            # to run our approach's plan on our option model.
+            # Note that if approach is not a BilevelPlanningApproach
+            # or a GNNApproach, we cannot use this method to evaluate
+            # and would need to run the policy on the option model, not
+            # the plan
+            assert CFG.env == "behavior" and (isinstance(
+                approach, (BilevelPlanningApproach, GNNApproach)))
+            if CFG.behavior_option_model_rrt:
+                CFG.simulate_nav = True  # Simulates nav option in model.
+            last_plan = approach.get_last_plan()
+            last_traj = approach.get_last_traj()
+            option_model_start_time = time.time()
+            traj, solved = _run_plan_with_option_model(
+                next_task, 0, approach.get_option_model(),
+                last_plan, last_traj)
+            execution_metrics = {
+                "policy_call_time": option_model_start_time - time.time()
+            }
+        else:
+            traj, execution_metrics = utils.run_policy(
+                policy,
+                env,
+                "test",
+                0,
+                next_task.goal_holds,
+                max_num_steps=CFG.horizon,
+                monitor=monitor)
+            solved = next_task.goal_holds(traj.states[-1])
+        exec_time = execution_metrics["policy_call_time"]
+        metrics[f"PER_TASK_task0_exec_time"] = exec_time
+        # In this case, traj is not defined, and env is not behavior.
+        # This is because we cannot save behavior traj_data.
+        if not CFG.plan_only_eval and CFG.env != "behavior":
+            # Save the successful trajectory, e.g., for playback on a robot.
+            traj_file = f"{save_prefix}__task1.traj"
+            traj_file_path = Path(CFG.eval_trajectories_dir) / traj_file
+            # Include the original task too so we know the goal.
+            traj_data = {
+                "task": next_task,
+                "trajectory": traj,
+                "pybullet_robot": CFG.pybullet_robot
+            }
+            with open(traj_file_path, "wb") as f:
+                pkl.dump(traj_data, f)
+    except utils.EnvironmentFailure as e:
+        log_message = f"Environment failed with error: {e}"
+        caught_exception = True
+    except (ApproachTimeout, ApproachFailure) as e:
+        log_message = ("Approach failed at policy execution time with "
+                        f"error: {e}")
+        if isinstance(e, ApproachTimeout):
+            total_num_execution_timeouts += 1
+        elif isinstance(e, ApproachFailure):
+            total_num_execution_failures += 1
+        caught_exception = True
+    if solved:
+        log_message = "SOLVED"
+        num_solved += 1
+        total_suc_time += (solve_time + exec_time)
+        make_video = CFG.make_test_videos
+        video_file = f"{save_prefix}__task1.mp4"
+    else:
+        if not caught_exception:
+            log_message = "Policy failed to reach goal"
+        if CFG.crash_on_failure:
+            raise RuntimeError(log_message)
+        make_video = CFG.make_failure_videos
+        video_file = f"{save_prefix}__task1_failure.mp4"
+    logging.info(f"Task 1 / 1: "
+                    f"{log_message}")
+    if make_video:
+        assert monitor is not None
+        video = monitor.get_video()
+        utils.save_video(video_file, video)
+    metrics["num_solved"] = num_solved
+    metrics["num_total"] = 1
+    metrics["avg_suc_time"] = (total_suc_time /
+                                num_solved if num_solved > 0 else float("inf"))
+    metrics["min_num_samples"] = approach.metrics[
+        "min_num_samples"] if approach.metrics["min_num_samples"] < float(
+            "inf") else 0
+    metrics["max_num_samples"] = approach.metrics["max_num_samples"]
+    metrics["min_skeletons_optimized"] = approach.metrics[
+        "min_num_skeletons_optimized"] if approach.metrics[
+            "min_num_skeletons_optimized"] < float("inf") else 0
+    metrics["max_skeletons_optimized"] = approach.metrics[
+        "max_num_skeletons_optimized"]
+    metrics["num_solve_timeouts"] = total_num_solve_timeouts
+    metrics["num_solve_failures"] = total_num_solve_failures
+    metrics["num_execution_timeouts"] = total_num_execution_timeouts
+    metrics["num_execution_failures"] = total_num_execution_failures
+    # Handle computing averages of total approach metrics wrt the
+    # number of found policies. Note: this is different from computing
+    # an average wrt the number of solved tasks, which might be more
+    # appropriate for some metrics, e.g. avg_suc_time above.
+    for metric_name in [
+            "num_samples", "num_skeletons_optimized", "num_nodes_expanded",
+            "num_nodes_created", "num_nsrts", "num_preds", "plan_length",
+            "num_failures_discovered"
+    ]:
+        total = approach.metrics[f"total_{metric_name}"]
+        metrics[f"avg_{metric_name}"] = (
+            total / num_found_policy if num_found_policy > 0 else float("inf"))
+
+    assert last_state is not None
+    return metrics, last_state
 
 
 def _save_test_results(results: Metrics,

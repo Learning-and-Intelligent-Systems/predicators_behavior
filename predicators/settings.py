@@ -58,7 +58,7 @@ class GlobalSettings:
     plan_only_eval = False
 
     lifelong_learning = False
-    lifetime = 100
+    lifetime = 10
 
     # cover env parameters
     cover_num_blocks = 2
