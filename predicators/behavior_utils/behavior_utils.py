@@ -662,8 +662,14 @@ def sample_place_next_to_params(igibson_behavior_env: "BehaviorEnv",
             if num_samples_tried > MAX_PLACEONTOP_SAMPLES:
                 break
             num_samples_tried += 1
-        return sample_params
+            return sample_params
 
+    sample_params = np.array([
+        rng.uniform(-0.5, 0.5),
+        rng.uniform(-0.5, 0.5),
+        rng.uniform(0.3, 1.0)
+    ])
+    return sample_params
 
 def load_checkpoint_state(s: State,
                           env: "BehaviorEnv",

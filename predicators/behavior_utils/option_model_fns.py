@@ -468,7 +468,7 @@ def create_place_nextto_option_model(
                     np.array(env.robots[0].get_position())) < 2:
                 if (hasattr(obj_to_place_nextto, "states")
                         and object_states.NextTo in obj_to_place_nextto.states):
-                    if obj_in_hand.states[object_states.obj_to_place_nextto].get_value(
+                    if obj_in_hand.states[object_states.NextTo].get_value(
                             obj_to_place_nextto) or obj_to_place_nextto.states[
                                 object_states.NextTo].get_value(obj_in_hand):
                         logging.info(
