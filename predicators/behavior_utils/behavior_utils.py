@@ -632,6 +632,169 @@ TOGGLEABLE_OBJECT_TYPES = {
     'facsimile',
 }
 
+CLEANING_OBJECT_TYPES = {
+    'toothbrush', 'towel', 'dinner_napkin', 'paper_towel', 'dishtowel',
+    'broom', 'vacuum', 'rag', 'carpet_sweeper', 'hand_towel', 'scraper',
+    'bath_towel', 'eraser', 'dustcloth', 'scrub_brush'
+}
+
+DUSTYABLE_OBJECT_TYPES = {
+    'bottom_cabinet_no_top', 'tabletop', 'face', 'dumbbell', 'corkscrew',
+    'terry', 'circle', 'fur', 'coaster', 'gauze', 'cotton', 'chock', 'trap',
+    'compact_disk', 'cap', 'stake', 'converter', 'peripheral',
+    'slide_fastener', 'headset', 'jug', 'baseball', 'window', 'straightener',
+    'computer_game', 'toaster', 'data_input_device', 'collar', 'accelerator',
+    'shoe', 'truck', 'remote_control', 'apron', 'nozzle', 'dander', 'bench',
+    'washcloth', 'ipod', 'journal', 'fork', 'outerwear', 'cherry',
+    'ammunition', 'work', 'quilt', 'wheel', 'tin', 'plywood', 'instrument',
+    'bidet', 'bag', 'bowl', 'squeegee', 'water_scooter', 'washer', 'panel',
+    'basket', 'motor_vehicle', 'mixer', 'hammer', 'suit', 'carabiner', 'sock',
+    'slipper', 'screen', 'boat', 'bath_linen', 'diary', 'drain', 'armoire',
+    'pegboard', 'dishwasher', 'vent', 'golf_equipment', 'wrench',
+    'personal_computer', 'straight_chair', 'suede_cloth',
+    'semiconductor_device', 'ginger', 'machine', 'backpack', 'tank',
+    'computer_circuit', 'helmet', 'magnetic_disk', 'ribbon', 'arrangement',
+    'pitcher', 'table_knife', 'disk', 'folding_chair', 'circuit', 'pump',
+    'toweling', 'solid_figure', 'drawstring_bag', 'rule', 'hamper', 'caddy',
+    'cheeseboard', 'console_table', 'headlight', 'medical_instrument', 'can',
+    'highchair', 'musical_instrument', 'canvas', 'velcro', 'mascara',
+    'loudspeaker', 'hacksaw', 'newspaper', 'packet', 'knot', 'jersey',
+    'shaver', 'screw', 'marker', 'floor_lamp', 'carriage', 'act', 'tulle',
+    'screwdriver', 'greatcoat', 'softball', 'cotter', 'parlor_game', 'skewer',
+    'tack', 'eiderdown', 'highlighter', 'candle', 'ring', 'bell', 'banana',
+    'grate', 'coffeepot', 'crib', 'flashlight', 'shrapnel', 'toothbrush',
+    'inverter', 'shelf', 'regulator', 'carving_knife', 'psychological_feature',
+    'camcorder', 'spring', 'razor', 'ceramic_ware', 'indentation', 'post',
+    'plumbing', 'handle', 'caster', 'staple', 'buckle', 'frill', 'tumbler',
+    'steamer', 'cradle', 'earmuff', 'digital_camera', 'swab', 'shield', 'hose',
+    'caliper', 'activity', 'mill', 'acoustic_device', 'room', 'carrot',
+    'drumstick', 'thimble', 'ladder', 'thing', 'snake', 'wedge', 'stairway',
+    'voltmeter', 'heater', 'push_button', 'frying_pan', 'photograph',
+    'hardback', 'basil', 'trouser', 'rail', 'folderal', 'junction', 'dress',
+    'anchor', 'blade', 'change_of_location', 'chest', 'bolt', 'bracelet',
+    'photographic_equipment', 'printed_circuit', 'dial', 'stringed_instrument',
+    'computer', 'clasp', 'dipper', 'cornice', 'uniform', 'vacuum',
+    'electro-acoustic_transducer', 'clothespin', 'hood', 'plate', 'bannister',
+    'brocade', 'pincer', 'pool_table', 'eyeshadow', 'painting', 'footstool',
+    'bedpost', 'power_tool', 'sifter', 'drum_sander', 'drive', 'blazer',
+    'layer', 'apple', 'shaft', 'writing', 'towel_rack', 'thermostat',
+    'microphone', 'rocking_chair', 'stool', 'teapot', 'turnbuckle',
+    'toothpick', 'stirrer', 'loafer', 'whisk', 'sieve', 'frisbee', 'movement',
+    'alarm', 'fan', 'dartboard', 'spatula', 'filter', 'gauge', 'bobbin',
+    'countertop', 'electrical_converter', 'heating_element', 'sink',
+    'stiletto', 'porcelain', 'product', 'roller', 'pack', 'circuit_breaker',
+    'oxford', 'projection', 'step_ladder', 'shoebox', 'protective_garment',
+    'antenna', 'worktable', 'sphere', 'armor_plate', 'box', 'adapter',
+    'disk_drive', 'digital_display', 'repeater', 'mantel', 'wine_bottle',
+    'baggage', 'pocketknife', 'diskette', 'basketball_equipment', 'shear',
+    'table', 'table_lamp', 'file', 'mouse', 'door', 'receiver', 'solid',
+    'cylinder', 'breakfast_table', 'radio_receiver', 'cinder', 'brick',
+    'crock', 'spout', 'blanket', 'background', 'watchband', 'tile', 'battery',
+    'handlebar', 'floor_cover', 'cord', 'bead', 'television_equipment',
+    'tablet', 'writing_board', 'faceplate', 'appendage', 'broomstick',
+    'coffee_table', 'desk', 'bale', 'model', 'hoop', 'belt', 'trimmer',
+    'recreational_vehicle', 'laundry', 'putter', 'drafting_instrument',
+    'stopcock', 'module', 'pencil_box', 'jewelry', 'yardstick', 'dolly',
+    'wastepaper_basket', 'dagger', 'liquid_crystal_display',
+    'digital_computer', 'well', 'chair', 'foot_rule', 'clothesline', 'set',
+    'purifier', 'lens', 'cpu_board', 'binder', 'planner', 'bath', 'upholstery',
+    'resistor', 'cooler', 'plate_glass', 'drill', 'van', 'clamshell', 'brush',
+    'diode', 'pill', 'drum', 'timer', 'case', 'mat', 'windowsill',
+    'wall_clock', 'gaming_table', 'wallet', 'composition', 'faucet', 'bathtub',
+    'air_pump', 'bundle', 'electronic_device', 'clout_nail', 'elastic_device',
+    'applicator', 'pineapple', 'opener', 'tomato', 'microwave', 'piano',
+    'nutcracker', 'upright', 'sleeve', 'lighting_fixture', 'pane',
+    'noisemaker', 'winder', 'pedal', 'broom', 'measuring_stick', 'hubcap',
+    'bulletin_board', 'canopy', 'pedestal_table', 'guard', 'tablespoon',
+    'sofa', 'ventilation', 'sail', 'floor', 'pencil', 'cringle', 'utility',
+    'breathing_device', 'silk', 'umbrella', 'laptop', 'boot', 'peach',
+    'electric_lamp', 'crowbar', 'groundsheet', 'funnel', 'shell', 'fitting',
+    'tire', 'group', 'nail', 'mousetrap', 'knife', 'tray',
+    'cellular_telephone', 'firebox', 'shoulder_bag', 'inflater',
+    'movable_barrier', 'baseboard', 'chest_of_drawers', 'piston', 'armchair',
+    'duffel_bag', 'speedometer', 'sculpture', 'baby_bed', 'sled',
+    'paper_fastener', 'necklace', 'happening', 'mattress', 'ceramic', 'wicker',
+    'scanner', 'sprocket', 'eyeliner', 'craft', 'shade', 'thermometer',
+    'memory_device', 'rail_fence', 'footboard', 'runner', 'paperweight',
+    'game', 'crate', 'tablefork', 'recording', 'cabinet',
+    'television_receiver', 'step', 'storage_space', 'crayon', 'crossbar',
+    'chaise_longue', 'griddle', 'demitasse', 'document', "plumber's_snake",
+    'converging_lens', 'lock', 'trailer_truck', 'compressor', 'plastic_art',
+    'car', 'display_panel', 'earplug', 'golf_club', 'blower', 'sharpener',
+    'percolator', 'percussion_instrument', 'charger', 'grater', 'vessel',
+    'cooking_utensil', 'manifold', 'exercise_device', 'blinker', 'reamer',
+    'rack', 'deep-freeze', 'timepiece', 'machinery', 'workwear', 'cable',
+    'fire_extinguisher', 'pan', 'floorboard', 'wallboard', 'bookshelf', 'vest',
+    'pestle', 'side', 'modem', 'gingham', 'display', 'motorcycle',
+    'written_communication', 'tarpaulin', 'flatware', 'doorknob', 'facsimile',
+    'dredging_bucket', 'cassette', 'opening', 'bicycle', 'truck_bed',
+    'plunger', 'light_bulb', 'tent', 'hat', 'dryer', 'protractor', 'library',
+    'wiring', 'tongs', 'burner', 'blackboard', 'bin', 'portrait',
+    'strengthener', 'steel', 'hanger', 'lath', 'string', 'walker', 'doll',
+    'material', 'hinge', 'paper_towel', 'lemon', 'jaw', 'shim', 'glass',
+    'sawhorse', 'refrigerator', 'shaker', 'monocle', 'work_surface',
+    'cellophane', 'tinsel', 'jar', 'transducer', 'cupboard', 'windowpane',
+    'turner', 'barrel', 'stand', 'self-propelled_vehicle', 'bird_feeder',
+    'lampshade', 'sweatband', 'colander', 'comb', 'caldron', 'range_hood',
+    'flow', 'brim', 'enamel', 'bust', 'stove', 'knob', 'wall_socket',
+    'thumbtack', 'embroidery', 'carafe', 'stockpot', 'buffer', 'cream_pitcher',
+    'headdress', 'chamber', 'palette', 'ink_cartridge', 'radiotelephone',
+    'connection', 'projectile', 'lamp', 'kettle', 'grandfather_clock', 'tiara',
+    'clamp', 'book', 'railing', 'hole', 'bow', 'weight', 'basin',
+    'television_camera', 'medallion', 'molding', 'apparel', 'toilet',
+    'stopwatch', 'flatbed', 'ski', 'autoclave', 'pouch', 'footwear', 'platter',
+    'dish_rack', 'dart', 'power_shovel', 'light-emitting_diode', 'passageway',
+    'jewelled_headdress', 'slat', 'award', 'basketball', 'telephone_receiver',
+    'drinking_vessel', 'cup', 'doorjamb', 'pendulum', 'eraser', 'scrub_brush',
+    'iron', 'furnace', 'packaging', 'sandal', 'dustpan', 'fuse', 'calculator',
+    'knickknack', 'bath_towel', 'plastic_wrap', 'cleaver', 'baby_buggy',
+    'boiler', 'scale', 'roaster', 'saucepan', 'ashcan', 'barbell',
+    'board_game', 'mechanical_system', 'cruet', 'crusher', 'shelter',
+    'audio_system', 'bookend', 'tea_bag', 'mug', 'crank', 'cone', 'tripod',
+    'attire', 'pepper_mill', 'stairwell', 'chopping_board', 'sports_equipment',
+    'headboard', 'saucer', 'lego', 'curtain', 'surgical_instrument',
+    'reflector', 'skirt', 'cutlery', 'orange', 'skeleton', 'tidy',
+    'baseball_equipment', 'squeezer', 'wrapping', 'bangle', 'power_saw',
+    'respirator', 'optical_disk', 'duplicator', 'swivel_chair', 'minibike',
+    'handset', 'edge', 'coupling', 'hand_towel', 'package', 'globe',
+    'skateboard', 'watch', 'figure', 'measuring_instrument', 'peg',
+    'computer_keyboard', 'shirt', 'monitor', 'toolbox', 'grill', 'gym_shoe',
+    'bedroom_furniture', 'sorter', 'videodisk', 'strip', 'hub', 'headband',
+    'graphic_art', 'jigsaw', 'football', 'apparatus', 'album', 'pipe',
+    'flight', 'accessory', 'bookcase', 'magnet', 'facility', 'webbing',
+    'scrapbook', 'cartridge', 'wreath', 'mirror', 'slate', 'canister',
+    'socket', 'notebook', 'straight_pin', 'receptacle', 'mask', 'laminate',
+    'guitar', 'motorboat', 'meter', 'folder', 'intake', 'rope', 'bucket',
+    'keyboard', 'coatrack', 'bit', 'optical_device', 'earphone', 'puppet',
+    'deck', 'scantling', 'chopstick', 'chisel', 'briefcase', 'bed', 'stapler',
+    'camera', 'drawer', 'hook', 'stairs', 'coffee_maker', 'gear',
+    'electronic_equipment', 'gourd', 'reproducer', 'pole',
+    'electric_refrigerator', 'likeness', 'kit', 'webcam', 'mural', 'printer',
+    'potato', 'treadmill', 'necktie', 'probe', 'backing', 'wardrobe',
+    'weaponry', 'lamination', 'collage', 'generator', 'bulldog_clip',
+    'white_goods', 'office_furniture', 'vase', 'carryall', 'weapon',
+    'fluorescent', 'valve', 'hygrometer', 'jamb', 'pulley', 'blind',
+    'windshield', 'carton', 'gown', 'sill', 'coffee_cup', 'circuit_board',
+    'rotating_mechanism', 'paintbrush', 'lumber', 'sunhat', 'fountain',
+    'sunglass', 'picture', 'component', 'trophy', 'bracket', 'cloche',
+    'garbage', 'lid', 'cashmere', 'seat', 'carpet_pad', 'topper', 'sequin',
+    'mail', 'telephone', 'portable_computer', 'blender', 'pick', 'jewel',
+    'diversion', 'rug', 'clipboard', 'doormat', 'toasting_fork',
+    'dressing_table', 'bottle', 'concave_shape', 'art', 'teacup', 'formalwear',
+    'easel', 'pot', 'router', 'slab', 'notch', 'dinner_jacket', 'capacitor',
+    'mallet', 'hairbrush', 'latch', 'odometer', 'paste-up', 'spoon', 'novel',
+    'clock', 'front', 'lantern', 'teaspoon', 'event', 'horn', 'frame',
+    'strainer', 'pendulum_clock', 'magazine', 'signaling_device',
+    'paperback_book', 'flower_arrangement', 'earring', 'keyboard_instrument',
+    'soup_ladle', 'ratchet', 'jean', 'teddy', 'doorframe', 'bottle_opener',
+    'board', 'neckwear', 'siren', 'balloon', 'stereo', 'goblet', 'joint'
+}
+
+PLACE_UNDER_SURFACE_OBJECT_TYPES = {
+    'coffee_table',
+    'breakfast_table',
+}
+
 
 def get_aabb_volume(lo: Array, hi: Array) -> float:
     """Simple utility function to compute the volume of an aabb.
@@ -1030,6 +1193,57 @@ def sample_place_ontop_params(igibson_behavior_env: "BehaviorEnv",
                             obj_to_place_ontop_sampling_bounds[1]),
                 rng.uniform(-obj_to_place_ontop_sampling_bounds[2] + 0.3,
                             obj_to_place_ontop_sampling_bounds[2]) + 0.3
+            ])
+            # NOTE: In many situations, it is impossible to find a
+            # good sample no matter how many times we try. Thus, we
+            # break this loop after a certain number of tries so the
+            # planner will backtrack.
+            if num_samples_tried > MAX_PLACEONTOP_SAMPLES:
+                break
+            num_samples_tried += 1
+        return sample_params
+
+    # If there's no object specific sampler, just return a
+    # random sample.
+    return np.array([
+        rng.uniform(-0.5, 0.5),
+        rng.uniform(-0.5, 0.5),
+        rng.uniform(0.3, 1.0)
+    ])
+
+
+def sample_place_under_params(igibson_behavior_env: "BehaviorEnv",
+                              obj_to_place_under: "URDFObject",
+                              rng: np.random.Generator) -> Array:
+    """Main logic for place under param sampler.
+
+    Implemented in a separate method to enable code reuse in
+    option_model_fns.
+    """
+    if obj_to_place_under.category == "coffee_table":
+        # Get the current env for collision checking.
+        obj_to_place_under_sampling_bounds = obj_to_place_under.bounding_box / 2
+        sample_params = np.array([
+            rng.uniform(-obj_to_place_under_sampling_bounds[0],
+                        obj_to_place_under_sampling_bounds[0]),
+            rng.uniform(-obj_to_place_under_sampling_bounds[1],
+                        obj_to_place_under_sampling_bounds[1]),
+            rng.uniform(-obj_to_place_under_sampling_bounds[2] - 0.3,
+                        -obj_to_place_under_sampling_bounds[2])
+        ])
+
+        logging.info("Sampling params for placeUnder table...")
+
+        num_samples_tried = 0
+        while not check_hand_end_pose(igibson_behavior_env, obj_to_place_under,
+                                      sample_params):
+            sample_params = np.array([
+                rng.uniform(-obj_to_place_under_sampling_bounds[0],
+                            obj_to_place_under_sampling_bounds[0]),
+                rng.uniform(-obj_to_place_under_sampling_bounds[1],
+                            obj_to_place_under_sampling_bounds[1]),
+                rng.uniform(-obj_to_place_under_sampling_bounds[2] - 0.3,
+                            -obj_to_place_under_sampling_bounds[2])
             ])
             # NOTE: In many situations, it is impossible to find a
             # good sample no matter how many times we try. Thus, we

@@ -6,11 +6,12 @@ from typing import List, Sequence, Set, Union, cast
 import numpy as np
 from numpy.random._generator import Generator
 
-from predicators.behavior_utils.behavior_utils import OPENABLE_OBJECT_TYPES, \
-    PICK_PLACE_OBJECT_TYPES, PLACE_INTO_SURFACE_OBJECT_TYPES, \
-    PLACE_ONTOP_SURFACE_OBJECT_TYPES, TOGGLEABLE_OBJECT_TYPES, \
+from predicators.behavior_utils.behavior_utils import CLEANING_OBJECT_TYPES, \
+    DUSTYABLE_OBJECT_TYPES, OPENABLE_OBJECT_TYPES, PICK_PLACE_OBJECT_TYPES, \
+    PLACE_INTO_SURFACE_OBJECT_TYPES, PLACE_ONTOP_SURFACE_OBJECT_TYPES, \
+    PLACE_UNDER_SURFACE_OBJECT_TYPES, TOGGLEABLE_OBJECT_TYPES, \
     sample_navigation_params, sample_place_inside_params, \
-    sample_place_ontop_params
+    sample_place_ontop_params, sample_place_under_params
 from predicators.envs import get_or_create_env
 from predicators.envs.behavior import BehaviorEnv
 from predicators.envs.doors import DoorsEnv
@@ -2912,6 +2913,8 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
     op_name_count_open = itertools.count()
     op_name_count_close = itertools.count()
     op_name_count_place_inside = itertools.count()
+    op_name_count_clean = itertools.count()
+    op_name_count_place_under = itertools.count()
 
     # Dummy sampler definition. Useful for open and close.
     def dummy_param_sampler(state: State, goal: Set[GroundAtom],
@@ -3042,6 +3045,24 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
 
         rnd_params = np.subtract(sampling_results[0][0], objB.get_position())
         return rnd_params
+
+    # Place Under sampler definition
+    def place_under_obj_pos_sampler(
+            state: State, goal: Set[GroundAtom], rng: Generator,
+            objects: Union["URDFObject", "RoomFloor"]) -> Array:
+        """Sampler for placeUnder option."""
+        del goal
+        assert rng is not None
+        # objA is the object the robot is currently holding, and
+        # objB is the surface that it must be placed under.
+        # The BEHAVIOR NSRT's are designed such that objA is the 0th
+        # argument, and objB is the last.
+        objB = objects[-1]
+
+        env = get_or_create_env("behavior")
+        assert isinstance(env, BehaviorEnv)
+        env.check_state_closeness_and_load(state)
+        return sample_place_under_params(env.igibson_behavior_env, objB, rng)
 
     for option in env.options:
         split_name = option.name.split("-")
@@ -3342,6 +3363,52 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                 )
                 nsrts.add(not_openable_nsrt)
 
+        elif base_option_name == "PlaceUnder":
+            assert len(option_arg_type_names) == 1
+            surf_obj_type_name = option_arg_type_names[0]
+            surf_obj_type = type_name_to_type[surf_obj_type_name]
+            surf_obj = Variable("?surf", surf_obj_type)
+            # We don't need an NSRT to place objects under the
+            # agent or room floor because this is not possible.
+            if surf_obj_type.name in ["agent", "room_floor"]:
+                continue
+            # If the surface object is not in these object types, we do not
+            # have to make a NSRT with this type.
+            if surf_obj_type.name not in PLACE_UNDER_SURFACE_OBJECT_TYPES:
+                continue
+            # We need to place the object we're holding.
+            for held_obj_types in sorted(env.task_relevant_types):
+                # If the held object is not in these object types, we do not
+                # have to make a NSRT with this type.
+                if held_obj_types.name not in PICK_PLACE_OBJECT_TYPES or \
+                    held_obj_types.name == surf_obj_type.name:
+                    continue
+                held_obj = Variable("?held", held_obj_types)
+                parameters = [held_obj, surf_obj]
+                option_vars = [surf_obj]
+                handempty = _get_lifted_atom("handempty", [])
+                held_holding = _get_lifted_atom("holding", [held_obj])
+                surf_reachable = _get_lifted_atom("reachable", [surf_obj])
+                held_reachable = _get_lifted_atom("reachable", [held_obj])
+                under = _get_lifted_atom("under", [held_obj, surf_obj])
+                preconditions = {held_holding, surf_reachable}
+                add_effects = {under, handempty, held_reachable}
+                delete_effects = {held_holding}
+                nsrt = NSRT(
+                    f"{option.name}-{next(op_name_count_place_under)}",
+                    parameters, preconditions, add_effects, delete_effects,
+                    set(), option, option_vars,
+                    lambda s, g, r, o: place_under_obj_pos_sampler(
+                        s,
+                        g,
+                        r,
+                        [
+                            env.object_to_ig_object(o_i)
+                            if isinstance(o_i, Object) else o_i for o_i in o
+                        ],
+                    ))
+                nsrts.add(nsrt)
+
         elif base_option_name == "ToggleOn":
             assert len(option_arg_type_names) == 1
             toggle_obj_type_name = option_arg_type_names[0]
@@ -3373,6 +3440,46 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     ],
                 ))
             nsrts.add(nsrt)
+
+        elif base_option_name == "CleanDusty":
+            assert len(option_arg_type_names) == 1
+            clean_obj_type_name = option_arg_type_names[0]
+            clean_obj_type = type_name_to_type[clean_obj_type_name]
+            clean_obj = Variable("?obj", clean_obj_type)
+
+            if clean_obj_type.name not in DUSTYABLE_OBJECT_TYPES:
+                continue
+
+            for held_obj_types in sorted(env.task_relevant_types):
+                if held_obj_types.name not in CLEANING_OBJECT_TYPES or \
+                    held_obj_types.name == clean_obj_type.name:
+                    continue
+                held_obj = Variable("?held", held_obj_types)
+                parameters = [held_obj, clean_obj]
+                option_vars = [clean_obj]
+                preconditions = {
+                    _get_lifted_atom("reachable", [clean_obj]),
+                    _get_lifted_atom("holding", [held_obj]),
+                    _get_lifted_atom("dusty", [clean_obj]),
+                    _get_lifted_atom("dustyable", [clean_obj]),
+                    _get_lifted_atom("cleaner", [held_obj])
+                }
+                add_effects = {_get_lifted_atom("not-dusty", [clean_obj])}
+                delete_effects = {_get_lifted_atom("dusty", [clean_obj])}
+                nsrt = NSRT(
+                    f"{option.name}-{next(op_name_count_clean)}",
+                    parameters, preconditions, add_effects, delete_effects,
+                    set(), option, option_vars,
+                    lambda s, g, r, o: dummy_param_sampler(
+                        s,
+                        g,
+                        r,
+                        [
+                            env.object_to_ig_object(o_i)
+                            if isinstance(o_i, Object) else o_i for o_i in o
+                        ],
+                    ))
+                nsrts.add(nsrt)
 
         else:
             raise ValueError(
