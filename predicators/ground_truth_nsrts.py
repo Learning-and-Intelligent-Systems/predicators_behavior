@@ -9,7 +9,7 @@ from numpy.random._generator import Generator
 from predicators.behavior_utils.behavior_utils import CLEANING_OBJECT_TYPES, \
     DUSTYABLE_OBJECT_TYPES, OPENABLE_OBJECT_TYPES, PICK_PLACE_OBJECT_TYPES, \
     PLACE_INTO_SURFACE_OBJECT_TYPES, PLACE_ONTOP_SURFACE_OBJECT_TYPES, \
-    PLACE_UNDER_SURFACE_OBJECT_TYPES, TOGGLEABLE_OBJECT_TYPES, \
+    PLACE_UNDER_SURFACE_OBJECT_TYPES, TOGGLEABLE_OBJECT_TYPES, PLACE_NEXT_TO_SURFACE_OBJECT_TYPES, \
     sample_navigation_params, sample_place_inside_params, \
     sample_place_ontop_params, sample_place_under_params, sample_place_next_to_params
 from predicators.envs import get_or_create_env
