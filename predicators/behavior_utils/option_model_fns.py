@@ -440,3 +440,53 @@ def create_toggle_on_option_model(
         env.step(np.zeros(env.action_space.shape))
 
     return toggleOnObjectOptionModel
+
+def create_soak_option_model(
+        plan: List[List[float]], _original_orientation: List[List[float]],
+        obj_to_soak: "URDFObject") -> Callable[[State, "BehaviorEnv"], None]:
+    """Instantiates and returns a soak option model given a dummy plan."""
+    del plan
+
+    def soakObjectOptionModel(_init_state: State, env: "BehaviorEnv") -> None:
+        logging.info(f"PRIMITIVE: Attempting to soak {obj_to_soak.name}")
+        if np.linalg.norm(
+                np.array(obj_to_soak.get_position()) -
+                np.array(env.robots[0].get_position())) < 2:
+            if hasattr(
+                    obj_to_soak,
+                    "states") and object_states.Soaked in obj_to_soak.states:
+                obj_to_soak.states[object_states.Soaked].set_value(True)
+            else:
+                logging.info("PRIMITIVE soak failed, cannot be soaked")
+        else:
+            logging.info("PRIMITIVE soak failed, too far")
+        obj_to_soak.force_wakeup()
+        # Step the simulator to update visuals.
+        env.step(np.zeros(env.action_space.shape))
+
+    return soakObjectOptionModel
+
+def create_clean_stained_option_model(
+        plan: List[List[float]], _original_orientation: List[List[float]],
+        obj_to_clean: "URDFObject") -> Callable[[State, "BehaviorEnv"], None]:
+    """Instantiates and returns a soak option model given a dummy plan."""
+    del plan
+
+    def cleanStainedObjectOptionModel(_init_state: State, env: "BehaviorEnv") -> None:
+        logging.info(f"PRIMITIVE: Attempting to clean stained {obj_to_clean.name}")
+        if np.linalg.norm(
+                np.array(obj_to_clean.get_position()) -
+                np.array(env.robots[0].get_position())) < 2:
+            if hasattr(
+                    obj_to_clean,
+                    "states") and object_states.Stained in obj_to_clean.states:
+                obj_to_clean.states[object_states.Stained].set_value(True)
+            else:
+                logging.info("PRIMITIVE cleaning failed, cannot be cleaned")
+        else:
+            logging.info("PRIMITIVE cleaning failed, too far")
+        obj_to_clean.force_wakeup()
+        # Step the simulator to update visuals.
+        env.step(np.zeros(env.action_space.shape))
+
+    return cleanStainedObjectOptionModel

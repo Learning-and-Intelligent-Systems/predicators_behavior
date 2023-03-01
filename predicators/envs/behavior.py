@@ -48,7 +48,7 @@ from predicators.behavior_utils.option_model_fns import \
     create_close_option_model, create_grasp_option_model, \
     create_navigate_option_model, create_open_option_model, \
     create_place_inside_option_model, create_place_option_model, \
-    create_toggle_on_option_model
+    create_toggle_on_option_model, create_soak_option_model, create_clean_stained_option_model
 from predicators.envs import BaseEnv
 from predicators.settings import CFG
 from predicators.structs import Action, Array, GroundAtom, Object, \
@@ -150,6 +150,8 @@ class BehaviorEnv(BaseEnv):
                          create_close_option_model,
                          create_place_inside_option_model,
                          create_toggle_on_option_model,
+                         create_soak_option_model,
+                         create_clean_stained_option_model,
                      ]
 
         # name, planner_fn, option_policy_fn, option_model_fn,
@@ -167,7 +169,10 @@ class BehaviorEnv(BaseEnv):
                         ("PlaceInside", planner_fns[2], option_policy_fns[3],
                          option_model_fns[5], 3, 1, (-1.0, 1.0)),
                         ("ToggleOn", planner_fns[3], option_policy_fns[3],
-                         option_model_fns[6], 3, 1, (-1.0, 1.0))]
+                         option_model_fns[6], 3, 1, (-1.0, 1.0)), 
+                         ("Soak", planner_fns[3], option_policy_fns[3],
+                         option_model_fns[7], 3, 1, (-1.0, 1.0)), 
+                         ("CleanStained", planner_fns[3], option_policy_fns[3], option_model_fns[7], 3, 1, (-1.0, 1.0))]
         self._options: Set[ParameterizedOption] = set()
         for (name, planner_fn, policy_fn, option_model_fn, param_dim, num_args,
              parameter_limits) in option_elems:
@@ -338,6 +343,13 @@ class BehaviorEnv(BaseEnv):
                     np.zeros(self.igibson_behavior_env.action_space.shape))
             init_state = self.current_ig_state_to_state(use_test_scene=testing)
             goal = self._get_task_goal()
+            #### TODO Kathryn
+            new_goal = set()
+            for atom in goal:
+                if "nextto" not in str(atom):
+                    new_goal.add(atom)
+            goal = new_goal
+            ####
             task = Task(init_state, goal)
             # If the goal already happens to hold in the init state, then
             # resample.
@@ -362,9 +374,13 @@ class BehaviorEnv(BaseEnv):
             if head_expr.terms[0] == 'not':
                 # Currently, the only goals that include 'not' are those that
                 # include 'not open' statements, so turn these into 'closed'.
-                assert head_expr.terms[1] == 'open'
-                bddl_name = 'closed'
-                obj_start_idx = 2
+                # assert head_expr.terms[1] == 'open'
+                if head_expr.terms[1] == 'open':
+                    bddl_name = 'closed'
+                    obj_start_idx = 2
+                elif head_expr.terms[1] == 'stained':
+                    bddl_name = 'clean'
+                    obj_start_idx = 2
             else:
                 bddl_name = head_expr.terms[0]  # untyped
                 obj_start_idx = 1
@@ -403,10 +419,10 @@ class BehaviorEnv(BaseEnv):
                 # "cooked",
                 # "burnt",
                 # "frozen",
-                # "soaked",
+                "soaked",
                 "open",
                 # "dusty",
-                # "stained",
+                "stained",
                 # "sliced",
                 # "toggled_on", # This pred is broken, changes num of objs
         ]:
@@ -443,6 +459,10 @@ class BehaviorEnv(BaseEnv):
             ("toggled_on", self._toggled_on_classifier, 1),
             ("toggled-off", self._toggled_off_classifier, 1),
             ("toggleable", self._toggleable_classifier, 1),
+            ("soakable", self._soakable_classifier, 1),
+            ("dry", self._dry_classifier, 1),
+            ("clean", self._clean_classifier, 1),
+            ("stainable", self._stainable_classifier, 1),
         ]
 
         for name, classifier, arity in custom_predicate_specs:
@@ -614,6 +634,7 @@ class BehaviorEnv(BaseEnv):
     # Do not add @functools.lru_cache(maxsize=None) here this will
     # lead to wrong mappings when we load a different scene
     def _name_to_ig_object(self, name: str) -> "ArticulatedObject":
+        # import ipdb; ipdb.set_trace()
         for ig_obj in self._get_task_relevant_objects():
             # Name is extended with sub-type in some behavior tasks
             if self._ig_object_name(ig_obj).startswith(name):
@@ -863,6 +884,54 @@ class BehaviorEnv(BaseEnv):
         obj_toggleable = hasattr(
             ig_obj, "states") and object_states.ToggledOn in ig_obj.states
         return obj_toggleable
+
+    def _soakable_classifier(self,
+                             state: State,
+                             objs: Sequence[Object],
+                             skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_soakable = hasattr(
+            ig_obj, "states") and object_states.Soaked in ig_obj.states
+        return obj_soakable
+
+    def _dry_classifier(self,
+                        state: State,
+                        objs: Sequence[Object],
+                        skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_soakable = self._soakable_classifier(state, objs)
+        if obj_soakable:
+            if not ig_obj.states[object_states.Soaked].get_value():
+                return True
+        return False
+
+    def _stainable_classifier(self,
+                        state: State,
+                        objs: Sequence[Object],
+                        skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_stainable = hasattr(
+            ig_obj, "states") and object_states.Stained in ig_obj.states
+        return obj_stainable
+
+    def _clean_classifier(self,
+                        state: State,
+                        objs: Sequence[Object],
+                        skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_stainable = self._stainable_classifier(state, objs)
+        if obj_stainable:
+            if not ig_obj.states[object_states.Stained].get_value():
+                return True
+        return False
 
     @staticmethod
     def _ig_object_name(ig_obj: "ArticulatedObject") -> str:
