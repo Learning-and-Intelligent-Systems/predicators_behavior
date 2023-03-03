@@ -3391,6 +3391,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                 _get_lifted_atom("reachable", [soak_obj]),
                 _get_lifted_atom("dry", [soak_obj]),
                 _get_lifted_atom("soakable", [soak_obj]),
+                _get_lifted_atom("holding", [soak_obj]),
             }
             add_effects = {_get_lifted_atom("soaked", [soak_obj])}
             delete_effects = {_get_lifted_atom("dry", [soak_obj])}
@@ -3409,20 +3410,60 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             nsrts.add(nsrt)
 
         elif base_option_name == "CleanStained":
-            # assert len(option_arg_type_names) == 1
-            # soaked_obj_type_name = option_arg_type_names[0]
-            # soaked_obj_type = type_name_to_type[soaked_obj_type_name]
-            # soaked_obj = Variable("?obj", soaked_obj_type)
+            assert len(option_arg_type_names) == 1
+            soaked_obj_type_name = option_arg_type_names[0]
+            soaked_obj_type = type_name_to_type[soaked_obj_type_name]
+            soaked_obj = Variable("?obj", soaked_obj_type)
 
-            # if soaked_obj_type.name not in SOAKABLE_OBJECT_TYPES:
+            if soaked_obj_type.name not in SOAKABLE_OBJECT_TYPES:
+                continue
+
+            for clean_obj_types in sorted(env.task_relevant_types):
+                if clean_obj_types.name not in CLEANABLE_OBJECT_TYPES or \
+                    clean_obj_types.name == soaked_obj_type.name:
+                    continue
+
+                clean_obj = Variable("?clean", clean_obj_types)
+                parameters = [clean_obj, soaked_obj]
+                option_vars = [clean_obj]
+
+                preconditions = {
+                    _get_lifted_atom("holding", [soaked_obj]),
+                    _get_lifted_atom("reachable", [clean_obj]),
+                    _get_lifted_atom("soaked", [soaked_obj]),
+                    _get_lifted_atom("stained", [clean_obj]), 
+                }
+
+                add_effects = {_get_lifted_atom("clean", [clean_obj])}
+                delete_effects = {_get_lifted_atom("stained", [clean_obj])}
+                nsrt = NSRT(
+                    f"{option.name}-{next(op_name_count_clean_stained)}", parameters,
+                    preconditions, add_effects, delete_effects, set(), option,
+                    option_vars, lambda s, g, r, o: dummy_param_sampler(
+                        s,
+                        g,
+                        r,
+                        [
+                            env.object_to_ig_object(o_i)
+                            if isinstance(o_i, Object) else o_i for o_i in o
+                        ],
+                    ))
+                nsrts.add(nsrt)
+
+            # assert len(option_arg_type_names) == 1
+            # clean_obj_type_name = option_arg_type_names[0]
+            # clean_obj_type = type_name_to_type[clean_obj_type_name]
+            # clean_obj = Variable("?obj", clean_obj_type)
+
+            # if clean_obj_type.name not in CLEANABLE_OBJECT_TYPES:
             #     continue
 
-            # for clean_obj_types in sorted(env.task_relevant_types):
-            #     if clean_obj_types.name not in CLEANABLE_OBJECT_TYPES or \
-            #         clean_obj_types.name == soaked_obj_type.name:
+            # for soaked_obj_types in sorted(env.task_relevant_types):
+            #     if soaked_obj_types.name not in SOAKABLE_OBJECT_TYPES or \
+            #         clean_obj_type.name == soaked_obj_types.name:
             #         continue
 
-            #     clean_obj = Variable("?clean", clean_obj_types)
+            #     soaked_obj = Variable("?soaked", soaked_obj_types)
             #     parameters = [clean_obj, soaked_obj]
             #     option_vars = [clean_obj]
 
@@ -3448,46 +3489,6 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             #             ],
             #         ))
             #     nsrts.add(nsrt)
-
-            assert len(option_arg_type_names) == 1
-            clean_obj_type_name = option_arg_type_names[0]
-            clean_obj_type = type_name_to_type[clean_obj_type_name]
-            clean_obj = Variable("?obj", clean_obj_type)
-
-            if clean_obj_type.name not in CLEANABLE_OBJECT_TYPES:
-                continue
-
-            for soaked_obj_types in sorted(env.task_relevant_types):
-                if soaked_obj_types.name not in SOAKABLE_OBJECT_TYPES or \
-                    clean_obj_type.name == soaked_obj_types.name:
-                    continue
-
-                soaked_obj = Variable("?soaked", soaked_obj_types)
-                parameters = [clean_obj, soaked_obj]
-                option_vars = [clean_obj]
-
-                preconditions = {
-                    _get_lifted_atom("holding", [soaked_obj]),
-                    _get_lifted_atom("reachable", [clean_obj]),
-                    _get_lifted_atom("soaked", [soaked_obj]),
-                    _get_lifted_atom("stained", [clean_obj]), 
-                }
-
-                add_effects = {_get_lifted_atom("clean", [clean_obj])}
-                delete_effects = {_get_lifted_atom("stained", [soaked_obj])}
-                nsrt = NSRT(
-                    f"{option.name}-{next(op_name_count_clean_stained)}", parameters,
-                    preconditions, add_effects, delete_effects, set(), option,
-                    option_vars, lambda s, g, r, o: dummy_param_sampler(
-                        s,
-                        g,
-                        r,
-                        [
-                            env.object_to_ig_object(o_i)
-                            if isinstance(o_i, Object) else o_i for o_i in o
-                        ],
-                    ))
-                nsrts.add(nsrt)
 
         else:
             raise ValueError(
