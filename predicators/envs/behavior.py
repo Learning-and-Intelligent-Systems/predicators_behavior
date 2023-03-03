@@ -172,7 +172,7 @@ class BehaviorEnv(BaseEnv):
                          option_model_fns[6], 3, 1, (-1.0, 1.0)), 
                          ("Soak", planner_fns[3], option_policy_fns[3],
                          option_model_fns[7], 3, 1, (-1.0, 1.0)), 
-                         ("CleanStained", planner_fns[3], option_policy_fns[3], option_model_fns[7], 3, 1, (-1.0, 1.0))]
+                         ("CleanStained", planner_fns[3], option_policy_fns[3], option_model_fns[8], 3, 1, (-1.0, 1.0))]
         self._options: Set[ParameterizedOption] = set()
         for (name, planner_fn, policy_fn, option_model_fn, param_dim, num_args,
              parameter_limits) in option_elems:
@@ -419,10 +419,10 @@ class BehaviorEnv(BaseEnv):
                 # "cooked",
                 # "burnt",
                 # "frozen",
-                "soaked",
+                # "soaked",
                 "open",
                 # "dusty",
-                "stained",
+                # "stained",
                 # "sliced",
                 # "toggled_on", # This pred is broken, changes num of objs
         ]:
@@ -463,6 +463,8 @@ class BehaviorEnv(BaseEnv):
             ("dry", self._dry_classifier, 1),
             ("clean", self._clean_classifier, 1),
             ("stainable", self._stainable_classifier, 1),
+            ("stained", self._stained_classifier, 1),
+            ("soaked", self._soaked_classifier, 1),
         ]
 
         for name, classifier, arity in custom_predicate_specs:
@@ -932,6 +934,33 @@ class BehaviorEnv(BaseEnv):
             if not ig_obj.states[object_states.Stained].get_value():
                 return True
         return False
+
+    def _stained_classifier(self,
+                        state: State,
+                        objs: Sequence[Object],
+                        skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_stainable = self._stainable_classifier(state, objs)
+        if obj_stainable:
+            if ig_obj.states[object_states.Stained].get_value():
+                return True
+        return False
+
+    def _soaked_classifier(self,
+                        state: State,
+                        objs: Sequence[Object],
+                        skip_allclose_check: bool = False) -> bool:
+        self.check_state_closeness_and_load(state, skip_allclose_check)
+        assert len(objs) == 1
+        ig_obj = self.object_to_ig_object(objs[0])
+        obj_soakable = self._soakable_classifier(state, objs)
+        if obj_soakable:
+            if ig_obj.states[object_states.Soaked].get_value():
+                return True
+        return False
+
 
     @staticmethod
     def _ig_object_name(ig_obj: "ArticulatedObject") -> str:
