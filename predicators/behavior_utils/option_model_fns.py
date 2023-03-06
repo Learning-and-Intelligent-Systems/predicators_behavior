@@ -469,7 +469,7 @@ def create_soak_option_model(
 def create_clean_stained_option_model(
         plan: List[List[float]], _original_orientation: List[List[float]],
         obj_to_clean: "URDFObject") -> Callable[[State, "BehaviorEnv"], None]:
-    """Instantiates and returns a soak option model given a dummy plan."""
+    """Instantiates and returns a clean stained option model given a dummy plan."""
     del plan
 
     def cleanStainedObjectOptionModel(_init_state: State, env: "BehaviorEnv") -> None:
