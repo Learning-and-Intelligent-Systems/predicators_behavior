@@ -492,7 +492,6 @@ def create_place_under_option_model(
                 else:
                     logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
                                  f"{obj_to_place_under.name} fail, not under")
-                    # import ipdb; ipdb.set_trace()
             else:
                 logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
                              f"{obj_to_place_under.name} fail, too far")
@@ -617,7 +616,6 @@ def create_place_nextto_option_model(
                     logging.info(
                         f"PRIMITIVE: place {obj_in_hand.name} next to "
                         f"{obj_to_place_nextto.name} fail, not next to")
-                    # import ipdb; ipdb.set_trace()
             else:
                 logging.info(f"PRIMITIVE: place {obj_in_hand.name} next to "
                              f"{obj_to_place_nextto.name} fail, too far")

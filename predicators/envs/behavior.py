@@ -395,7 +395,6 @@ class BehaviorEnv(BaseEnv):
                 for t in head_expr.terms[obj_start_idx:]
             ]
             objects = [self._ig_object_to_object(i) for i in ig_objs]
-            # import ipdb; ipdb.set_trace()
             pred_name = self._create_type_combo_name(bddl_name,
                                                      [o.type for o in objects])
             pred = self._name_to_predicate(pred_name)
