@@ -11,8 +11,8 @@ from numpy.random import RandomState
 from predicators import utils
 from predicators.behavior_utils.behavior_utils import \
     ALL_RELEVANT_OBJECT_TYPES, sample_navigation_params, \
-    sample_place_inside_params, sample_place_ontop_params, \
-    sample_place_under_params, sample_place_next_to_params
+    sample_place_inside_params, sample_place_next_to_params, \
+    sample_place_ontop_params, sample_place_under_params
 from predicators.settings import CFG
 from predicators.structs import Object, State, Type
 
@@ -536,6 +536,7 @@ def create_toggle_on_option_model(
 
     return toggleOnObjectOptionModel
 
+
 def create_place_nextto_option_model(
     plan: List[List[float]], _original_orientation: List[List[float]],
     obj_to_place_nextto: "URDFObject"
@@ -544,7 +545,7 @@ def create_place_nextto_option_model(
     plan."""
 
     def placeNextToObjectOptionModel(_init_state: State,
-                                    env: "BehaviorEnv") -> None:
+                                     env: "BehaviorEnv") -> None:
         obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
         obj_in_hand = [
             obj for obj in env.scene.get_objects()
@@ -561,8 +562,8 @@ def create_place_nextto_option_model(
             if np.linalg.norm(
                     np.array(obj_to_place_nextto.get_position()) -
                     np.array(env.robots[0].get_position())) < 2:
-                if (hasattr(obj_to_place_nextto, "states")
-                        and object_states.NextTo in obj_to_place_nextto.states):
+                if (hasattr(obj_to_place_nextto, "states") and
+                        object_states.NextTo in obj_to_place_nextto.states):
                     if obj_in_hand.states[object_states.NextTo].get_value(
                             obj_to_place_nextto) or obj_to_place_nextto.states[
                                 object_states.NextTo].get_value(obj_in_hand):
@@ -613,8 +614,9 @@ def create_place_nextto_option_model(
                     for _ in range(15):
                         env.step(np.zeros(env.action_space.shape))
                 else:
-                    logging.info(f"PRIMITIVE: place {obj_in_hand.name} next to "
-                                 f"{obj_to_place_nextto.name} fail, not next to")
+                    logging.info(
+                        f"PRIMITIVE: place {obj_in_hand.name} next to "
+                        f"{obj_to_place_nextto.name} fail, not next to")
                     # import ipdb; ipdb.set_trace()
             else:
                 logging.info(f"PRIMITIVE: place {obj_in_hand.name} next to "
@@ -628,7 +630,7 @@ def create_place_nextto_option_model(
         env.step(np.zeros(env.action_space.shape))
 
     return placeNextToObjectOptionModel
-    
+
 
 def create_clean_dusty_option_model(
         plan: List[List[float]], _original_orientation: List[List[float]],

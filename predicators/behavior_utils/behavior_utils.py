@@ -49,7 +49,8 @@ ALL_RELEVANT_OBJECT_TYPES = {
     'soap', 'wine_bottle', 'dishwasher', 'lollipop', 'cinnamon', 'pen', 'sink',
     'bow', 'bath_towel', 'cruet', 'headset', 'coffee_cup', 'dishtowel',
     'mouse', 'stove', 'duffel_bag', 'broom', 'stocking', 'parsley', 'yogurt',
-    'guacamole', 'paper_towel', 'modem', 'scanner', 'printer', 'mousetrap', 'sink', 'toilet'
+    'guacamole', 'paper_towel', 'modem', 'scanner', 'printer', 'mousetrap',
+    'toilet'
 }
 PICK_PLACE_OBJECT_TYPES = {
     'mineral_water',
@@ -1214,19 +1215,22 @@ def sample_place_ontop_params(igibson_behavior_env: "BehaviorEnv",
         rng.uniform(0.3, 1.0)
     ])
 
+
 def sample_place_next_to_params(igibson_behavior_env: "BehaviorEnv",
-                              obj_to_place_nextto: "URDFObject",
-                              rng: np.random.Generator) -> Array:
+                                obj_to_place_nextto: "URDFObject",
+                                rng: np.random.Generator) -> Array:
     """Main logic for place next to param sampler.
+
     Implemented in a separate method to enable code reuse in
     option_model_fns.
     """
-    
+
     if obj_to_place_nextto.category == "toilet":
         # Get the current env for collision checking.
-        obj_to_place_nextto_sampling_bounds = obj_to_place_nextto.bounding_box / 2
+        obj_to_place_nextto_sampling_bounds =  \
+            obj_to_place_nextto.bounding_box / 2
         x_location = rng.uniform(-obj_to_place_nextto_sampling_bounds[0],
-                        obj_to_place_nextto_sampling_bounds[0])
+                                 obj_to_place_nextto_sampling_bounds[0])
         if x_location < 0:
             x_location -= obj_to_place_nextto_sampling_bounds[0]
         else:
@@ -1243,10 +1247,10 @@ def sample_place_next_to_params(igibson_behavior_env: "BehaviorEnv",
         logging.info("Sampling params for placeNextTo table...")
 
         num_samples_tried = 0
-        while not check_hand_end_pose(igibson_behavior_env, obj_to_place_nextto,
-                                      sample_params):
+        while not check_hand_end_pose(igibson_behavior_env,
+                                      obj_to_place_nextto, sample_params):
             x_location = rng.uniform(-obj_to_place_nextto_sampling_bounds[0],
-                        obj_to_place_nextto_sampling_bounds[0])
+                                     obj_to_place_nextto_sampling_bounds[0])
             if x_location < 0:
                 x_location -= obj_to_place_nextto_sampling_bounds[0]
             else:
@@ -1274,6 +1278,7 @@ def sample_place_next_to_params(igibson_behavior_env: "BehaviorEnv",
         rng.uniform(0.3, 1.0)
     ])
     return sample_params
+
 
 def sample_place_under_params(igibson_behavior_env: "BehaviorEnv",
                               obj_to_place_under: "URDFObject",

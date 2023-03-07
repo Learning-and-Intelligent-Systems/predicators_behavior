@@ -8,10 +8,11 @@ from numpy.random._generator import Generator
 
 from predicators.behavior_utils.behavior_utils import CLEANING_OBJECT_TYPES, \
     DUSTYABLE_OBJECT_TYPES, OPENABLE_OBJECT_TYPES, PICK_PLACE_OBJECT_TYPES, \
-    PLACE_INTO_SURFACE_OBJECT_TYPES, PLACE_ONTOP_SURFACE_OBJECT_TYPES, \
-    PLACE_UNDER_SURFACE_OBJECT_TYPES, TOGGLEABLE_OBJECT_TYPES, PLACE_NEXT_TO_SURFACE_OBJECT_TYPES, \
-    sample_navigation_params, sample_place_inside_params, \
-    sample_place_ontop_params, sample_place_under_params, sample_place_next_to_params
+    PLACE_INTO_SURFACE_OBJECT_TYPES, PLACE_NEXT_TO_SURFACE_OBJECT_TYPES, \
+    PLACE_ONTOP_SURFACE_OBJECT_TYPES, PLACE_UNDER_SURFACE_OBJECT_TYPES, \
+    TOGGLEABLE_OBJECT_TYPES, sample_navigation_params, \
+    sample_place_inside_params, sample_place_next_to_params, \
+    sample_place_ontop_params, sample_place_under_params
 from predicators.envs import get_or_create_env
 from predicators.envs.behavior import BehaviorEnv
 from predicators.envs.doors import DoorsEnv
@@ -3063,7 +3064,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         assert isinstance(env, BehaviorEnv)
         env.check_state_closeness_and_load(state)
         return sample_place_next_to_params(env.igibson_behavior_env, objB, rng)
-        
+
     # Place Under sampler definition
     def place_under_obj_pos_sampler(
             state: State, goal: Set[GroundAtom], rng: Generator,
@@ -3481,9 +3482,10 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     continue
                 held_obj = Variable("?held", held_obj_types)
                 for ontop_obj_types in sorted(env.task_relevant_types):
-                    if ontop_obj_types.name not in PLACE_ONTOP_SURFACE_OBJECT_TYPES:
+                    if ontop_obj_types.name not in \
+                        PLACE_ONTOP_SURFACE_OBJECT_TYPES:
                         continue
-                        
+
                     ontop_obj = Variable("?ontop", ontop_obj_types)
                     parameters = [held_obj, surf_obj, ontop_obj]
                     option_vars = [surf_obj]
@@ -3492,10 +3494,14 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     surf_reachable = _get_lifted_atom("reachable", [surf_obj])
                     held_reachable = _get_lifted_atom("reachable", [held_obj])
                     nextto = _get_lifted_atom("nextto", [held_obj, surf_obj])
-                    ontop_surf = _get_lifted_atom("ontop", [surf_obj, ontop_obj])
-                    ontop_held = _get_lifted_atom("ontop", [held_obj, ontop_obj])
+                    # ontop_surf = _get_lifted_atom("ontop",
+                    #                               [surf_obj, ontop_obj])
+                    ontop_held = _get_lifted_atom("ontop",
+                                                  [held_obj, ontop_obj])
                     preconditions = {held_holding, surf_reachable}
-                    add_effects = {nextto, handempty, held_reachable, ontop_held}
+                    add_effects = {
+                        nextto, handempty, held_reachable, ontop_held
+                    }
                     delete_effects = {held_holding}
                     nsrt = NSRT(
                         f"{option.name}-{next(op_name_count_place_next_to)}",
@@ -3507,7 +3513,8 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                             r,
                             [
                                 env.object_to_ig_object(o_i)
-                                if isinstance(o_i, Object) else o_i for o_i in o
+                                if isinstance(o_i, Object) else o_i
+                                for o_i in o
                             ],
                         ))
                     nsrts.add(nsrt)
