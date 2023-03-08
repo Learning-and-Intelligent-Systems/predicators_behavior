@@ -49,7 +49,8 @@ ALL_RELEVANT_OBJECT_TYPES = {
     'soap', 'wine_bottle', 'dishwasher', 'lollipop', 'cinnamon', 'pen', 'sink',
     'bow', 'bath_towel', 'cruet', 'headset', 'coffee_cup', 'dishtowel',
     'mouse', 'stove', 'duffel_bag', 'broom', 'stocking', 'parsley', 'yogurt',
-    'guacamole', 'paper_towel', 'modem', 'scanner', 'printer'
+    'guacamole', 'paper_towel', 'modem', 'scanner', 'printer', 'mousetrap',
+    'toilet'
 }
 PICK_PLACE_OBJECT_TYPES = {
     'mineral_water',
@@ -582,7 +583,7 @@ PLACE_ONTOP_SURFACE_OBJECT_TYPES = {
     'paper_towel', 'dishtowel', 'dial', 'folding_chair', 'deck', 'chair',
     'hamper', 'bed', 'plate', 'work_surface', 'board', 'pallet',
     'console_table', 'pool_table', 'electric_refrigerator', 'stand',
-    'room_floor', 'notebook', 'hardback'
+    'room_floor', 'notebook', 'hardback', 'toilet'
 }
 PLACE_INTO_SURFACE_OBJECT_TYPES = {
     'shelf', 'sack', 'basket', 'dredging_bucket', 'cabinet', 'crock', 'bucket',
@@ -632,6 +633,9 @@ TOGGLEABLE_OBJECT_TYPES = {
     'facsimile',
 }
 
+PLACE_NEXT_TO_SURFACE_OBJECT_TYPES = {
+    'toilet',
+}
 CLEANING_OBJECT_TYPES = {
     'toothbrush', 'towel', 'dinner_napkin', 'paper_towel', 'dishtowel',
     'broom', 'vacuum', 'rag', 'carpet_sweeper', 'hand_towel', 'scraper',
@@ -1210,6 +1214,70 @@ def sample_place_ontop_params(igibson_behavior_env: "BehaviorEnv",
         rng.uniform(-0.5, 0.5),
         rng.uniform(0.3, 1.0)
     ])
+
+
+def sample_place_next_to_params(igibson_behavior_env: "BehaviorEnv",
+                                obj_to_place_nextto: "URDFObject",
+                                rng: np.random.Generator) -> Array:
+    """Main logic for place next to param sampler.
+
+    Implemented in a separate method to enable code reuse in
+    option_model_fns.
+    """
+
+    if obj_to_place_nextto.category == "toilet":
+        # Get the current env for collision checking.
+        obj_to_place_nextto_sampling_bounds =  \
+            obj_to_place_nextto.bounding_box / 2
+        x_location = rng.uniform(-obj_to_place_nextto_sampling_bounds[0],
+                                 obj_to_place_nextto_sampling_bounds[0])
+        if x_location < 0:
+            x_location -= obj_to_place_nextto_sampling_bounds[0]
+        else:
+            x_location += obj_to_place_nextto_sampling_bounds[0]
+
+        sample_params = np.array([
+            x_location,
+            rng.uniform(-obj_to_place_nextto_sampling_bounds[1],
+                        obj_to_place_nextto_sampling_bounds[1]),
+            rng.uniform(-obj_to_place_nextto_sampling_bounds[2],
+                        obj_to_place_nextto_sampling_bounds[2])
+        ])
+
+        logging.info("Sampling params for placeNextTo table...")
+
+        num_samples_tried = 0
+        while not check_hand_end_pose(igibson_behavior_env,
+                                      obj_to_place_nextto, sample_params):
+            x_location = rng.uniform(-obj_to_place_nextto_sampling_bounds[0],
+                                     obj_to_place_nextto_sampling_bounds[0])
+            if x_location < 0:
+                x_location -= obj_to_place_nextto_sampling_bounds[0]
+            else:
+                x_location += obj_to_place_nextto_sampling_bounds[0]
+
+            sample_params = np.array([
+                x_location,
+                rng.uniform(-obj_to_place_nextto_sampling_bounds[1],
+                            obj_to_place_nextto_sampling_bounds[1]),
+                rng.uniform(-obj_to_place_nextto_sampling_bounds[2],
+                            obj_to_place_nextto_sampling_bounds[2])
+            ])
+            # NOTE: In many situations, it is impossible to find a
+            # good sample no matter how many times we try. Thus, we
+            # break this loop after a certain number of tries so the
+            # planner will backtrack.
+            if num_samples_tried > MAX_PLACEONTOP_SAMPLES:
+                break
+            num_samples_tried += 1
+            return sample_params
+
+    sample_params = np.array([
+        rng.uniform(-0.5, 0.5),
+        rng.uniform(-0.5, 0.5),
+        rng.uniform(0.3, 1.0)
+    ])
+    return sample_params
 
 
 def sample_place_under_params(igibson_behavior_env: "BehaviorEnv",

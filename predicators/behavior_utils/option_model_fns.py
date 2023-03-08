@@ -11,8 +11,8 @@ from numpy.random import RandomState
 from predicators import utils
 from predicators.behavior_utils.behavior_utils import \
     ALL_RELEVANT_OBJECT_TYPES, sample_navigation_params, \
-    sample_place_inside_params, sample_place_ontop_params, \
-    sample_place_under_params
+    sample_place_inside_params, sample_place_next_to_params, \
+    sample_place_ontop_params, sample_place_under_params
 from predicators.settings import CFG
 from predicators.structs import Object, State, Type
 
@@ -492,7 +492,6 @@ def create_place_under_option_model(
                 else:
                     logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
                                  f"{obj_to_place_under.name} fail, not under")
-                    # import ipdb; ipdb.set_trace()
             else:
                 logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
                              f"{obj_to_place_under.name} fail, too far")
@@ -535,6 +534,100 @@ def create_toggle_on_option_model(
         env.step(np.zeros(env.action_space.shape))
 
     return toggleOnObjectOptionModel
+
+
+def create_place_nextto_option_model(
+    plan: List[List[float]], _original_orientation: List[List[float]],
+    obj_to_place_nextto: "URDFObject"
+) -> Callable[[State, "BehaviorEnv"], None]:
+    """Instantiates and returns an placeNextTo option model given a dummy
+    plan."""
+
+    def placeNextToObjectOptionModel(_init_state: State,
+                                     env: "BehaviorEnv") -> None:
+        obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
+        obj_in_hand = [
+            obj for obj in env.scene.get_objects()
+            if obj.get_body_id() == obj_in_hand_idx
+        ][0]
+        rh_orig_grasp_position = env.robots[0].parts[
+            "right_hand"].get_position()
+        rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
+        if obj_in_hand is not None and obj_in_hand != obj_to_place_nextto and \
+            isinstance(obj_to_place_nextto, URDFObject):
+            logging.info(
+                f"PRIMITIVE: attempt to place {obj_in_hand.name} next to "
+                f"{obj_to_place_nextto.name}")
+            if np.linalg.norm(
+                    np.array(obj_to_place_nextto.get_position()) -
+                    np.array(env.robots[0].get_position())) < 2:
+                if (hasattr(obj_to_place_nextto, "states") and
+                        object_states.NextTo in obj_to_place_nextto.states):
+                    if obj_in_hand.states[object_states.NextTo].get_value(
+                            obj_to_place_nextto) or obj_to_place_nextto.states[
+                                object_states.NextTo].get_value(obj_in_hand):
+                        logging.info(
+                            f"PRIMITIVE: place {obj_in_hand.name} next to "
+                            f"{obj_to_place_nextto.name} success")
+
+                    # If we're not overriding the learned samplers, then we
+                    # will directly use the elements of `plan`, which in turn
+                    # use the outputs of the learned samplers. Otherwise, we
+                    # will ignore these and use our oracle sampler to give us
+                    # values to use.
+                    if not CFG.behavior_override_learned_samplers:
+                        target_pos = plan[-1][0:3]
+                        target_orn = plan[-1][3:6]
+                    else:
+                        rng = np.random.default_rng(prng.randint(10000))
+                        place_rel_pos = sample_place_next_to_params(
+                            env, obj_to_place_nextto, rng)
+                        target_pos_list = np.add(
+                            place_rel_pos, obj_to_place_nextto.get_position())
+                        target_pos_list[2] += 0.2
+                        target_pos = target_pos_list.tolist()
+                        target_orn = plan[-1][3:6]
+                        logging.info(
+                            f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
+                            f", {plan[-1][3:6]}) and attempting to " +
+                            f"place next to {obj_to_place_nextto.name} with "
+                            f"params {target_pos}")
+                    env.robots[0].parts["right_hand"].force_release_obj()
+                    obj_to_place_nextto.force_wakeup()
+                    obj_in_hand.set_position_orientation(
+                        target_pos, p.getQuaternionFromEuler(target_orn))
+                    # this is running a zero action to step simulator
+                    env.step(np.zeros(env.action_space.shape))
+                    # reset the released object to zero velocity so it
+                    # doesn't fly away because of residual warp speeds
+                    # from teleportation!
+                    p.resetBaseVelocity(
+                        obj_in_hand_idx,
+                        linearVelocity=[0, 0, 0],
+                        angularVelocity=[0, 0, 0],
+                    )
+                    env.robots[0].parts["right_hand"].set_position_orientation(
+                        rh_orig_grasp_position, rh_orig_grasp_orn)
+                    # this is running a series of zero action to step
+                    # simulator to let the object fall into its place
+                    for _ in range(15):
+                        env.step(np.zeros(env.action_space.shape))
+                else:
+                    logging.info(
+                        f"PRIMITIVE: place {obj_in_hand.name} next to "
+                        f"{obj_to_place_nextto.name} fail, not next to")
+            else:
+                logging.info(f"PRIMITIVE: place {obj_in_hand.name} next to "
+                             f"{obj_to_place_nextto.name} fail, too far")
+        else:
+            logging.info(
+                "PRIMITIVE: place under failed with invalid obj params.")
+
+        obj_to_place_nextto.force_wakeup()
+        # Step the simulator to update visuals.
+        env.step(np.zeros(env.action_space.shape))
+
+    return placeNextToObjectOptionModel
 
 
 def create_clean_dusty_option_model(
