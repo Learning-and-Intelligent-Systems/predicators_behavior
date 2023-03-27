@@ -5,6 +5,7 @@ Mainly, "SeSamE": SEarch-and-SAMple planning, then Execution.
 
 from __future__ import annotations
 
+import curses
 import heapq as hq
 import logging
 import os
@@ -18,7 +19,6 @@ from dataclasses import dataclass
 from itertools import islice
 from typing import Dict, FrozenSet, Iterator, List, Optional, Sequence, Set, \
     Tuple
-import curses
 
 import numpy as np
 
@@ -83,19 +83,24 @@ def sesame_plan(
             "the iggui window to the location you want for recording.")
         env = get_or_create_env('behavior')
         assert isinstance(env, BehaviorEnv)
-        start_time = time.time()
+        # start_time = time.time()
         win = curses.initscr()
         win.nodelay(True)
-        win.addstr(0, 0, "VIDEO CREATION MODE: You have time to position the iggui window to the location you want for recording. Type 'q' to indicate you have finished positioning: ")
+        win.addstr(
+            0, 0,
+            "VIDEO CREATION MODE: You have time to position the iggui window \
+            to the location you want for recording. Type 'q' to indicate you \
+            have finished positioning: "
+        )
         flag = win.getch()
         while flag == -1 or chr(flag) != 'q':
             env.igibson_behavior_env.step(np.zeros(env.action_space.shape))
             flag = win.getch()
         curses.endwin()
         # while time.time() - start_time < 30.0:
-            # env.igibson_behavior_env.step(np.zeros(env.action_space.shape))
+        # env.igibson_behavior_env.step(np.zeros(env.action_space.shape))
 
-        logging.info("VIDEO CREATION MODE: Starting planning.") 
+        logging.info("VIDEO CREATION MODE: Starting planning.")
 
     if CFG.sesame_task_planner == "astar":
         return _sesame_plan_with_astar(
