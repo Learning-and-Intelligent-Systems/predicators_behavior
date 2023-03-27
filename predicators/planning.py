@@ -90,8 +90,7 @@ def sesame_plan(
             0, 0,
             "VIDEO CREATION MODE: You have time to position the iggui window \
             to the location you want for recording. Type 'q' to indicate you \
-            have finished positioning: "
-        )
+            have finished positioning: ")
         flag = win.getch()
         while flag == -1 or chr(flag) != 'q':
             env.igibson_behavior_env.step(np.zeros(env.action_space.shape))
