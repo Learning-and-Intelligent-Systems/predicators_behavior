@@ -78,12 +78,8 @@ def sesame_plan(
 
     if CFG.env == "behavior" and \
         CFG.behavior_mode == 'iggui':  # pragma: no cover
-        logging.info(  # pylint: disable=logging-not-lazy
-            "VIDEO CREATION MODE: You have 30 seconds to position " +
-            "the iggui window to the location you want for recording.")
         env = get_or_create_env('behavior')
         assert isinstance(env, BehaviorEnv)
-        # start_time = time.time()
         win = curses.initscr()
         win.nodelay(True)
         win.addstr(
@@ -96,9 +92,6 @@ def sesame_plan(
             env.igibson_behavior_env.step(np.zeros(env.action_space.shape))
             flag = win.getch()
         curses.endwin()
-        # while time.time() - start_time < 30.0:
-        # env.igibson_behavior_env.step(np.zeros(env.action_space.shape))
-
         logging.info("VIDEO CREATION MODE: Starting planning.")
 
     if CFG.sesame_task_planner == "astar":
