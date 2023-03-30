@@ -577,6 +577,11 @@ class BehaviorEnv(BaseEnv):
         """Sets/resets the igibson_behavior_env."""
         np.random.seed(seed)
         env_creation_attempts = 0
+        save_video = False
+        if CFG.env == "behavior" and CFG.behavior_mode == 'iggui' and CFG.behavior_save == True:  # pragma: no cover
+            save_video = True
+        else:
+            save_video = False
         # NOTE: this while loop is necessary because in some cases
         # when CFG.randomize_init_state is True, creating a new
         # iGibson env may fail and we need to keep trying until
@@ -593,6 +598,8 @@ class BehaviorEnv(BaseEnv):
                 instance_id=task_instance_id,
                 rng=self._rng,
             )
+            # self.igibson_behavior_env.step(
+            #     np.zeros(self.igibson_behavior_env.action_space.shape), save_video=save_video)
             self.igibson_behavior_env.step(
                 np.zeros(self.igibson_behavior_env.action_space.shape))
             ig_objs_bddl_scope = [
