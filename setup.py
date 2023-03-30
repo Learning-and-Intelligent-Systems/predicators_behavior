@@ -1,6 +1,8 @@
 """Setup script."""
 from setuptools import find_packages, setup
 
+# NOTE: Windows users will have to install windows-curses
+# (https://pypi.org/project/windows-curses/)
 setup(name="predicators",
       version="0.1.0",
       packages=find_packages(include=["predicators", "predicators.*"]),
@@ -9,7 +11,7 @@ setup(name="predicators",
           "imageio-ffmpeg", "pandas", "torch", "scipy", "tabulate", "dill",
           "pyperplan", "pathos", "requests", "slack_bolt", "pybullet>=3.2.0",
           "scikit-learn", "graphlib-backport", "openai", "pyyaml",
-          "pylint==2.14.5", "types-PyYAML", "lisdf", "seaborn", "curses",
+          "pylint==2.14.5", "types-PyYAML", "lisdf", "seaborn",
           "smepy@git+https://github.com/sebdumancic/structure_mapping.git"
       ],
       include_package_data=True,
