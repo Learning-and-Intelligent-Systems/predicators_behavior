@@ -334,7 +334,7 @@ class BehaviorEnv(BaseEnv):
                         f"{behavior_task_name}__{CFG.num_train_tasks}__" +
                         f"{CFG.seed}__{self.task_num}__" +
                         f"{self.task_instance_id}",
-                        exist_ok=True)
+                        exist_ok=True)           
 
             # NOTE: We load_checkpoint_state here because there appears to
             # be a subtle difference between calling the predicate classifiers
@@ -349,6 +349,7 @@ class BehaviorEnv(BaseEnv):
                 self.igibson_behavior_env.step(
                     np.zeros(self.igibson_behavior_env.action_space.shape))
             init_state = self.current_ig_state_to_state(use_test_scene=testing)
+            # self.igibson_behavior_env.simulator.viewer.make_video()
             goal = self._get_task_goal()
             task = Task(init_state, goal)
             # If the goal already happens to hold in the init state, then
@@ -583,6 +584,8 @@ class BehaviorEnv(BaseEnv):
             save_video = True
         else:
             save_video = False
+
+        task_name = str(CFG.behavior_task_list)[2:-2]
         # NOTE: this while loop is necessary because in some cases
         # when CFG.randomize_init_state is True, creating a new
         # iGibson env may fail and we need to keep trying until
@@ -600,7 +603,7 @@ class BehaviorEnv(BaseEnv):
                 rng=self._rng,
             )
             self.igibson_behavior_env.step(
-                np.zeros(self.igibson_behavior_env.action_space.shape), save_video=save_video)
+                np.zeros(self.igibson_behavior_env.action_space.shape), save_video=save_video, task_name=task_name)
             # self.igibson_behavior_env.step(
             #     np.zeros(self.igibson_behavior_env.action_space.shape))
             ig_objs_bddl_scope = [
@@ -615,6 +618,7 @@ class BehaviorEnv(BaseEnv):
             raise RuntimeError("ERROR: Failed to sample iGibson BEHAVIOR "
                                "environment that meets bddl initial "
                                "conditions!")
+        # self.igibson_behavior_env.simulator.viewer.make_video()
         self.igibson_behavior_env.robots[0].initial_z_offset = 0.7
         self.igibson_behavior_env.use_rrt = CFG.behavior_option_model_rrt
 
