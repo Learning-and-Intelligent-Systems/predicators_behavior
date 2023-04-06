@@ -157,4 +157,4 @@ FLAGS:  # general flags
   num_test_tasks: 5
 START_SEED: 0
 NUM_SEEDS: 1
-USE_GPU: True
+USE_GPU: False
