@@ -52,12 +52,12 @@ from predicators.approaches.bilevel_planning_approach import \
 from predicators.approaches.gnn_approach import GNNApproach
 from predicators.datasets import create_dataset
 from predicators.envs import BaseEnv, create_new_env
+from predicators.envs.behavior import BehaviorEnv
 from predicators.planning import _run_plan_with_option_model
 from predicators.settings import CFG
 from predicators.structs import Dataset, InteractionRequest, \
     InteractionResult, Metrics, Task
 from predicators.teacher import Teacher, TeacherInteractionMonitorWithVideo
-from predicators.envs.behavior import BehaviorEnv
 
 assert os.environ.get("PYTHONHASHSEED") == "0", \
         "Please add `export PYTHONHASHSEED=0` to your bash profile!"
