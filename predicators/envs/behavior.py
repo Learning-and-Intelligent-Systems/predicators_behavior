@@ -334,7 +334,7 @@ class BehaviorEnv(BaseEnv):
                         f"{behavior_task_name}__{CFG.num_train_tasks}__" +
                         f"{CFG.seed}__{self.task_num}__" +
                         f"{self.task_instance_id}",
-                        exist_ok=True)           
+                        exist_ok=True)
 
             # NOTE: We load_checkpoint_state here because there appears to
             # be a subtle difference between calling the predicate classifiers
@@ -578,12 +578,7 @@ class BehaviorEnv(BaseEnv):
         """Sets/resets the igibson_behavior_env."""
         np.random.seed(seed)
         env_creation_attempts = 0
-        save_video = False
-        # if CFG.env == "behavior" and CFG.behavior_mode == 'iggui' and CFG.behavior_save == True:  # pragma: no cover
-        if CFG.env == "behavior" and CFG.behavior_save == True:  # pragma: no cover
-            save_video = True
-        else:
-            save_video = False
+        save_video = CFG.env == "behavior" and CFG.behavior_save
         if CFG.env == "behavior":
             task_name = str(CFG.behavior_task_list)[2:-2]
         # NOTE: this while loop is necessary because in some cases
@@ -602,10 +597,10 @@ class BehaviorEnv(BaseEnv):
                 instance_id=task_instance_id,
                 rng=self._rng,
             )
-            self.igibson_behavior_env.step(
-                np.zeros(self.igibson_behavior_env.action_space.shape), save_video=save_video, task_name=task_name)
-            # self.igibson_behavior_env.step(
-            #     np.zeros(self.igibson_behavior_env.action_space.shape))
+            self.igibson_behavior_env.step(np.zeros(
+                self.igibson_behavior_env.action_space.shape),
+                                           save_video=save_video,
+                                           task_name=task_name)
             ig_objs_bddl_scope = [
                 self._ig_object_name(obj) for obj in list(
                     self.igibson_behavior_env.task.object_scope.values())
