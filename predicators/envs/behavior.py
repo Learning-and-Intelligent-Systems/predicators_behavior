@@ -584,8 +584,8 @@ class BehaviorEnv(BaseEnv):
             save_video = True
         else:
             save_video = False
-
-        task_name = str(CFG.behavior_task_list)[2:-2]
+        if CFG.env == "behavior":
+            task_name = str(CFG.behavior_task_list)[2:-2]
         # NOTE: this while loop is necessary because in some cases
         # when CFG.randomize_init_state is True, creating a new
         # iGibson env may fail and we need to keep trying until
