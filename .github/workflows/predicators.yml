@@ -11,7 +11,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
@@ -32,13 +32,14 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
         cache-dependency-path: '**/setup.py'
     - name: Install dependencies
       run: |
+        pip install setuptools==63.4.1
         pip install -e .
         pip install -U git+https://github.com/python/mypy.git@9a10967fdaa2ac077383b9eccded42829479ef31
       # Note: if mypy issue #5485 gets resolved, we can install from head again.
@@ -53,7 +54,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
@@ -75,7 +76,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
