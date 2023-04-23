@@ -1,6 +1,8 @@
 """Setup script."""
 from setuptools import find_packages, setup
 
+# NOTE: Windows users will have to install windows-curses
+# (https://pypi.org/project/windows-curses/)
 setup(name="predicators",
       version="0.1.0",
       packages=find_packages(include=["predicators", "predicators.*"]),
