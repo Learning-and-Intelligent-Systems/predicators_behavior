@@ -74,7 +74,8 @@ def create_navigate_option_model(
             done_bit = False
             while not done_bit:
                 # Get expected position and orientation from plan.
-                expected_pos = np.array([curr_plan[0][0], curr_plan[0][1], robot_z])
+                expected_pos = np.array(
+                    [curr_plan[0][0], curr_plan[0][1], robot_z])
                 expected_orn = p.getQuaternionFromEuler(
                     np.array([robot_orn[0], robot_orn[1], curr_plan[0][2]]))
                 # In this case, we're at the final position we wanted to reach.
