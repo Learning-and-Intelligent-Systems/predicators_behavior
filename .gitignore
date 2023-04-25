@@ -25,6 +25,8 @@ machines.txt
 *_vision_data
 tests/_fake_trajs
 tests/_fake_results
+*.mp4
+video_frames/
 
 # Jetbrains IDEs
 .idea/

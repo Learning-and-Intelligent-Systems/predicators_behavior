@@ -349,7 +349,6 @@ class BehaviorEnv(BaseEnv):
                 self.igibson_behavior_env.step(
                     np.zeros(self.igibson_behavior_env.action_space.shape))
             init_state = self.current_ig_state_to_state(use_test_scene=testing)
-            # self.igibson_behavior_env.simulator.viewer.make_video()
             goal = self._get_task_goal()
             task = Task(init_state, goal)
             # If the goal already happens to hold in the init state, then
@@ -578,7 +577,7 @@ class BehaviorEnv(BaseEnv):
         """Sets/resets the igibson_behavior_env."""
         np.random.seed(seed)
         env_creation_attempts = 0
-        save_video = CFG.env == "behavior" and CFG.behavior_save
+        save_video = CFG.env == "behavior" and CFG.behavior_save_video
         if CFG.env == "behavior":
             task_name = str(CFG.behavior_task_list)[2:-2]
         # NOTE: this while loop is necessary because in some cases
@@ -613,7 +612,6 @@ class BehaviorEnv(BaseEnv):
             raise RuntimeError("ERROR: Failed to sample iGibson BEHAVIOR "
                                "environment that meets bddl initial "
                                "conditions!")
-        # self.igibson_behavior_env.simulator.viewer.make_video()
         self.igibson_behavior_env.robots[0].initial_z_offset = 0.7
         self.igibson_behavior_env.use_rrt = CFG.behavior_option_model_rrt
 
