@@ -5,11 +5,9 @@ from typing import Collection, Iterator, Optional, Sequence
 
 import numpy as np
 import pybullet as p
-from numpy.typing import NDArray
 
 from predicators import utils
 from predicators.pybullet_helpers.joint import JointPositions
-from predicators.pybullet_helpers.link import get_link_state
 from predicators.pybullet_helpers.robots import SingleArmPyBulletRobot
 from predicators.settings import CFG
 
@@ -21,8 +19,6 @@ def run_motion_planning(
     collision_bodies: Collection[int],
     seed: int,
     physics_client_id: int,
-    held_object: Optional[int] = None,
-    base_link_to_held_obj: Optional[NDArray] = None,
 ) -> Optional[Sequence[JointPositions]]:
     """Run BiRRT to find a collision-free sequence of joint positions.
 
