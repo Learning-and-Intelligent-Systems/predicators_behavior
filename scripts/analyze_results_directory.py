@@ -49,7 +49,7 @@ COLUMN_NAMES_AND_KEYS = [
 ]
 
 
-def _compute_percentage_tasks_solved(d: pd.DataFrame) -> pd.DataFrame:
+def _compute_percentage_tasks_solved(d: Dict[str, float]) -> float:
     try:
         ret_df = (d["num_solved"] / d["num_test_tasks"]) * 100
     except ZeroDivisionError:
