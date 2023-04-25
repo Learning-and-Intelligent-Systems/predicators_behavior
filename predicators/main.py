@@ -52,6 +52,7 @@ from predicators.approaches.bilevel_planning_approach import \
 from predicators.approaches.gnn_approach import GNNApproach
 from predicators.datasets import create_dataset
 from predicators.envs import BaseEnv, create_new_env
+from predicators.envs.behavior import BehaviorEnv
 from predicators.planning import _run_plan_with_option_model
 from predicators.settings import CFG
 from predicators.structs import Dataset, InteractionRequest, \
@@ -122,6 +123,11 @@ def main() -> None:
     # Run the full pipeline.
     _run_pipeline(env, approach, stripped_train_tasks, offline_dataset)
     script_time = time.perf_counter() - script_start
+    if CFG.env == "behavior":  # pragma: no cover
+        assert isinstance(env, BehaviorEnv)
+        task_name = str(CFG.behavior_task_list)[2:-2]
+        env.igibson_behavior_env.simulator.viewer.make_video(
+            task_name=task_name)
     logging.info(f"\n\nMain script terminated in {script_time:.5f} seconds")
 
 
