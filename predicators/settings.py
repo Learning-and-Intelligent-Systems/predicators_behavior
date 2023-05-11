@@ -520,6 +520,20 @@ class GlobalSettings:
     grammar_search_expected_nodes_allow_noops = True
     grammar_search_classifier_pretty_str_names = ["?x", "?y", "?z"]
 
+    # Lifelong sampler learning args
+    save_only_exploration_results = True
+    lifelong_method = "distill"
+    lifelong_burnin_period = None
+    ebm_aux_training = None
+    torch_num_threads = 1
+    use_cuda = True
+    sesame_max_samples_total = float("inf")
+    plan_only_interact = False
+    use_specialized_ebms = False
+    behavior_task_order = "fixed"   # "shuffled", "interleaved"
+    load_lifelong_checkpoint = False
+
+
     @staticmethod
     def get_arg_specific_settings(args: Dict[str, Any]) -> Dict[str, Any]:
         """A workaround for global settings that are derived from the

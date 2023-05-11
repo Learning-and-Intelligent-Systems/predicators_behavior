@@ -66,8 +66,8 @@ def make_navigation_plan(
     if rng is None:
         rng = np.random.default_rng(23)
 
-    logging.info(f"PRIMITIVE: Attempting to navigate to {obj.name} with "
-                 f"params {pos_offset}")
+    # logging.info(f"PRIMITIVE: Attempting to navigate to {obj.name} with "
+    #              f"params {pos_offset}")
 
     # test agent positions around an obj
     # try to place the agent near the object, and rotate it to the object
@@ -111,11 +111,11 @@ def make_navigation_plan(
                            rob_pos[2]], original_orientation)
 
     if valid_position is None:
-        logging.warning("WARNING: Position commanded is in collision!")
+        # logging.warning("WARNING: Position commanded is in collision!")
         p.restoreState(state)
         p.removeState(state)
-        logging.warning(f"PRIMITIVE: navigate to {obj.name} with params "
-                        f"{pos_offset} fail")
+        # logging.warning(f"PRIMITIVE: navigate to {obj.name} with params "
+        #                 f"{pos_offset} fail")
         return None
 
     p.restoreState(state)
@@ -144,16 +144,16 @@ def make_navigation_plan(
     if plan is None:
         p.restoreState(state)
         p.removeState(state)
-        logging.info(f"PRIMITIVE: navigate to {obj.name} with params "
-                     f"{pos_offset} failed; birrt failed to sample a plan!")
+        # logging.info(f"PRIMITIVE: navigate to {obj.name} with params "
+        #              f"{pos_offset} failed; birrt failed to sample a plan!")
         return None
 
     p.restoreState(state)
     p.removeState(state)
 
     plan = [list(waypoint) for waypoint in plan]
-    logging.info(f"PRIMITIVE: navigate to {obj.name} success! Plan found with "
-                 f"continuous params {pos_offset}.")
+    # logging.info(f"PRIMITIVE: navigate to {obj.name} success! Plan found with "
+    #              f"continuous params {pos_offset}.")
     return plan, original_orientation
 
 
@@ -179,14 +179,14 @@ def make_grasp_plan(
     if rng is None:
         rng = np.random.default_rng(23)
 
-    logging.info(f"PRIMITIVE: Attempting to grasp {obj.name} with params "
-                 f"{grasp_offset}")
+    # logging.info(f"PRIMITIVE: Attempting to grasp {obj.name} with params "
+    #              f"{grasp_offset}")
 
     obj_in_hand = env.robots[0].parts["right_hand"].object_in_hand
     # If we're holding something, fail and return None
     if obj_in_hand is not None:
-        logging.info(f"PRIMITIVE: grasp {obj.name} fail, agent already has an "
-                     "object in hand!")
+        # logging.info(f"PRIMITIVE: grasp {obj.name} fail, agent already has an "
+        #              "object in hand!")
         return None
     reset_and_release_hand(env)  # first reset the hand's internal states
 
@@ -194,7 +194,7 @@ def make_grasp_plan(
     # we'll need for assistive grasping, fail and return None
     if not (isinstance(obj, URDFObject) and hasattr(obj, "states")
             and object_states.AABB in obj.states):
-        logging.info(f"PRIMITIVE: grasp {obj.name} fail, no object")
+        # logging.info(f"PRIMITIVE: grasp {obj.name} fail, no object")
         return None
 
     lo, hi = obj.states[object_states.AABB].get_value()
@@ -204,14 +204,14 @@ def make_grasp_plan(
     # fail and return None
     if not (volume < 0.3 * 0.3 * 0.3 and
             not obj.main_body_is_fixed):  # say we can only grasp small objects
-        logging.info(f"PRIMITIVE: grasp {obj.name} fail, too big or fixed")
+        # logging.info(f"PRIMITIVE: grasp {obj.name} fail, too big or fixed")
         return None
 
     # If the object is too far away, fail and return None
     if (np.linalg.norm(
             np.array(obj.get_position()) -
             np.array(env.robots[0].get_position())) > 2):
-        logging.info(f"PRIMITIVE: grasp {obj.name} fail, too far")
+        # logging.info(f"PRIMITIVE: grasp {obj.name} fail, too far")
         return None
 
     # Grasping Phase 1: Compute the position and orientation of
@@ -345,8 +345,8 @@ def make_grasp_plan(
         p.getEulerFromQuaternion(
             env.robots[0].parts["right_hand"].get_orientation()))
 
-    logging.info(f"PRIMITIVE: grasp {obj.name} success! Plan found with "
-                 f"continuous params {grasp_offset}.")
+    # logging.info(f"PRIMITIVE: grasp {obj.name} success! Plan found with "
+    #              f"continuous params {grasp_offset}.")
     return plan, original_orientation
 
 
@@ -378,24 +378,24 @@ def make_place_plan(
             obj for obj in env.scene.get_objects()
             if obj.get_body_id() == obj_in_hand_idx
         ][0]
-        logging.info(f"PRIMITIVE: attempt to place {obj_in_hand.name} ontop"
-                     f"/inside {obj.name} with params {place_rel_pos}")
+        # logging.info(f"PRIMITIVE: attempt to place {obj_in_hand.name} ontop"
+        #              f"/inside {obj.name} with params {place_rel_pos}")
     except (ValueError, IndexError):
-        logging.info("Cannot place; either no object in hand or holding "
-                     "the object to be placed on-top/inside of!")
+        # logging.info("Cannot place; either no object in hand or holding "
+        #              "the object to be placed on-top/inside of!")
         return None
 
     # if the object in the agent's hand is None or not equal to the object
     # passed in as an argument to this option, fail and return None
     if not (obj_in_hand is not None and obj_in_hand != obj):
-        logging.info("Cannot place; either no object in hand or holding "
-                     "the object to be placed on top/inside of!")
+        # logging.info("Cannot place; either no object in hand or holding "
+        #              "the object to be placed on top/inside of!")
         return None
 
     # if the object is not a urdf object, fail and return None
     if not isinstance(obj, URDFObject):
-        logging.info(f"PRIMITIVE: place {obj_in_hand.name} ontop/inside "
-                     f"{obj.name} fail, too far")
+        # logging.info(f"PRIMITIVE: place {obj_in_hand.name} ontop/inside "
+        #              f"{obj.name} fail, too far")
         return None
 
     state = p.saveState()
@@ -473,6 +473,6 @@ def make_place_plan(
     original_orientation = list(
         p.getEulerFromQuaternion(
             env.robots[0].parts["right_hand"].get_orientation()))
-    logging.info(f"PRIMITIVE: placeOnTop/inside {obj.name} success! Plan "
-                 f"found with continuous params {place_rel_pos}.")
+    # logging.info(f"PRIMITIVE: placeOnTop/inside {obj.name} success! Plan "
+    #              f"found with continuous params {place_rel_pos}.")
     return plan, original_orientation

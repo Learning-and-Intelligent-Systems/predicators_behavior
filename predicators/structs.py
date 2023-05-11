@@ -168,6 +168,8 @@ class State:
         objects are the same, and the features are close."""
         if self.simulator_state is not None or \
            other.simulator_state is not None:
+            print(self)
+            print(other)
             raise NotImplementedError("Cannot use allclose when "
                                       "simulator_state is not None.")
         if not sorted(self.data) == sorted(other.data):
@@ -940,7 +942,8 @@ class _GroundNSRT:
         return str(self) > str(other)
 
     def sample_option(self, state: State, goal: Set[GroundAtom],
-                      rng: np.random.Generator) -> _Option:
+                      rng: np.random.Generator,
+                      return_internal_samples: Optional[Bool] = False) -> _Option:
         """Sample an _Option for this ground NSRT, by invoking the contained
         sampler.
 
@@ -950,11 +953,16 @@ class _GroundNSRT:
         # Note that the sampler takes in ALL self.objects, not just the subset
         # self.option_objs of objects that are passed into the option.
         params = self._sampler(state, goal, rng, self.objects)
+        if isinstance(params, tuple):
+            params, internal_samples = params
         # Clip the params into the params_space of self.option, for safety.
         low = self.option.params_space.low
         high = self.option.params_space.high
         params = np.clip(params, low, high)
-        return self.option.ground(self.option_objs, params)
+        option = self.option.ground(self.option_objs, params)
+        if return_internal_samples:
+            return option, internal_samples
+        return option
 
     def copy_with(self, **kwargs: Any) -> _GroundNSRT:
         """Create a copy of the ground NSRT, optionally while replacing any of
@@ -1023,12 +1031,13 @@ class LowLevelTrajectory:
     the length of the action sequence.
     """
     _states: List[State]
-    _actions: List[Action]
+    # _actions: List[Action]
+    _options: List[_Option]
     _is_demo: bool = field(default=False)
     _train_task_idx: Optional[int] = field(default=None)
 
     def __post_init__(self) -> None:
-        assert len(self._states) == len(self._actions) + 1
+        assert len(self._states) == len(self._options) + 1
         if self._is_demo:
             assert self._train_task_idx is not None
 
@@ -1037,10 +1046,15 @@ class LowLevelTrajectory:
         """States in the trajectory."""
         return self._states
 
+    # @property
+    # def actions(self) -> List[Action]:
+    #     """Actions in the trajectory."""
+    #     return self._actions
+
     @property
-    def actions(self) -> List[Action]:
-        """Actions in the trajectory."""
-        return self._actions
+    def options(self) -> List[Action]:
+        """Options in the trajectory."""
+        return self._options
 
     @property
     def is_demo(self) -> bool:
@@ -1278,10 +1292,12 @@ class InteractionRequest:
     termination_function returns True, but the query_policy will be.
     """
     train_task_idx: int
-    act_policy: Callable[[State], Action]
+    # act_policy: Callable[[State], Action]
+    option_plan: List[_Option]
     query_policy: Callable[[State], Optional[Query]]  # query can be None
     termination_function: Callable[[State], bool]
-
+    skeleton: List[_GroundNSRT]
+    traj: Optional[List[State]] = field(init=True, default=None)
 
 @dataclass(frozen=True, eq=False, repr=False)
 class InteractionResult:
@@ -1291,11 +1307,14 @@ class InteractionResult:
     Invariant: len(states) == len(responses) == len(actions) + 1
     """
     states: List[State]
-    actions: List[Action]
+    # actions: List[Action]
+    options: List[_Option]
     responses: List[Optional[Response]]
+    skeleton: List[_GroundNSRT]
+    train_task_idx: int
 
     def __post_init__(self) -> None:
-        assert len(self.states) == len(self.responses) == len(self.actions) + 1
+        assert len(self.states) == len(self.responses) == len(self.options) + 1
 
 
 @dataclass(frozen=True, eq=False, repr=False)

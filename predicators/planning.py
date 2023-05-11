@@ -62,7 +62,8 @@ def sesame_plan(
     refinement_estimator: Optional[BaseRefinementEstimator] = None,
     check_dr_reachable: bool = True,
     allow_noops: bool = False,
-    use_visited_state_set: bool = False
+    use_visited_state_set: bool = False,
+    return_skeleton: bool = False,
 ) -> Tuple[List[_Option], Metrics, List[State]]:
     """Run bilevel planning.
 
@@ -91,7 +92,8 @@ def sesame_plan(
             task, option_model, nsrts, predicates, types, timeout, seed,
             task_planning_heuristic, max_skeletons_optimized, max_horizon,
             abstract_policy, max_policy_guided_rollout, refinement_estimator,
-            check_dr_reachable, allow_noops, use_visited_state_set)
+            check_dr_reachable, allow_noops, use_visited_state_set,
+            return_skeleton)
     if CFG.sesame_task_planner == "fdopt":
         assert abstract_policy is None
         return _sesame_plan_with_fast_downward(task,
@@ -102,7 +104,8 @@ def sesame_plan(
                                                timeout,
                                                seed,
                                                max_horizon,
-                                               optimal=True)
+                                               optimal=True,
+                                               return_skeleton=return_skeleton)
     if CFG.sesame_task_planner == "fdsat":
         assert abstract_policy is None
         return _sesame_plan_with_fast_downward(task,
@@ -113,7 +116,8 @@ def sesame_plan(
                                                timeout,
                                                seed,
                                                max_horizon,
-                                               optimal=False)
+                                               optimal=False,
+                                               return_skeleton=return_skeleton)
     raise ValueError("Unrecognized sesame_task_planner: "
                      f"{CFG.sesame_task_planner}")
 
@@ -134,7 +138,8 @@ def _sesame_plan_with_astar(
     refinement_estimator: Optional[BaseRefinementEstimator] = None,
     check_dr_reachable: bool = True,
     allow_noops: bool = False,
-    use_visited_state_set: bool = False
+    use_visited_state_set: bool = False,
+    return_skeleton: bool = False,
 ) -> Tuple[List[_Option], Metrics, List[State]]:
     """The default version of SeSamE, which runs A* to produce skeletons."""
     init_atoms = utils.abstract(task.init, predicates)
@@ -226,6 +231,8 @@ def _sesame_plan_with_astar(
                         f" samples, discovering "
                         f"{int(metrics['num_failures_discovered'])} failures")
                     metrics["plan_length"] = len(plan)
+                    if return_skeleton:
+                        return plan, metrics, traj, skeleton
                     return plan, metrics, traj
                 partial_refinements.append((skeleton, plan))
                 if time.perf_counter() - start_time > timeout:
@@ -492,12 +499,15 @@ def run_low_level_search(
         CFG.sesame_max_samples_per_step
         if nsrt.option.params_space.shape[0] > 0 else 1 for nsrt in skeleton
     ]
+    if CFG.sesame_max_samples_total < float("inf") and len(skeleton) > 0:
+        max_tries[0] = float("inf")  # only stop if the max steps total is reached
     plan: List[_Option] = [DummyOption for _ in skeleton]
     # The number of actions taken by each option in the plan. This is to
     # make sure that we do not exceed the task horizon.
     num_actions_per_option = [0 for _ in plan]
     traj: List[State] = [task.init] + [DefaultState for _ in skeleton]
     longest_failed_refinement: List[_Option] = []
+    longest_failed_traj: List[State] = [task.init]
     # We'll use a maximum of one discovered failure per step, since
     # resampling can render old discovered failures obsolete.
     discovered_failures: List[Optional[_DiscoveredFailure]] = [
@@ -505,7 +515,7 @@ def run_low_level_search(
     ]
     while cur_idx < len(skeleton):
         if time.perf_counter() - start_time > timeout:
-            return longest_failed_refinement, False, traj
+            return longest_failed_refinement, False, longest_failed_traj
         assert num_tries[cur_idx] < max_tries[cur_idx]
         # Good debug point #2: if you have a skeleton that you think is
         # reasonable, but sampling isn't working, print num_tries here to
@@ -515,10 +525,12 @@ def run_low_level_search(
         nsrt = skeleton[cur_idx]
         # Ground the NSRT's ParameterizedOption into an _Option.
         # This invokes the NSRT's sampler.
-        option = nsrt.sample_option(state, task.goal, rng_sampler)
+        # logging.info(f"{nsrt._sampler}")
+        option, internal_samples = nsrt.sample_option(state, task.goal, rng_sampler, return_internal_samples=True)
         plan[cur_idx] = option
         # Increment num_samples metric by 1
-        metrics["num_samples"] += 1
+        # metrics["num_samples"] += 1
+        metrics["num_samples"] += internal_samples
         # Increment cur_idx. It will be decremented later on if we get stuck.
         cur_idx += 1
         if option.initiable(state):
@@ -595,6 +607,7 @@ def run_low_level_search(
             # Update the longest_failed_refinement found so far.
             if cur_idx > len(longest_failed_refinement):
                 longest_failed_refinement = list(plan[:cur_idx])
+                longest_failed_traj = traj[:cur_idx + 1]
             # If we're immediately propagating failures, and we got a failure,
             # raise it now. We don't do this right after catching the
             # EnvironmentFailure because we want to make sure to update
@@ -604,11 +617,15 @@ def run_low_level_search(
                CFG.sesame_propagate_failures == "immediately":
                 raise _DiscoveredFailureException(
                     "Discovered a failure", possible_failure,
-                    {"longest_failed_refinement": longest_failed_refinement})
+                    {"longest_failed_refinement": longest_failed_refinement,
+                     "longest_failed_traj": longest_failed_traj})
             # Decrement cur_idx to re-do the step we just did. If num_tries
             # is exhausted, backtrack.
             cur_idx -= 1
             assert cur_idx >= 0
+            backtracking_exhausted = False
+            if metrics["num_samples"] >= CFG.sesame_max_samples_total:
+                backtracking_exhausted = True
             while num_tries[cur_idx] == max_tries[cur_idx]:
                 num_tries[cur_idx] = 0
                 plan[cur_idx] = DummyOption
@@ -616,20 +633,24 @@ def run_low_level_search(
                 traj[cur_idx + 1] = DefaultState
                 cur_idx -= 1
                 if cur_idx < 0:
-                    # Backtracking exhausted. If we're only propagating failures
-                    # after exhaustion, and if there are any failures,
-                    # propagate up the EARLIEST one so that high-level search
-                    # restarts. Otherwise, return a partial refinement so that
-                    # high-level search continues.
-                    for possible_failure in discovered_failures:
-                        if possible_failure is not None and \
-                           CFG.sesame_propagate_failures == "after_exhaust":
-                            raise _DiscoveredFailureException(
-                                "Discovered a failure", possible_failure, {
-                                    "longest_failed_refinement":
-                                    longest_failed_refinement
-                                })
-                    return longest_failed_refinement, False, traj
+                    backtracking_exhausted = True
+                    break
+            if backtracking_exhausted:
+                # Backtracking exhausted. If we're only propagating failures
+                # after exhaustion, and if there are any failures,
+                # propagate up the EARLIEST one so that high-level search
+                # restarts. Otherwise, return a partial refinement so that
+                # high-level search continues.
+                for possible_failure in discovered_failures:
+                    if possible_failure is not None and \
+                       CFG.sesame_propagate_failures == "after_exhaust":
+                        raise _DiscoveredFailureException(
+                            "Discovered a failure", possible_failure, {
+                                "longest_failed_refinement":
+                                longest_failed_refinement,
+                                "longest_failed_traj": longest_failed_traj
+                            })
+                return longest_failed_refinement, False, longest_failed_traj
     # Should only get here if the skeleton was empty.
     assert not skeleton
     return [], True, traj
@@ -982,7 +1003,7 @@ def task_plan_with_option_plan_constraint(
 def _sesame_plan_with_fast_downward(
     task: Task, option_model: _OptionModelBase, nsrts: Set[NSRT],
     predicates: Set[Predicate], types: Set[Type], timeout: float, seed: int,
-    max_horizon: int, optimal: bool
+    max_horizon: int, optimal: bool, return_skeleton: bool = False
 ) -> Tuple[List[_Option], Metrics, List[State]]:  # pragma: no cover
     """A version of SeSamE that runs the Fast Downward planner to produce a
     single skeleton, then calls run_low_level_search() to turn it into a plan.
@@ -1040,6 +1061,7 @@ def _sesame_plan_with_fast_downward(
     cmd_str = (f"{timeout_cmd} {timeout} {exec_str} "
                f"--sas-file {sas_file} {dom_file} {prob_file}")
     output = subprocess.getoutput(cmd_str)
+    partial_refinements = []
     while True:
         if optimal:
             cmd_str = (
@@ -1114,15 +1136,22 @@ def _sesame_plan_with_fast_downward(
                                                    low_level_timeout, metrics,
                                                    max_horizon)
             if not suc:
+                partial_refinements.append((skeleton, plan, traj))
                 if time.perf_counter() - start_time > timeout:
-                    raise PlanningTimeout("Planning timed out in refinement!")
-                raise PlanningFailure("Skeleton produced by FD not refinable!")
+                    raise PlanningTimeout("Planning timed out in refinement!",
+                                          info={"partial_refinements": partial_refinements})
+                raise PlanningFailure("Skeleton produced by FD not refinable!",
+                                      info={"partial_refinements": partial_refinements})
             metrics["plan_length"] = len(plan)
+            if return_skeleton:
+                return plan, metrics, traj, skeleton
             return plan, metrics, traj
         except _DiscoveredFailureException as e:
             metrics["num_failures_discovered"] += 1
+            partial_refinements.append(skeleton, e.info["longest_failed_refinement"], e.info["longest_failed_traj"])
             _update_sas_file_with_failure(e.discovered_failure, sas_file)
         except (_MaxSkeletonsFailure, _SkeletonSearchTimeout) as e:
+            e.info["partial_refinements"] = partial_refinements
             raise e
 
 

@@ -63,10 +63,10 @@ def create_navigate_option_model(
             desired_xpos = sample_arr[0] + obj_pos[0]
             desired_ypos = sample_arr[1] + obj_pos[1]
             desired_zrot = np.arctan2(sample_arr[1], sample_arr[0]) - np.pi
-            logging.info(f"PRIMITIVE: Overriding sample ({plan[-1][0]}" +
-                         f", {plan[-1][1]}) and attempting to " +
-                         f"navigate to {_obj_to_nav_to.name} with "
-                         f"params {sample_arr}")
+            # logging.info(f"PRIMITIVE: Overriding sample ({plan[-1][0]}" +
+            #              f", {plan[-1][1]}) and attempting to " +
+            #              f"navigate to {_obj_to_nav_to.name} with "
+            #              f"params {sample_arr}")
 
         if CFG.simulate_nav:
             done_bit = False
@@ -78,8 +78,8 @@ def create_navigate_option_model(
                 # In this case, we're at the final position we wanted to reach.
                 if len(plan) == 1:
                     done_bit = True
-                    logging.info(
-                        "PRIMITIVE: navigation policy completed execution!")
+                    # logging.info(
+                    #     "PRIMITIVE: navigation policy completed execution!")
                 env.robots[0].set_position_orientation(expected_pos,
                                                        expected_orn)
                 env.step(np.zeros(env.action_space.shape))
@@ -188,11 +188,12 @@ def create_place_option_model(
             sample_arr = sample_place_ontop_params(env, obj_to_place_onto, rng)
             target_pos = np.add(sample_arr, \
                 obj_to_place_onto.get_position()).tolist()
+            target_pos[2] += 0.2
             target_orn = [0, np.pi * 7 / 6, 0]
-            logging.info(f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
-                         "and attempting to " +
-                         f"place ontop {obj_to_place_onto.name} with "
-                         f"params {target_pos}")
+            # logging.info(f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
+            #              "and attempting to " +
+            #              f"place ontop {obj_to_place_onto.name} with "
+            #              f"params {target_pos}")
 
         env.robots[0].parts["right_hand"].set_position_orientation(
             target_pos, p.getQuaternionFromEuler(target_orn))
@@ -277,7 +278,7 @@ def create_open_option_model(
     del plan
 
     def openObjectOptionModel(_init_state: State, env: "BehaviorEnv") -> None:
-        logging.info(f"PRIMITIVE: Attempting to open {obj_to_open.name}")
+        # logging.info(f"PRIMITIVE: Attempting to open {obj_to_open.name}")
         if np.linalg.norm(
                 np.array(obj_to_open.get_position()) -
                 np.array(env.robots[0].get_position())) < 2:
@@ -285,9 +286,11 @@ def create_open_option_model(
                        "states") and object_states.Open in obj_to_open.states:
                 obj_to_open.states[object_states.Open].set_value(True)
             else:
-                logging.info("PRIMITIVE open failed, cannot be opened")
+                pass
+                # logging.info("PRIMITIVE open failed, cannot be opened")
         else:
-            logging.info("PRIMITIVE open failed, too far")
+            pass
+            # logging.info("PRIMITIVE open failed, too far")
         obj_to_open.force_wakeup()
         # Step the simulator to update visuals.
         env.step(np.zeros(env.action_space.shape))
@@ -302,7 +305,7 @@ def create_close_option_model(
     del plan
 
     def closeObjectOptionModel(_init_state: State, env: "BehaviorEnv") -> None:
-        logging.info(f"PRIMITIVE: Attempting to close {obj_to_close.name}")
+        # logging.info(f"PRIMITIVE: Attempting to close {obj_to_close.name}")
         if np.linalg.norm(
                 np.array(obj_to_close.get_position()) -
                 np.array(env.robots[0].get_position())) < 2:
@@ -310,9 +313,11 @@ def create_close_option_model(
                        "states") and object_states.Open in obj_to_close.states:
                 obj_to_close.states[object_states.Open].set_value(False)
             else:
-                logging.info("PRIMITIVE close failed, cannot be opened")
+                pass
+                # logging.info("PRIMITIVE close failed, cannot be opened")
         else:
-            logging.info("PRIMITIVE close failed, too far")
+            pass
+            # logging.info("PRIMITIVE close failed, too far")
         obj_to_close.force_wakeup()
         # Step the simulator to update visuals.
         env.step(np.zeros(env.action_space.shape))
@@ -339,9 +344,9 @@ def create_place_inside_option_model(
         rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
         if obj_in_hand is not None and obj_in_hand != obj_to_place_into and \
             isinstance(obj_to_place_into, URDFObject):
-            logging.info(
-                f"PRIMITIVE: attempt to place {obj_in_hand.name} inside "
-                f"{obj_to_place_into.name}")
+            # logging.info(
+            #     f"PRIMITIVE: attempt to place {obj_in_hand.name} inside "
+            #     f"{obj_to_place_into.name}")
             if np.linalg.norm(
                     np.array(obj_to_place_into.get_position()) -
                     np.array(env.robots[0].get_position())) < 2:
@@ -351,8 +356,8 @@ def create_place_inside_option_model(
                         get_value()) or (hasattr(obj_to_place_into, "states")
                                          and not object_states.Open
                                          in obj_to_place_into.states):
-                    logging.info(f"PRIMITIVE: place {obj_in_hand.name} inside "
-                                 f"{obj_to_place_into.name} success")
+                    # logging.info(f"PRIMITIVE: place {obj_in_hand.name} inside "
+                    #              f"{obj_to_place_into.name} success")
 
                     # If we're not overriding the learned samplers, then we
                     # will directly use the elements of `plan`, which in turn
@@ -371,11 +376,11 @@ def create_place_inside_option_model(
                         target_pos_list[2] += 0.2
                         target_pos = target_pos_list.tolist()
                         target_orn = plan[-1][3:6]
-                        logging.info(
-                            f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
-                            f", {plan[-1][3:6]}) and attempting to " +
-                            f"place inside to {obj_to_place_into.name} with "
-                            f"params {target_pos}")
+                        # logging.info(
+                        #     f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
+                        #     f", {plan[-1][3:6]}) and attempting to " +
+                        #     f"place inside to {obj_to_place_into.name} with "
+                        #     f"params {target_pos}")
                     env.robots[0].parts["right_hand"].force_release_obj()
                     obj_to_place_into.force_wakeup()
                     obj_in_hand.set_position_orientation(
@@ -397,14 +402,17 @@ def create_place_inside_option_model(
                     for _ in range(15):
                         env.step(np.zeros(env.action_space.shape))
                 else:
-                    logging.info(
-                        f"PRIMITIVE: place {obj_in_hand.name} inside "
-                        f"{obj_to_place_into.name} fail, need open not open")
+                    pass
+                    # logging.info(
+                    #     f"PRIMITIVE: place {obj_in_hand.name} inside "
+                    #     f"{obj_to_place_into.name} fail, need open not open")
             else:
-                logging.info(f"PRIMITIVE: place {obj_in_hand.name} inside "
-                             f"{obj_to_place_into.name} fail, too far")
+                pass
+                # logging.info(f"PRIMITIVE: place {obj_in_hand.name} inside "
+                #              f"{obj_to_place_into.name} fail, too far")
         else:
-            logging.info("PRIMITIVE: place failed with invalid obj params.")
+            pass
+            # logging.info("PRIMITIVE: place failed with invalid obj params.")
 
         obj_to_place_into.force_wakeup()
         # Step the simulator to update visuals.
@@ -432,9 +440,9 @@ def create_place_under_option_model(
         rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
         if obj_in_hand is not None and obj_in_hand != obj_to_place_under and \
             isinstance(obj_to_place_under, URDFObject):
-            logging.info(
-                f"PRIMITIVE: attempt to place {obj_in_hand.name} under "
-                f"{obj_to_place_under.name}")
+            # logging.info(
+            #     f"PRIMITIVE: attempt to place {obj_in_hand.name} under "
+            #     f"{obj_to_place_under.name}")
             if np.linalg.norm(
                     np.array(obj_to_place_under.get_position()) -
                     np.array(env.robots[0].get_position())) < 2:
@@ -443,9 +451,10 @@ def create_place_under_option_model(
                     if obj_in_hand.states[object_states.Under].get_value(
                             obj_to_place_under) or obj_to_place_under.states[
                                 object_states.Under].get_value(obj_in_hand):
-                        logging.info(
-                            f"PRIMITIVE: place {obj_in_hand.name} under "
-                            f"{obj_to_place_under.name} success")
+                        pass
+                        # logging.info(
+                        #     f"PRIMITIVE: place {obj_in_hand.name} under "
+                        #     f"{obj_to_place_under.name} success")
 
                     # If we're not overriding the learned samplers, then we
                     # will directly use the elements of `plan`, which in turn
@@ -464,11 +473,11 @@ def create_place_under_option_model(
                         target_pos_list[2] += 0.2
                         target_pos = target_pos_list.tolist()
                         target_orn = plan[-1][3:6]
-                        logging.info(
-                            f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
-                            f", {plan[-1][3:6]}) and attempting to " +
-                            f"place under to {obj_to_place_under.name} with "
-                            f"params {target_pos}")
+                        # logging.info(
+                        #     f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
+                        #     f", {plan[-1][3:6]}) and attempting to " +
+                        #     f"place under to {obj_to_place_under.name} with "
+                        #     f"params {target_pos}")
                     env.robots[0].parts["right_hand"].force_release_obj()
                     obj_to_place_under.force_wakeup()
                     obj_in_hand.set_position_orientation(
@@ -490,14 +499,17 @@ def create_place_under_option_model(
                     for _ in range(15):
                         env.step(np.zeros(env.action_space.shape))
                 else:
-                    logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
-                                 f"{obj_to_place_under.name} fail, not under")
+                    pass
+                    # logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
+                    #              f"{obj_to_place_under.name} fail, not under")
             else:
-                logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
-                             f"{obj_to_place_under.name} fail, too far")
+                pass
+                # logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
+                #              f"{obj_to_place_under.name} fail, too far")
         else:
-            logging.info(
-                "PRIMITIVE: place under failed with invalid obj params.")
+            pass
+            # logging.info(
+            #     "PRIMITIVE: place under failed with invalid obj params.")
 
         obj_to_place_under.force_wakeup()
         # Step the simulator to update visuals.
@@ -515,8 +527,8 @@ def create_toggle_on_option_model(
 
     def toggleOnObjectOptionModel(_init_state: State,
                                   env: "BehaviorEnv") -> None:
-        logging.info(
-            f"PRIMITIVE: Attempting to toggle on {obj_to_toggled_on.name}")
+        # logging.info(
+            # f"PRIMITIVE: Attempting to toggle on {obj_to_toggled_on.name}")
         if np.linalg.norm(
                 np.array(obj_to_toggled_on.get_position()) -
                 np.array(env.robots[0].get_position())) < 2:
@@ -526,9 +538,11 @@ def create_toggle_on_option_model(
                 obj_to_toggled_on.states[object_states.ToggledOn].set_value(
                     True)
             else:
-                logging.info("PRIMITIVE toggle failed, cannot be toggled on")
+                pass
+                # logging.info("PRIMITIVE toggle failed, cannot be toggled on")
         else:
-            logging.info("PRIMITIVE toggle failed, too far")
+            pass
+            # logging.info("PRIMITIVE toggle failed, too far")
         obj_to_toggled_on.force_wakeup()
         # Step the simulator to update visuals.
         env.step(np.zeros(env.action_space.shape))
@@ -555,9 +569,9 @@ def create_place_nextto_option_model(
         rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
         if obj_in_hand is not None and obj_in_hand != obj_to_place_nextto and \
             isinstance(obj_to_place_nextto, URDFObject):
-            logging.info(
-                f"PRIMITIVE: attempt to place {obj_in_hand.name} next to "
-                f"{obj_to_place_nextto.name}")
+            # logging.info(
+            #     f"PRIMITIVE: attempt to place {obj_in_hand.name} next to "
+            #     f"{obj_to_place_nextto.name}")
             if np.linalg.norm(
                     np.array(obj_to_place_nextto.get_position()) -
                     np.array(env.robots[0].get_position())) < 2:
@@ -566,9 +580,10 @@ def create_place_nextto_option_model(
                     if obj_in_hand.states[object_states.NextTo].get_value(
                             obj_to_place_nextto) or obj_to_place_nextto.states[
                                 object_states.NextTo].get_value(obj_in_hand):
-                        logging.info(
-                            f"PRIMITIVE: place {obj_in_hand.name} next to "
-                            f"{obj_to_place_nextto.name} success")
+                        pass
+                        # logging.info(
+                        #     f"PRIMITIVE: place {obj_in_hand.name} next to "
+                        #     f"{obj_to_place_nextto.name} success")
 
                     # If we're not overriding the learned samplers, then we
                     # will directly use the elements of `plan`, which in turn
@@ -587,11 +602,11 @@ def create_place_nextto_option_model(
                         target_pos_list[2] += 0.2
                         target_pos = target_pos_list.tolist()
                         target_orn = plan[-1][3:6]
-                        logging.info(
-                            f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
-                            f", {plan[-1][3:6]}) and attempting to " +
-                            f"place next to {obj_to_place_nextto.name} with "
-                            f"params {target_pos}")
+                        # logging.info(
+                        #     f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
+                        #     f", {plan[-1][3:6]}) and attempting to " +
+                        #     f"place next to {obj_to_place_nextto.name} with "
+                        #     f"params {target_pos}")
                     env.robots[0].parts["right_hand"].force_release_obj()
                     obj_to_place_nextto.force_wakeup()
                     obj_in_hand.set_position_orientation(
@@ -613,15 +628,18 @@ def create_place_nextto_option_model(
                     for _ in range(15):
                         env.step(np.zeros(env.action_space.shape))
                 else:
-                    logging.info(
-                        f"PRIMITIVE: place {obj_in_hand.name} next to "
-                        f"{obj_to_place_nextto.name} fail, not next to")
+                    pass
+                    # logging.info(
+                    #     f"PRIMITIVE: place {obj_in_hand.name} next to "
+                    #     f"{obj_to_place_nextto.name} fail, not next to")
             else:
-                logging.info(f"PRIMITIVE: place {obj_in_hand.name} next to "
-                             f"{obj_to_place_nextto.name} fail, too far")
+                pass
+                # logging.info(f"PRIMITIVE: place {obj_in_hand.name} next to "
+                #              f"{obj_to_place_nextto.name} fail, too far")
         else:
-            logging.info(
-                "PRIMITIVE: place under failed with invalid obj params.")
+            pass
+            # logging.info(
+            #     "PRIMITIVE: place under failed with invalid obj params.")
 
         obj_to_place_nextto.force_wakeup()
         # Step the simulator to update visuals.
@@ -639,7 +657,7 @@ def create_clean_dusty_option_model(
 
     def cleanDustyObjectOptionModel(_init_state: State,
                                     env: "BehaviorEnv") -> None:
-        logging.info(f"PRIMITIVE: Attempting to clean {obj_to_clean.name}")
+        # logging.info(f"PRIMITIVE: Attempting to clean {obj_to_clean.name}")
         if np.linalg.norm(
                 np.array(obj_to_clean.get_position()) -
                 np.array(env.robots[0].get_position())) < 2:
@@ -648,9 +666,11 @@ def create_clean_dusty_option_model(
                     "states") and object_states.Dusty in obj_to_clean.states:
                 obj_to_clean.states[object_states.Dusty].set_value(False)
             else:
-                logging.info("PRIMITIVE clean failed, cannot be cleaned")
+                pass
+                # logging.info("PRIMITIVE clean failed, cannot be cleaned")
         else:
-            logging.info("PRIMITIVE clean failed, too far")
+            pass
+            # logging.info("PRIMITIVE clean failed, too far")
         obj_to_clean.force_wakeup()
         # Step the simulator to update visuals.
         env.step(np.zeros(env.action_space.shape))

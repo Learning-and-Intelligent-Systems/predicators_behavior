@@ -6,10 +6,12 @@ import itertools
 import json
 import os
 from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple, Union
+import logging
 
 import matplotlib
 import numpy as np
 from numpy.random._generator import Generator
+from predicators.mpi_utils import proc_id, broadcast_object, num_procs
 
 try:
     import bddl
@@ -31,8 +33,8 @@ try:
 
     _BEHAVIOR_IMPORTED = True
     bddl.set_backend("iGibson")  # pylint: disable=no-member
-    if not os.path.exists("tmp_behavior_states/"):
-        os.makedirs("tmp_behavior_states/")
+    if not os.path.exists(f"tmp_behavior_states/mpi_{proc_id()}/"):
+        os.makedirs(f"tmp_behavior_states/mpi_{proc_id()}/")
 except (ImportError, ModuleNotFoundError) as e:
     _BEHAVIOR_IMPORTED = False
 from gym.spaces import Box
@@ -55,13 +57,13 @@ from predicators.settings import CFG
 from predicators.structs import Action, Array, GroundAtom, Object, \
     ParameterizedOption, Predicate, State, Task, Type, Video
 
-
 class BehaviorEnv(BaseEnv):
     """BEHAVIOR (iGibson) environment."""
 
     def __init__(self, use_gui: bool = True) -> None:
         if not _BEHAVIOR_IMPORTED:
             raise ModuleNotFoundError("BEHAVIOR is not installed.")
+        super().__init__()  # To ensure self._seed is defined.
         # Loads dictionary mapping tasks to vaild scenes in BEHAVIOR.
         if len(CFG.behavior_task_list) != 1:
             path_to_scene_file = \
@@ -87,27 +89,54 @@ class BehaviorEnv(BaseEnv):
                 os.path.join(igibson.root_path, CFG.behavior_config_file),
                 CFG.behavior_task_list[0],
                 self.get_random_scene_for_task(CFG.behavior_task_list[0],
-                                               rng), False, CFG.seed)
+                                           rng), False, self._seed)
         else:
             self._config_file = modify_config_file(
                 os.path.join(igibson.root_path, CFG.behavior_config_file),
                 CFG.behavior_task_list[0], CFG.behavior_train_scene_name,
-                False, CFG.seed)
+                False, self._seed)
 
-        super().__init__()  # To ensure self._seed is defined.
         self._rng = np.random.default_rng(self._seed)
         self.task_num = 0  # unique id to differentiate tasks
         self.task_instance_id = 0  # id used for scene
         if len(CFG.behavior_task_list) != 1:
-            self.task_list_indices = [
-                int(self._rng.integers(0, len(CFG.behavior_task_list)))
-                for _ in range(CFG.num_train_tasks + CFG.num_test_tasks)
-            ]
+            # self.task_list_indices = [
+            #     int(self._rng.integers(0, len(CFG.behavior_task_list)))
+            #     for _ in range(CFG.num_train_tasks + CFG.num_test_tasks)
+            # ]
+            # fixed and shuffled orders can't be reliably implemented for
+            # the case where num_test_tasks > 0, because we don't know 
+            # what order get_train and get_test tasks will be called in
+            if CFG.behavior_task_order == "fixed":
+                assert CFG.num_test_tasks == 0 or CFG.num_train_tasks == 0
+                possible_task_indices = list(range(len(CFG.behavior_task_list)))
+                self.task_list_indices = [idx for idx in possible_task_indices for _ in range(CFG.num_train_tasks + CFG.num_test_tasks)]
+            elif CFG.behavior_task_order == "shuffled":
+                assert CFG.num_test_tasks == 0 or CFG.num_train_tasks == 0
+                possible_task_indices = list(range(len(CFG.behavior_task_list)))
+                if proc_id() == 0:
+                    shuffled_task_indices = self._rng.permutation(possible_task_indices).tolist()
+                else:
+                    shuffled_task_indices = None
+                shuffled_task_indices = broadcast_object(shuffled_task_indices)
+                self.task_list_indices = [idx for idx in shuffled_task_indices for _ in range(CFG.num_train_tasks + CFG.num_test_tasks)]
+            elif CFG.behavior_task_order == "interleaved":
+                possible_task_indices = list(range(len(CFG.behavior_task_list)))
+                all_task_indices = possible_task_indices * (CFG.num_train_tasks + CFG.num_test_tasks)
+                if proc_id() == 0:
+                    self.task_list_indices = self._rng.permutation(all_task_indices).tolist()
+                else:
+                    self.task_list_indices = None
+                self.task_list_indices = broadcast_object(self.task_list_indices)
+            else:
+                raise ValueError(f"{CFG.behavior_task_order} is not valid")
+            assert self.task_list_indices == broadcast_object(self.task_list_indices, root=0)
             self.scene_list = [
                 self.get_random_scene_for_task(CFG.behavior_task_list[i],
                                                self._rng)
                 for i in self.task_list_indices
             ]
+            assert self.scene_list == broadcast_object(self.scene_list, root=0)
         self.set_igibson_behavior_env(task_num=self.task_num,
                                       task_instance_id=self.task_instance_id,
                                       seed=self._seed)
@@ -210,7 +239,7 @@ class BehaviorEnv(BaseEnv):
         self._config_file = modify_config_file(
             os.path.join(igibson.root_path, CFG.behavior_config_file),
             CFG.behavior_task_list[task_index], self.scene_list[task_num],
-            False, CFG.seed)
+            False, self._seed)
 
     def get_random_scene_for_task(self, behavior_task_name: str,
                                   rng: Generator) -> str:
@@ -263,10 +292,12 @@ class BehaviorEnv(BaseEnv):
         return next_state
 
     def _generate_train_tasks(self) -> List[Task]:
-        return self._get_tasks(num=CFG.num_train_tasks, rng=self._train_rng)
+        num_tasks_local = int(np.ceil(CFG.num_train_tasks * len(CFG.behavior_task_list) / num_procs()))
+        return self._get_tasks(num=num_tasks_local, rng=self._train_rng)
 
     def _generate_test_tasks(self) -> List[Task]:
-        return self._get_tasks(num=CFG.num_test_tasks,
+        num_tasks_local = int(np.ceil(CFG.num_test_tasks * len(CFG.behavior_task_list) / num_procs()))
+        return self._get_tasks(num=num_tasks_local,
                                rng=self._test_rng,
                                testing=True)
 
@@ -275,11 +306,12 @@ class BehaviorEnv(BaseEnv):
                    rng: np.random.Generator,
                    testing: bool = False) -> List[Task]:
         tasks: List[Task] = []
+        i = 0
         while len(tasks) < num:
+            i += 1
             # BEHAVIOR uses np.random everywhere. This is a somewhat
             # hacky workaround for that.
             curr_env_seed = rng.integers(0, (2**32) - 1)
-            # ID used to generate scene in BEHAVIOR default scene is 0
             self.task_instance_id = 0
             if not testing:
                 scene_name = CFG.behavior_train_scene_name
@@ -288,10 +320,13 @@ class BehaviorEnv(BaseEnv):
             if CFG.behavior_randomize_init_state:
                 # Get random scene for BEHAVIOR between O-9 and 10-20
                 # if train or test, respectively.
-                if testing:
-                    self.task_instance_id = rng.integers(10, 20)
+                if False and CFG.num_test_tasks == 0:
+                    self._task_instance_id = rng.integers(0, 20)
                 else:
-                    self.task_instance_id = rng.integers(0, 10)
+                    if testing:
+                        self.task_instance_id = rng.integers(10, 20)
+                    else:
+                        self.task_instance_id = rng.integers(0, 10)
                 # Check to see if task_instance_id is in broken_instances.
                 if len(CFG.behavior_task_list) != 1:
                     task_name = CFG.behavior_task_list[self.task_list_indices[
@@ -318,8 +353,8 @@ class BehaviorEnv(BaseEnv):
                     self._config_file = modify_config_file(
                         os.path.join(igibson.root_path,
                                      CFG.behavior_config_file),
-                        CFG.behavior_task_list[0], scene_name, False, CFG.seed)
-
+                        CFG.behavior_task_list[0], scene_name, False, self._seed)
+                
                 self.set_igibson_behavior_env(
                     task_num=self.task_num,
                     task_instance_id=self.task_instance_id,
@@ -330,7 +365,7 @@ class BehaviorEnv(BaseEnv):
                 self.task_num, self.task_instance_id)] = curr_env_seed
             behavior_task_name = CFG.behavior_task_list[0] if len(
                 CFG.behavior_task_list) == 1 else "all"
-            os.makedirs(f"tmp_behavior_states/{scene_name}__" +
+            os.makedirs(f"tmp_behavior_states/mpi_{proc_id()}/{scene_name}__" +
                         f"{behavior_task_name}__{CFG.num_train_tasks}__" +
                         f"{CFG.seed}__{self.task_num}__" +
                         f"{self.task_instance_id}",
@@ -357,7 +392,8 @@ class BehaviorEnv(BaseEnv):
                 continue
             tasks.append(task)
             self.task_num += 1
-
+            logging.info(f"{proc_id()}: {self.task_num} tasks created")
+        logging.info("Created all tasks")
         return tasks
 
     def _get_task_goal(self) -> Set[GroundAtom]:
@@ -501,7 +537,7 @@ class BehaviorEnv(BaseEnv):
                 type_name,
                 [
                     "pos_x", "pos_y", "pos_z", "orn_0", "orn_1", "orn_2",
-                    "orn_3"
+                    "orn_3", "bbox_0", "bbox_1", "bbox_2"
                 ],
             )
             self._type_name_to_type[type_name] = obj_type
@@ -660,9 +696,11 @@ class BehaviorEnv(BaseEnv):
             obj = self._ig_object_to_object(ig_obj)
             # In the future, we may need other object attributes,
             # but for the moment, we just need position and orientation.
+            assert ig_obj.bounding_box is not None or isinstance(ig_obj, RoomFloor), "We assume only RoomFloors have no bbox"
             obj_state = np.hstack([
                 ig_obj.get_position(),
                 ig_obj.get_orientation(),
+                ig_obj.bounding_box if ig_obj.bounding_box is not None else np.ones(3)   
             ])
             state_data[obj] = obj_state
 
@@ -673,13 +711,15 @@ class BehaviorEnv(BaseEnv):
         if save_state:
             behavior_task_name = CFG.behavior_task_list[0] if len(
                 CFG.behavior_task_list) == 1 else "all"
-            if use_test_scene:
+            if len(CFG.behavior_task_list) != 1:
+                scene_name = self.scene_list[self.task_num]
+            elif use_test_scene:
                 scene_name = CFG.behavior_test_scene_name
             else:
                 scene_name = CFG.behavior_train_scene_name
             simulator_state = save_checkpoint(
                 self.igibson_behavior_env.simulator,
-                f"tmp_behavior_states/{scene_name}__" +
+                f"tmp_behavior_states/mpi_{proc_id()}/{scene_name}__" +
                 f"{behavior_task_name}__{CFG.num_train_tasks}__" +
                 f"{CFG.seed}__{self.task_num}__" + f"{self.task_instance_id}/")
         return utils.BehaviorState(
@@ -740,6 +780,8 @@ class BehaviorEnv(BaseEnv):
         # return without checking anything.
         if skip_allclose_check:
             return
+        if not isinstance(state, utils.BehaviorState):
+            state = utils.BehaviorState(state.data, state.simulator_state)
         if not state.allclose(
                 self.current_ig_state_to_state(
                     save_state=False,

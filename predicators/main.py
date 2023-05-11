@@ -99,9 +99,10 @@ def main() -> None:
     train_tasks = env.get_train_tasks()
     # If train tasks have goals that involve excluded predicates, strip those
     # predicate classifiers to prevent leaking information to the approaches.
-    stripped_train_tasks = [
-        utils.strip_task(task, preds) for task in train_tasks
-    ]
+    # stripped_train_tasks = [
+    #     utils.strip_task(task, preds) for task in train_tasks
+    # ]
+    stripped_train_tasks = train_tasks
     if CFG.option_learner == "no_learning":
         # If we are not doing option learning, pass in all the environment's
         # oracle options.
@@ -177,7 +178,7 @@ def _run_pipeline(env: BaseEnv,
             interaction_results, query_cost = _generate_interaction_results(
                 env, teacher, interaction_requests, i)
             num_online_transitions += sum(
-                len(result.actions) for result in interaction_results)
+                len(result.options) for result in interaction_results)
             total_query_cost += query_cost
             logging.info(f"Query cost incurred this cycle: {query_cost}")
             if CFG.load_approach:
@@ -213,41 +214,52 @@ def _generate_interaction_results(
 ) -> Tuple[List[InteractionResult], float]:
     """Given a sequence of InteractionRequest objects, handle the requests and
     return a list of InteractionResult objects."""
-    logging.info("Generating interaction results...")
-    results = []
-    query_cost = 0.0
-    if CFG.make_interaction_videos:
-        video = []
-    for request in requests:
-        if request.train_task_idx < CFG.max_initial_demos and \
-            not CFG.allow_interaction_in_demo_tasks:
-            raise RuntimeError("Interaction requests cannot be on demo tasks "
-                               "if allow_interaction_in_demo_tasks is False.")
-        monitor = TeacherInteractionMonitorWithVideo(env.render, request,
-                                                     teacher)
-        traj, _ = utils.run_policy(
-            request.act_policy,
-            env,
-            "train",
-            request.train_task_idx,
-            request.termination_function,
-            max_num_steps=CFG.max_num_steps_interaction_request,
-            exceptions_to_break_on={
-                utils.EnvironmentFailure, utils.OptionExecutionFailure,
-                utils.RequestActPolicyFailure
-            },
-            monitor=monitor)
-        request_responses = monitor.get_responses()
-        query_cost += monitor.get_query_cost()
-        result = InteractionResult(traj.states, traj.actions,
-                                   request_responses)
-        results.append(result)
+    if CFG.plan_only_interact:
+        logging.info("Copying planned trajectory to interaction reults...")
+        results = []
+        for request in requests:
+            states = request.traj
+            options = request.option_plan
+            responses = [request.query_policy(s) for s in states]
+            results.append(InteractionResult(states, options, responses, request.skeleton, request.train_task_idx))
+        query_cost = 0
+    else:
+        logging.info("Generating interaction results...")
+        results = []
+        query_cost = 0.0
         if CFG.make_interaction_videos:
-            video.extend(monitor.get_video())
-    if CFG.make_interaction_videos:
-        save_prefix = utils.get_config_path_str()
-        outfile = f"{save_prefix}__cycle{cycle_num}.mp4"
-        utils.save_video(outfile, video)
+            video = []
+        for request in requests:
+            if request.train_task_idx < CFG.max_initial_demos and \
+                not CFG.allow_interaction_in_demo_tasks:
+                raise RuntimeError("Interaction requests cannot be on demo tasks "
+                                   "if allow_interaction_in_demo_tasks is False.")
+            monitor = TeacherInteractionMonitorWithVideo(env.render, request,
+                                                         teacher)
+            traj, _ = utils.run_policy(
+                request.act_policy,
+                env,
+                "train",
+                request.train_task_idx,
+                request.termination_function,
+                max_num_steps=CFG.max_num_steps_interaction_request,
+                exceptions_to_break_on={
+                    utils.EnvironmentFailure, utils.OptionExecutionFailure,
+                    utils.RequestActPolicyFailure
+                },
+                monitor=monitor)
+            request_responses = monitor.get_responses()
+            query_cost += monitor.get_query_cost()
+            result = InteractionResult(traj.states, traj.actions,
+                                       request_responses, request.skeleton,
+                                       request.train_task_idx)
+            results.append(result)
+            if CFG.make_interaction_videos:
+                video.extend(monitor.get_video())
+        if CFG.make_interaction_videos:
+            save_prefix = utils.get_config_path_str()
+            outfile = f"{save_prefix}__cycle{cycle_num}.mp4"
+            utils.save_video(outfile, video)
     return results, query_cost
 
 
@@ -432,36 +444,37 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
 
 def _save_test_results(results: Metrics,
                        online_learning_cycle: Optional[int]) -> None:
-    num_solved = results["num_solved"]
-    num_total = results["num_total"]
-    avg_suc_time = results["avg_suc_time"]
-    logging.info(f"Tasks solved: {num_solved} / {num_total}")
-    logging.info(f"Average time for successes: {avg_suc_time:.5f} seconds")
-    if CFG.env == "behavior":  # pragma: no cover
-        behavior_task_name = CFG.behavior_task_list[0] if len(
-            CFG.behavior_task_list) == 1 else "all"
-        outfile = (f"{CFG.results_dir}/{utils.get_config_path_str()}__"
-                   f"{online_learning_cycle}__{behavior_task_name}__"
-                   f"{CFG.behavior_test_scene_name}.pkl")
-    else:
-        outfile = (f"{CFG.results_dir}/{utils.get_config_path_str()}__"
-                   f"{online_learning_cycle}.pkl")
-    # Save CFG alongside results.
-    outdata = {
-        "config": CFG,
-        "results": results.copy(),
-        "git_commit_hash": utils.get_git_commit_hash()
-    }
-    # Dump the CFG, results, and git commit hash to a pickle file.
-    with open(outfile, "wb") as f:
-        pkl.dump(outdata, f)
-    # Before printing the results, filter out keys that start with the
-    # special prefix "PER_TASK_", to prevent an annoyingly long printout.
-    del_keys = [k for k in results if k.startswith("PER_TASK_")]
-    for k in del_keys:
-        del results[k]
-    logging.info(f"Test results: {results}")
-    logging.info(f"Wrote out test results to {outfile}")
+    if not CFG.save_only_exploration_results:
+        num_solved = results["num_solved"]
+        num_total = results["num_total"]
+        avg_suc_time = results["avg_suc_time"]
+        logging.info(f"Tasks solved: {num_solved} / {num_total}")
+        logging.info(f"Average time for successes: {avg_suc_time:.5f} seconds")
+        if CFG.env == "behavior":  # pragma: no cover
+            behavior_task_name = CFG.behavior_task_list[0] if len(
+                CFG.behavior_task_list) == 1 else "all"
+            outfile = (f"{CFG.results_dir}/{utils.get_config_path_str()}__"
+                       f"{online_learning_cycle}__{behavior_task_name}__"
+                       f"{CFG.behavior_test_scene_name}.pkl")
+        else:
+            outfile = (f"{CFG.results_dir}/{utils.get_config_path_str()}__"
+                       f"{online_learning_cycle}.pkl")
+        # Save CFG alongside results.
+        outdata = {
+            "config": CFG,
+            "results": results.copy(),
+            "git_commit_hash": utils.get_git_commit_hash()
+        }
+        # Dump the CFG, results, and git commit hash to a pickle file.
+        with open(outfile, "wb") as f:
+            pkl.dump(outdata, f)
+        # Before printing the results, filter out keys that start with the
+        # special prefix "PER_TASK_", to prevent an annoyingly long printout.
+        del_keys = [k for k in results if k.startswith("PER_TASK_")]
+        for k in del_keys:
+            del results[k]
+        logging.info(f"Test results: {results}")
+        logging.info(f"Wrote out test results to {outfile}")
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -64,8 +64,8 @@ def create_navigate_policy(
             # 2.a take a corrective action
             if len(plan) <= 1:
                 done_bit = True
-                logging.info("PRIMITIVE: navigation policy completed "
-                             "execution!")
+                # logging.info("PRIMITIVE: navigation policy completed "
+                #              "execution!")
                 return np.zeros(env.action_space.shape,
                                 dtype=np.float32), done_bit
             low_level_action = get_delta_low_level_base_action(
@@ -91,7 +91,7 @@ def create_navigate_policy(
         if len(plan) == 1:
             low_level_action = np.zeros(env.action_space.shape, dtype=float)
             done_bit = True
-            logging.info("PRIMITIVE: navigation policy completed execution!")
+            # logging.info("PRIMITIVE: navigation policy completed execution!")
 
         else:
             low_level_action = get_delta_low_level_base_action(
@@ -227,7 +227,7 @@ def create_grasp_policy(
             # 2.a take a corrective action
             if len(plan) <= 1:
                 done_bit = True
-                logging.info("PRIMITIVE: grasp policy completed execution!")
+                # logging.info("PRIMITIVE: grasp policy completed execution!")
                 return np.zeros(env.action_space.shape,
                                 dtype=np.float32), done_bit
             low_level_action = (get_delta_low_level_hand_action(
@@ -258,7 +258,7 @@ def create_grasp_policy(
         if len(plan) == 1:  # In this case, we're at the final position
             low_level_action = np.zeros(env.action_space.shape, dtype=float)
             done_bit = True
-            logging.info("PRIMITIVE: grasp policy completed execution!")
+            # logging.info("PRIMITIVE: grasp policy completed execution!")
 
         else:
             # Grasping Phase 3: getting the hand back to
@@ -272,7 +272,7 @@ def create_grasp_policy(
             )
             if len(reversed_plan) == 1:
                 done_bit = True
-                logging.info("PRIMITIVE: grasp policy completed execution!")
+                # logging.info("PRIMITIVE: grasp policy completed execution!")
 
         reversed_plan.pop(0)
 
@@ -402,7 +402,7 @@ def create_place_policy(
             # 2.a take a corrective action
             if len(plan) <= 1:
                 done_bit = True
-                logging.info("PRIMITIVE: place policy completed execution!")
+                # logging.info("PRIMITIVE: place policy completed execution!")
                 return np.zeros(env.action_space.shape,
                                 dtype=np.float32), done_bit
             low_level_action = (get_delta_low_level_hand_action(
@@ -433,7 +433,7 @@ def create_place_policy(
         if len(plan) == 1:  # In this case, we're at the final position
             low_level_action = np.zeros(env.action_space.shape, dtype=float)
             done_bit = True
-            logging.info("PRIMITIVE: place policy completed execution!")
+            # logging.info("PRIMITIVE: place policy completed execution!")
 
         else:
             # Placing Phase 3: getting the hand back to
@@ -447,7 +447,7 @@ def create_place_policy(
             )
             if len(reversed_plan) == 1:
                 done_bit = True
-                logging.info("PRIMITIVE: place policy completed execution!")
+                # logging.info("PRIMITIVE: place policy completed execution!")
 
         reversed_plan.pop(0)
 
