@@ -49,10 +49,7 @@ python predicators/main.py --env behavior --approach oracle --option_model_name 
 ## Installing on MIT Supercloud
 First, follow steps in our [Supercloud guide](supercloud.md) to get an account and setup this repository on Supercloud.
 
-Next, simply follow the steps linked in the [above section](#installation) (though ignore the first step; supercloud already has the iGibson pre-reqs installed)! Importantly, we have a separate branch of iGibson that *completely disables* rendering so that (1) the simulator runs on CPU-only nodes on SuperCloud, and (2) planning is extremely fast. To use this branch (recommended), `cd` to the iGibson repo and run:
-`git checkout no-render`
-
-Note that if you want to use the master branch of iGibson on SuperCloud, you will need to exclusively request GPU nodes. 
+Next, simply follow the steps linked in the [above section](#installation) (though ignore the first step; supercloud already has the iGibson pre-reqs installed)! Note that for various driver-related reasons, this code only works on GPU-machines with supercloud (so always remember to request a GPU when submitting jobs involving this codebase).
 
 To test installation, do:
 ```
@@ -89,7 +86,7 @@ python predicators/main.py --env behavior --approach oracle --option_model_name 
 * Set `--behavior_scene_name` to the name of the house setting (e.g. `Pomaria_1_int`) you want to try running the particular task in. Note that not all tasks are available in all houses (e.g. `re-shelving_library_books` might only be available with `Pomaria_1_int`).
 * If you'd like to see a visual of the agent planning in iGibson, set the command line argument `--behavior_mode simple`. If you want to run in headless mode without any visuals, leave the default (i.e `--behavior_mode headless`).
 * Be sure to set `--plan_only_eval True`: this is necessary to account for the fact that the iGibson simulator is non-deterministic when saving and loading states (which is currently an unresolved bug).
-* Example command: `python predicators/main.py --env behavior --approach oracle --option_model_name oracle_behavior --num_train_tasks 0 --num_test_tasks 1 --behavior_train_scene_name Pomaria_2_int --behavior_test_scene_name Pomaria_2_int --behavior_task_list "[opening_packages]" --seed 1000 --offline_data_planning_timeout 500.0 --timeout 500.0 --behavior_option_model_eval True --plan_only_eval True`.
+* Example command: `python predicators/main.py --env behavior --approach oracle --option_model_name oracle_behavior --num_train_tasks 0 --num_test_tasks 1 --behavior_scene_name Pomaria_2_int --behavior_task_list "[opening_packages]" --seed 1000 --offline_data_planning_timeout 500.0 --timeout 500.0 --behavior_option_model_eval True --plan_only_eval True`.
 
 ## Troubleshooting
 ### Visualizing what the robot is doing
