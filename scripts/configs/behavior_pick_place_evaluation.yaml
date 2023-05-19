@@ -9,8 +9,8 @@
 # --supercloud_dir ~/GitHub/predicators_behavior
 ---
 APPROACHES:
-  oracle: # Oracle
-    NAME: "oracle"
+  # oracle: # Oracle
+  #   NAME: "oracle"
   pnad_search: # PNAD search approach.
     NAME: "nsrt_learning"
     FLAGS:
