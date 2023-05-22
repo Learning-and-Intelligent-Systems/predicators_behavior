@@ -74,6 +74,7 @@ ENVS:
 ARGS:
   - "load_data"
   - "load_atoms"
+  - "load_approach"
 FLAGS:  # general flags
   # NOTE: set below timeouts to 2000.0 for sorting-book.
   offline_data_planning_timeout: 500 #2000.0
@@ -84,7 +85,7 @@ FLAGS:  # general flags
   behavior_override_learned_samplers: True
   behavior_ignore_discover_failures: True
   num_train_tasks: 10
-  num_test_tasks: 0
+  num_test_tasks: 10
   sesame_max_skeletons_optimized: 1
 
 START_SEED: 456
