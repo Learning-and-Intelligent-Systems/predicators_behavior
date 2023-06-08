@@ -7,6 +7,7 @@ from typing import Callable, List, Optional, Sequence, Set
 import numpy as np
 from gym.spaces import Box
 
+from predicators.mpi_utils import proc_id
 from predicators.settings import CFG
 from predicators.structs import Action, Dataset, InteractionRequest, \
     InteractionResult, Metrics, ParameterizedOption, Predicate, State, Task, \
@@ -28,7 +29,7 @@ class BaseApproach(abc.ABC):
         self._action_space = action_space
         self._train_tasks = train_tasks
         self._metrics: Metrics = defaultdict(float)
-        self._set_seed(CFG.seed)
+        self._set_seed(CFG.seed + CFG.procid_seed_offset * proc_id())   # make sure all processes get different tasks 
 
     @classmethod
     @abc.abstractmethod

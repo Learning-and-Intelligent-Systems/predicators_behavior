@@ -198,6 +198,20 @@ class State:
         suffix = "\n" + "#" * ll + "\n"
         return prefix + "\n\n".join(table_strs) + suffix
 
+    def vanilla_str(self) -> str:
+        type_to_table: Dict[Type, List[List[str]]] = {}
+        for obj in self:
+            if obj.type not in type_to_table:
+                type_to_table[obj.type] = []
+            type_to_table[obj.type].append([obj.name] + \
+                                            list(map(str, self[obj])))
+        table_strs = []
+        for t in sorted(type_to_table):
+            headers = ["type: " + t.name] + list(t.feature_names)
+            table_strs.append(tabulate(type_to_table[t], headers=headers))
+        return "\n\n".join(table_strs)
+
+
 
 DefaultState = State({})
 
@@ -943,7 +957,8 @@ class _GroundNSRT:
 
     def sample_option(self, state: State, goal: Set[GroundAtom],
                       rng: np.random.Generator,
-                      return_internal_samples: Optional[Bool] = False) -> _Option:
+                      return_internal_samples: Optional[Bool] = False,
+                      return_failed_options: Optional[Bool] = False) -> _Option:
         """Sample an _Option for this ground NSRT, by invoking the contained
         sampler.
 
@@ -952,15 +967,25 @@ class _GroundNSRT:
         """
         # Note that the sampler takes in ALL self.objects, not just the subset
         # self.option_objs of objects that are passed into the option.
-        params = self._sampler(state, goal, rng, self.objects)
+        if return_failed_options:
+            assert return_internal_samples
+        params = self._sampler(state, goal, rng, self.objects, return_failed_samples=return_failed_options)
         if isinstance(params, tuple):
-            params, internal_samples = params
+            if return_failed_options:
+                params, internal_samples, failed_samples = params
+                # import logging
+                # logging.info(f"Params size in sample_option: ({params.shape}), {[s.shape for s in failed_samples]}")
+            else:
+                params, internal_samples = params
         # Clip the params into the params_space of self.option, for safety.
         low = self.option.params_space.low
         high = self.option.params_space.high
         params = np.clip(params, low, high)
         option = self.option.ground(self.option_objs, params)
         if return_internal_samples:
+            if return_failed_options:
+                failed_options = [self.option.ground(self.option_objs, np.clip(p, low, high)) for p in failed_samples]
+                return option, internal_samples, failed_options
             return option, internal_samples
         return option
 

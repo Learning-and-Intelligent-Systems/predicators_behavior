@@ -25,7 +25,7 @@ class BaseEnv(abc.ABC):
     def __init__(self, use_gui: bool = True) -> None:
         self._current_state = DefaultState  # set in reset
         self._current_task = DefaultTask  # set in reset
-        self._set_seed(CFG.seed + 1000 * proc_id())   # make sure all processes get different tasks 
+        self._set_seed(CFG.seed + CFG.procid_seed_offset * proc_id())   # make sure all processes get different tasks 
         # These are generated lazily when get_train_tasks or get_test_tasks is
         # called. This is necessary because environment attributes are often
         # initialized in __init__ in subclasses, and super().__init__ needs

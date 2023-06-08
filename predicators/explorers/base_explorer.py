@@ -6,6 +6,7 @@ from typing import List, Set
 import numpy as np
 from gym.spaces import Box
 
+from predicators.mpi_utils import proc_id
 from predicators.settings import CFG
 from predicators.structs import ExplorationStrategy, ParameterizedOption, \
     Predicate, Task, Type
@@ -26,7 +27,7 @@ class BaseExplorer(abc.ABC):
         self._types = types
         self._action_space = action_space
         self._train_tasks = train_tasks
-        self._set_seed(CFG.seed)
+        self._set_seed(CFG.seed + CFG.procid_seed_offset * proc_id())   # make sure all processes get different tasks 
 
     @classmethod
     @abc.abstractmethod

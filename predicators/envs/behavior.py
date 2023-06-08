@@ -12,6 +12,7 @@ import matplotlib
 import numpy as np
 from numpy.random._generator import Generator
 from predicators.mpi_utils import proc_id, broadcast_object, num_procs
+from predicators.settings import CFG
 
 try:
     import bddl
@@ -33,8 +34,8 @@ try:
 
     _BEHAVIOR_IMPORTED = True
     bddl.set_backend("iGibson")  # pylint: disable=no-member
-    if not os.path.exists(f"tmp_behavior_states/mpi_{proc_id()}/"):
-        os.makedirs(f"tmp_behavior_states/mpi_{proc_id()}/")
+    if not os.path.exists(f"{CFG.tmp_dir}/tmp_behavior_states/mpi_{proc_id()}/"):
+        os.makedirs(f"{CFG.tmp_dir}/tmp_behavior_states/mpi_{proc_id()}/")
 except (ImportError, ModuleNotFoundError) as e:
     _BEHAVIOR_IMPORTED = False
 from gym.spaces import Box
@@ -53,7 +54,6 @@ from predicators.behavior_utils.option_model_fns import \
     create_place_nextto_option_model, create_place_option_model, \
     create_place_under_option_model, create_toggle_on_option_model
 from predicators.envs import BaseEnv
-from predicators.settings import CFG
 from predicators.structs import Action, Array, GroundAtom, Object, \
     ParameterizedOption, Predicate, State, Task, Type, Video
 
@@ -365,7 +365,7 @@ class BehaviorEnv(BaseEnv):
                 self.task_num, self.task_instance_id)] = curr_env_seed
             behavior_task_name = CFG.behavior_task_list[0] if len(
                 CFG.behavior_task_list) == 1 else "all"
-            os.makedirs(f"tmp_behavior_states/mpi_{proc_id()}/{scene_name}__" +
+            os.makedirs(f"{CFG.tmp_dir}/tmp_behavior_states/mpi_{proc_id()}/{scene_name}__" +
                         f"{behavior_task_name}__{CFG.num_train_tasks}__" +
                         f"{CFG.seed}__{self.task_num}__" +
                         f"{self.task_instance_id}",
@@ -533,13 +533,22 @@ class BehaviorEnv(BaseEnv):
                 continue
             # In the future, we may need other object attributes,
             # but for the moment, we just need position and orientation.
-            obj_type = Type(
-                type_name,
-                [
-                    "pos_x", "pos_y", "pos_z", "orn_0", "orn_1", "orn_2",
-                    "orn_3", "bbox_0", "bbox_1", "bbox_2"
-                ],
-            )
+            if type_name == "agent":
+                obj_type = Type(
+                    type_name,
+                    [
+                        "pos_x", "pos_y", "pos_z", "orn_0", "orn_1", "orn_2", 
+                        "orn_3", "hand_pos_x", "hand_pos_y", "hand_pos_z", 
+                        "hand_orn_0", "hand_orn_1", "hand_orn_2", "hand_orn_3"
+                    ])
+            else:
+                obj_type = Type(
+                    type_name,
+                    [
+                        "pos_x", "pos_y", "pos_z", "orn_0", "orn_1", "orn_2",
+                        "orn_3", "bbox_0", "bbox_1", "bbox_2"
+                    ],
+                )
             self._type_name_to_type[type_name] = obj_type
 
         return set(self._type_name_to_type.values())
@@ -697,11 +706,20 @@ class BehaviorEnv(BaseEnv):
             # In the future, we may need other object attributes,
             # but for the moment, we just need position and orientation.
             assert ig_obj.bounding_box is not None or isinstance(ig_obj, RoomFloor), "We assume only RoomFloors have no bbox"
-            obj_state = np.hstack([
-                ig_obj.get_position(),
-                ig_obj.get_orientation(),
-                ig_obj.bounding_box if ig_obj.bounding_box is not None else np.ones(3)   
-            ])
+            if isinstance(ig_obj, BRBody):
+                robot_obj = self.igibson_behavior_env.robots[0]
+                obj_state = np.hstack([
+                    robot_obj.get_position(),
+                    robot_obj.get_orientation(),
+                    robot_obj.parts["right_hand"].get_position(),
+                    robot_obj.parts["right_hand"].get_orientation()
+                ])
+            else:
+                obj_state = np.hstack([
+                    ig_obj.get_position(),
+                    ig_obj.get_orientation(),
+                    ig_obj.bounding_box if ig_obj.bounding_box is not None else np.ones(3)   
+                ])
             state_data[obj] = obj_state
 
         # NOTE: we set simulator state to none as a 'dummy' value.
@@ -719,7 +737,7 @@ class BehaviorEnv(BaseEnv):
                 scene_name = CFG.behavior_train_scene_name
             simulator_state = save_checkpoint(
                 self.igibson_behavior_env.simulator,
-                f"tmp_behavior_states/mpi_{proc_id()}/{scene_name}__" +
+                f"{CFG.tmp_dir}/tmp_behavior_states/mpi_{proc_id()}/{scene_name}__" +
                 f"{behavior_task_name}__{CFG.num_train_tasks}__" +
                 f"{CFG.seed}__{self.task_num}__" + f"{self.task_instance_id}/")
         return utils.BehaviorState(

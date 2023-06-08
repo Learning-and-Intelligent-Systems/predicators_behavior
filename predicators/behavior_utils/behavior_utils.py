@@ -1072,7 +1072,8 @@ MAX_NAVIGATION_SAMPLES = 50
 def sample_navigation_params(igibson_behavior_env: "BehaviorEnv",
                              obj_to_sample_near: "URDFObject",
                              rng: np.random.Generator,
-                             max_internal_samples=None) -> Array:
+                             max_internal_samples=None,
+                             return_failed_samples=False) -> Array:
     """Main logic for navigation param sampler.
 
     Implemented in a separate method to enable code reuse in
@@ -1093,8 +1094,12 @@ def sample_navigation_params(igibson_behavior_env: "BehaviorEnv",
     # not always succeed at this and will exit after a certain number
     # of tries.
     num_samples_tried = 1
+    if return_failed_samples:
+        failed_samples = []
     while (check_nav_end_pose(igibson_behavior_env, obj_to_sample_near,
                               sampler_output) is None):
+        if return_failed_samples:
+            failed_samples.append(sampler_output)
         distance = closeness_limit * rng.random()
         yaw = rng.random() * (2 * np.pi) - np.pi
         x = distance * np.cos(yaw)
@@ -1105,6 +1110,8 @@ def sample_navigation_params(igibson_behavior_env: "BehaviorEnv",
                                   obj_to_sample_near,
                                   sampler_output,
                                   ignore_blocked=True):
+                if return_failed_samples:
+                    return sampler_output, num_samples_tried, failed_samples
                 return sampler_output, num_samples_tried
         # NOTE: In many situations, it is impossible to find a good sample
         # no matter how many times we try. Thus, we break this loop after
@@ -1112,12 +1119,15 @@ def sample_navigation_params(igibson_behavior_env: "BehaviorEnv",
         if num_samples_tried > max_internal_samples:
             break
         num_samples_tried += 1
+    if return_failed_samples:
+        return sampler_output, num_samples_tried, failed_samples
     return sampler_output, num_samples_tried
 
 
 def sample_place_inside_params(obj_to_place_inside: "URDFObject",
                                rng: np.random.Generator,
-                               max_internal_samples=None) -> Array:
+                               max_internal_samples=None,
+                               return_failed_samples=False) -> Array:
     """Main logic for place inside param sampler.
 
     Implemented in a separate method to enable code reuse in
@@ -1142,6 +1152,8 @@ def sample_place_inside_params(obj_to_place_inside: "URDFObject",
             rng.uniform(objB_sampling_bounds[2] + 0.15,
                         objB_sampling_bounds[2] + 0.5)
         ])
+        if return_failed_samples:
+            return sample_params, 1, []
         return sample_params, 1
     if obj_to_place_inside.category == "trash_can":
         objB_sampling_bounds = obj_to_place_inside.bounding_box / 2
@@ -1157,14 +1169,22 @@ def sample_place_inside_params(obj_to_place_inside: "URDFObject",
             rng.uniform(objB_sampling_bounds[2] + 0.05,
                         objB_sampling_bounds[2] + 0.15)
         ])
+        if return_failed_samples:
+            return sample_params, 1, []
         return sample_params, 1
     # If there's no object specific sampler, just return a
     # random sample.
+    if return_failed_samples:
+        return np.array([
+            rng.uniform(-0.5, 0.5),
+            rng.uniform(-0.5, 0.5),
+            rng.uniform(0.3, 1.0)
+        ]), 1, []
     return np.array([
-        rng.uniform(-0.5, 0.5),
-        rng.uniform(-0.5, 0.5),
-        rng.uniform(0.3, 1.0)
-    ]), 1
+            rng.uniform(-0.5, 0.5),
+            rng.uniform(-0.5, 0.5),
+            rng.uniform(0.3, 1.0)
+        ]), 1
 
 
 MAX_PLACEONTOP_SAMPLES = 25
@@ -1173,7 +1193,8 @@ MAX_PLACEONTOP_SAMPLES = 25
 def sample_place_ontop_params(igibson_behavior_env: "BehaviorEnv",
                               obj_to_place_ontop: "URDFObject",
                               rng: np.random.Generator,
-                              max_internal_samples=None) -> Array:
+                              max_internal_samples=None,
+                              return_failed_samples=False) -> Array:
     """Main logic for place ontop param sampler.
 
     Implemented in a separate method to enable code reuse in
@@ -1196,8 +1217,11 @@ def sample_place_ontop_params(igibson_behavior_env: "BehaviorEnv",
         ])
         # logging.info("Sampling params for placeOnTop shelf...")
         num_samples_tried = 1
+        if return_failed_samples:
+            failed_samples = []
         while not check_hand_end_pose(igibson_behavior_env, obj_to_place_ontop,
                                       sample_params):
+            failed_samples.append(sample_params)
             sample_params = np.array([
                 rng.uniform(-obj_to_place_ontop_sampling_bounds[0],
                             obj_to_place_ontop_sampling_bounds[0]),
@@ -1213,10 +1237,18 @@ def sample_place_ontop_params(igibson_behavior_env: "BehaviorEnv",
             if num_samples_tried > max_internal_samples:
                 break
             num_samples_tried += 1
+        if return_failed_samples:
+            return sample_params, num_samples_tried, failed_samples
         return sample_params, num_samples_tried
 
     # If there's no object specific sampler, just return a
     # random sample.
+    if return_failed_samples:
+        return np.array([
+            rng.uniform(-0.5, 0.5),
+            rng.uniform(-0.5, 0.5),
+            rng.uniform(0.3, 1.0)
+        ]), 1, []
     return np.array([
         rng.uniform(-0.5, 0.5),
         rng.uniform(-0.5, 0.5),
@@ -1227,7 +1259,8 @@ def sample_place_ontop_params(igibson_behavior_env: "BehaviorEnv",
 def sample_place_next_to_params(igibson_behavior_env: "BehaviorEnv",
                                 obj_to_place_nextto: "URDFObject",
                                 rng: np.random.Generator,
-                                max_internal_samples=None) -> Array:
+                                max_internal_samples=None,
+                                return_failed_samples=False) -> Array:
     """Main logic for place next to param sampler.
 
     Implemented in a separate method to enable code reuse in
@@ -1257,8 +1290,12 @@ def sample_place_next_to_params(igibson_behavior_env: "BehaviorEnv",
         # logging.info("Sampling params for placeNextTo table...")
 
         num_samples_tried = 1
+        if return_failed_samples:
+            failed_samples = []
         while not check_hand_end_pose(igibson_behavior_env,
                                       obj_to_place_nextto, sample_params):
+            if return_failed_samples:
+                failed_samples.append(sample_params)
             x_location = rng.uniform(-obj_to_place_nextto_sampling_bounds[0],
                                      obj_to_place_nextto_sampling_bounds[0])
             if x_location < 0:
@@ -1280,6 +1317,8 @@ def sample_place_next_to_params(igibson_behavior_env: "BehaviorEnv",
             if num_samples_tried > max_internal_samples:
                 break
             num_samples_tried += 1
+            if return_failed_samples:
+                return sample_params, num_samples_tried, failed_samples
             return sample_params, num_samples_tried
 
     sample_params = np.array([
@@ -1287,13 +1326,16 @@ def sample_place_next_to_params(igibson_behavior_env: "BehaviorEnv",
         rng.uniform(-0.5, 0.5),
         rng.uniform(0.3, 1.0)
     ])
+    if return_failed_samples:
+        return sample_params, 1, []
     return sample_params, 1
 
 
 def sample_place_under_params(igibson_behavior_env: "BehaviorEnv",
                               obj_to_place_under: "URDFObject",
                               rng: np.random.Generator,
-                              max_internal_samples=None) -> Array:
+                              max_internal_samples=None,
+                              return_failed_samples=False) -> Array:
     """Main logic for place under param sampler.
 
     Implemented in a separate method to enable code reuse in
@@ -1316,8 +1358,12 @@ def sample_place_under_params(igibson_behavior_env: "BehaviorEnv",
         # logging.info("Sampling params for placeUnder table...")
 
         num_samples_tried = 1
+        if return_failed_samples:
+            failed_samples = []
         while not check_hand_end_pose(igibson_behavior_env, obj_to_place_under,
                                       sample_params):
+            if return_failed_samples:
+                failed_samples.append(sample_params)
             sample_params = np.array([
                 rng.uniform(-obj_to_place_under_sampling_bounds[0],
                             obj_to_place_under_sampling_bounds[0]),
@@ -1333,10 +1379,18 @@ def sample_place_under_params(igibson_behavior_env: "BehaviorEnv",
             if num_samples_tried > max_internal_samples:
                 break
             num_samples_tried += 1
+        if return_failed_samples:
+            return sample_params, num_samples_tried, failed_samples
         return sample_params, num_samples_tried
 
     # If there's no object specific sampler, just return a
     # random sample.
+    if return_failed_samples:
+        return np.array([
+            rng.uniform(-0.5, 0.5),
+            rng.uniform(-0.5, 0.5),
+            rng.uniform(0.3, 1.0)
+        ]), 1, []
     return np.array([
         rng.uniform(-0.5, 0.5),
         rng.uniform(-0.5, 0.5),
@@ -1402,7 +1456,7 @@ def load_checkpoint_state(s: State,
     else:
         scene_name = CFG.behavior_test_scene_name
     checkpoint_file_str = (
-        f"tmp_behavior_states/mpi_{proc_id()}/{scene_name}__" +
+        f"{CFG.tmp_dir}/tmp_behavior_states/mpi_{proc_id()}/{scene_name}__" +
         f"{behavior_task_name}__{CFG.num_train_tasks}__" +
         f"{CFG.seed}__{env.task_num}__{env.task_instance_id}")
     frame_num = int(s.simulator_state.split("-")[2])
@@ -1410,7 +1464,7 @@ def load_checkpoint_state(s: State,
         load_checkpoint(env.igibson_behavior_env.simulator,
                         checkpoint_file_str, frame_num)
     except p.error as _:
-        print(f"tmp_behavior_states_dir: {os.listdir(checkpoint_file_str)}")
+        print(f"{CFG.tmp_dir}/tmp_behavior_states_dir: {os.listdir(checkpoint_file_str)}")
         raise ValueError(
             f"Could not load pybullet state for {checkpoint_file_str}, " +
             f"frame {frame_num}")

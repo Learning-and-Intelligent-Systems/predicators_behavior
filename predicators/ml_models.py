@@ -855,10 +855,9 @@ class MLPBinaryClassifier(PyTorchBinaryClassifier):
         super().__init__(seed, balance_data, max_train_iters, learning_rate,
                          n_iter_no_change, n_reinitialize_tries, weight_init)
         self._hid_sizes = hid_sizes
-        # Set in fit().
-        self._linears = nn.ModuleList()
 
     def _initialize_net(self) -> None:
+        self._linears = nn.ModuleList()
         self._linears.append(nn.Linear(self._x_dim, self._hid_sizes[0]))
         for i in range(len(self._hid_sizes) - 1):
             self._linears.append(
@@ -993,7 +992,25 @@ def _train_pytorch_model(model: nn.Module,
     assert isinstance(max_iters, int)
     for tensor_X, tensor_Y in batch_generator:
         Y_hat = model(tensor_X)
-        loss = loss_fn(Y_hat, tensor_Y)
+        try:
+            loss = loss_fn(Y_hat, tensor_Y)
+        except RuntimeError:
+            logging.info("Found some error in the loss computation")
+            save_file = f"tmp_error_file_{torch.randint(1000,(1,)).item()}.pt"
+            logging.info(f"Saving error stuff to {save_file}...")
+            torch.save({
+                    'tensor_X': tensor_X,
+                    'tensor_Y': tensor_Y,
+                    'Y_hat': Y_hat,
+                    'model': model.state_dict(),
+                    'input_scale': model._input_scale if hasattr(model, '_input_scale') else None,
+                    'output_scale': model._output_scale if hasattr(model, '_output_scale') else None,
+                    'input_shift': model._input_shift if hasattr(model, '_input_shift') else None,
+                    'output_shift': model._output_shift if hasattr(model, '_output_shift') else None,
+                    },
+                    save_file
+            )
+            raise
         if loss.item() < best_loss:
             best_loss = loss.item()
             best_itr = itr
@@ -1081,17 +1098,23 @@ class DiffusionRegressor(nn.Module):
 
             self._input_shift = np.min(X_cond, axis=0)
             self._input_scale = np.max(X_cond - self._input_shift, axis=0)
-            self._input_scale = np.clip(self._input_scale, 1e-6, None)
+            self._input_scale = np.clip(self._input_scale, 1, None)
+            # self._input_shift = np.zeros_like(self._input_shift)
+            # self._input_scale = np.ones_like(self._input_scale)
 
             self._output_shift = np.min(Y_out, axis=0)
             self._output_scale = np.max(Y_out - self._output_shift, axis=0)
-            self._output_scale = np.clip(self._output_scale, 1e-6, None)
+            self._output_scale = np.clip(self._output_scale, 1, None)
+            # self._output_shift = np.zeros_like(self._output_shift)
+            # self._output_scale = np.ones_like(self._output_scale)
 
             if Y_aux is not None:
                 self._y_aux_dim = Y_aux.shape[1]
                 self._output_aux_shift = np.min(Y_aux, axis=0)
                 self._output_aux_scale = np.max(Y_aux - self._output_aux_shift, axis=0)
-                self._output_aux_scale = np.clip(self._output_aux_scale, 1e-6, None)
+                self._output_aux_scale = np.clip(self._output_aux_scale, 1, None)
+                # self._output_aux_shift = np.zeros_like(self._output_aux_shift)
+                # self._output_aux_scale = np.ones_like(self._output_aux_scale)
 
         X_cond = ((X_cond - self._input_shift) / self._input_scale) * 2 - 1
         Y_out = ((Y_out - self._output_shift) / self._output_scale) * 2 - 1
@@ -1137,14 +1160,15 @@ class DiffusionRegressor(nn.Module):
                 loss = self._p_losses(tensor_X, tensor_Y, t, tensor_Y_aux)#, tensor_X_neg, tensor_Y_neg, t_neg)
                 if torch.isnan(loss):
                     logging.info('Got NaNs while trianing model...')
-                    logging.info(f'X, {torch.isnan(tensor_X).any()}')
-                    logging.info(f'Y, {torch.isnan(tensor_Y).any()}')
-                    logging.info(f't, {torch.isnan(t).any()}')
-                    for n, p in self.named_parameters():
-                        logging.info(f'{n}, {torch.isnan(p).any()}')
+                    logging.info(f'X, {torch.isnan(tensor_X).any()}. {torch.abs(tensor_X).max()}')
+                    logging.info(f'Y, {torch.isnan(tensor_Y).any()}. {torch.abs(tensor_Y).max()}')
+                    logging.info(f't, {torch.isnan(t).any()}. {torch.abs(t).max()}')
+                    for name, p in self.named_parameters():
+                        logging.info(f'{name}, {torch.isnan(p).any()}. {torch.abs(p).max()}')
                     logging.info(f'Aux, {torch.isnan(tensor_Y_aux).any()}')
-                    logging.info('Exiting...')
-                    exit()
+                    logging.info('Will soon error out...')
+                    # logging.info('Exiting...')
+                    # exit()
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -1236,6 +1260,87 @@ class DiffusionRegressor(nn.Module):
                 t_1 = torch.randint(0, self._timesteps, (tensor_X_1.shape[0],), device=self._device)
                 t_2 = torch.randint(0, self._timesteps, (tensor_X_2.shape[0],), device=self._device)
                 loss = self._distill_losses(model_1, tensor_X_1, tensor_Y_1, t_1, tensor_Y_aux_1, model_2, tensor_X_2, tensor_Y_2, t_2, tensor_Y_aux_2)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                cum_loss += loss.item() * (tensor_X_1.shape[0] + tensor_X_2.shape[0])
+                n += tensor_X_1.shape[0] + tensor_X_2.shape[0]
+            cum_loss /= n
+            if itr % 10 == 0:
+                logging.info(f"Loss: {cum_loss:.5f}, iter: {itr}/{self._max_train_iters}")
+
+        self.eval()
+        logging.info(f"Distilled model with loss: {cum_loss:.5f}")
+        return cum_loss
+
+    def fit_balanced(self, data_1, data_2) -> None:
+        assert self.is_trained 
+
+        X_cond_1, Y_out_1, Y_aux_1 = data_1
+        X_cond_2, Y_out_2, Y_aux_2 = data_2
+
+        X_cond_1 = ((X_cond_1 - self._input_shift) / self._input_scale) * 2 - 1
+        Y_out_1 = ((Y_out_1 - self._output_shift) / self._output_scale) * 2 - 1
+        if Y_aux_1 is not None:
+            Y_aux_1 = ((Y_aux_1 - self._output_aux_shift) / self._output_aux_scale) * 2 - 1       
+        X_cond_2 = ((X_cond_2 - self._input_shift) / self._input_scale) * 2 - 1
+        Y_out_2 = ((Y_out_2 - self._output_shift) / self._output_scale) * 2 - 1
+        if Y_aux_2 is not None:
+            Y_aux_2 = ((Y_aux_2 - self._output_aux_shift) / self._output_aux_scale) * 2 - 1       
+
+
+        size_1 = X_cond_1.shape[0]
+        size_2 = X_cond_2.shape[0]
+        # Make sure both dataloaders have the same # batches
+        pow_2 = 512
+        batch_size_2 = 0
+        while batch_size_2 == 0:
+            batch_size_1 = pow_2
+            batch_size_2 = pow_2 * min(size_1, size_2) // max(size_1, size_2)
+            pow_2 *= 2
+        if size_2 > size_1:
+            batch_size_2, batch_size_1 = batch_size_1, batch_size_2
+        
+        logging.info(f"Balanced training with {size_1} datapoints and "
+                      f"{size_2} datapoints into {self.__class__.__name__}")
+
+        tensor_X_cond_1 = torch.from_numpy(np.array(X_cond_1, dtype=np.float32)).to(self._device)
+        tensor_Y_out_1 = torch.from_numpy(np.array(Y_out_1, dtype=np.float32)).to(self._device)
+        if Y_aux_1 is not None:
+            tensor_Y_aux_1 = torch.from_numpy(np.array(Y_aux_1, dtype=np.float32)).to(self._device)
+            data_1 = torch.utils.data.TensorDataset(tensor_X_cond_1, tensor_Y_out_1, tensor_Y_aux_1)
+        else:
+            data_1 = torch.utils.data.TensorDataset(tensor_X_cond_1, tensor_Y_out_1)
+        dataloader_1 = torch.utils.data.DataLoader(data_1, batch_size=batch_size_1, shuffle=True)
+
+        tensor_X_cond_2 = torch.from_numpy(np.array(X_cond_2, dtype=np.float32)).to(self._device)
+        tensor_Y_out_2 = torch.from_numpy(np.array(Y_out_2, dtype=np.float32)).to(self._device)
+        if Y_aux_2 is not None:
+            tensor_Y_aux_2 = torch.from_numpy(np.array(Y_aux_2, dtype=np.float32)).to(self._device)
+            data_2 = torch.utils.data.TensorDataset(tensor_X_cond_2, tensor_Y_out_2, tensor_Y_aux_2)
+        else:
+            data_2 = torch.utils.data.TensorDataset(tensor_X_cond_2, tensor_Y_out_2)
+        dataloader_2 = torch.utils.data.DataLoader(data_2, batch_size=batch_size_2, shuffle=True)
+
+        optimizer = self._optimizer
+        assert isinstance(self._max_train_iters, int)
+        self.train()
+        for itr in range(self._max_train_iters // 10):
+            cum_loss = 0
+            n = 0
+            for tensors_1, tensors_2 in zip(dataloader_1, dataloader_2):
+                if len(tensors_1) == 3:
+                    tensor_X_1, tensor_Y_1, tensor_Y_aux_1 = tensors_1
+                    tensor_X_2, tensor_Y_2, tensor_Y_aux_2 = tensors_2
+                else:
+                    tensor_X_1, tensor_Y_1 = tensors_1
+                    tensor_X_2, tensor_Y_2 = tensors_2
+                    tensor_Y_aux_1 = None
+                    tensor_Y_aux_2 = None
+                t_1 = torch.randint(0, self._timesteps, (tensor_X_1.shape[0],), device=self._device)
+                t_2 = torch.randint(0, self._timesteps, (tensor_X_2.shape[0],), device=self._device)
+                loss = self._p_losses(tensor_X_1, tensor_Y_1, t_1, tensor_Y_aux_1)
+                loss += self._p_losses(tensor_X_2, tensor_Y_2, t_2, tensor_Y_aux_2)
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -1353,6 +1458,13 @@ class DiffusionRegressor(nn.Module):
         predicted_noise = predicted_noise_label#[:, :-1]
         # label_pos = predicted_noise_label[:, -1]
         loss = F.smooth_l1_loss(noise, predicted_noise)
+        if loss.isnan():
+            logging.info('Got NaNs in _p_losses computation, should exit after this')
+            logging.info(f'X_cond, {torch.isnan(X_cond).any()}. {torch.abs(X_cond).max()}')
+            logging.info(f'Y_noisy, {torch.isnan(Y_noisy).any()}. {torch.abs(Y_noisy).max()}')
+            logging.info(f'Y_start, {torch.isnan(Y_start).any()}. {torch.abs(Y_start).max()}')
+            logging.info(f'predicted_noise, {torch.isnan(predicted_noise).any()}. {torch.abs(predicted_noise).max()}')
+            logging.info(f'noise, {torch.isnan(noise).any()}. {torch.abs(noise).max()}')
 
         # noise_neg = torch.randn_like(Y_neg_start)
         # Y_neg_noisy = self._q_sample(Y_neg_start, t_neg, noise_neg)
@@ -1400,6 +1512,7 @@ class DiffusionRegressor(nn.Module):
 
         return loss_1 + loss_2
 
+    @torch.no_grad()
     def predict_aux(self, x_cond: Array, y_out: Array) -> Array:
         x_cond = ((x_cond - self._input_shift) / self._input_scale) * 2 - 1
         x_cond_tensor = torch.from_numpy(np.array(x_cond, dtype=np.float32)).to(self._device)

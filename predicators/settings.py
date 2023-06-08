@@ -427,12 +427,15 @@ class GlobalSettings:
     # torch model parameters
     learning_rate = 1e-3
     mlp_regressor_max_itr = 10000
-    mlp_regressor_hid_sizes = [32, 32]
+    # mlp_regressor_hid_sizes = [32, 32]
+    mlp_regressor_hid_sizes = [256, 256]
     mlp_regressor_clip_gradients = False
     mlp_regressor_gradient_clip_value = 5
-    mlp_classifier_hid_sizes = [32, 32]
+    # mlp_classifier_hid_sizes = [32, 32]
+    mlp_classifier_hid_sizes = [256, 256]
     mlp_classifier_balance_data = True
-    neural_gaus_regressor_hid_sizes = [32, 32]
+    # neural_gaus_regressor_hid_sizes = [32, 32]
+    neural_gaus_regressor_hid_sizes = [256, 256]
     neural_gaus_regressor_max_itr = 1000
     mlp_classifier_n_iter_no_change = 5000
     implicit_mlp_regressor_max_itr = 10000
@@ -532,6 +535,8 @@ class GlobalSettings:
     use_specialized_ebms = False
     behavior_task_order = "fixed"   # "shuffled", "interleaved"
     load_lifelong_checkpoint = False
+    tmp_dir = '/tmp'
+    procid_seed_offset = 10000
 
 
     @staticmethod

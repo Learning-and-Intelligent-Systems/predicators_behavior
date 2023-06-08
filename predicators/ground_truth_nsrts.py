@@ -2922,16 +2922,20 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
     def dummy_param_sampler(state: State, goal: Set[GroundAtom],
                             rng: Generator,
                             objects: Sequence["URDFObject"],
-                            max_internal_samples=None) -> Array:
+                            max_internal_samples=None,
+                            return_failed_samples=False) -> Array:
         """Dummy sampler."""
         del state, goal, rng, objects
+        if return_failed_samples:
+            return np.array([0.0, 0.0, 0.0]), 1, []
         return np.array([0.0, 0.0, 0.0]), 1
 
     # NavigateTo sampler definition.
     def navigate_to_param_sampler(state: State, goal: Set[GroundAtom],
                                   rng: Generator,
                                   objects: Sequence["URDFObject"],
-                                  max_internal_samples=None) -> Array:
+                                  max_internal_samples=None,
+                                  return_failed_samples=False) -> Array:
         """Sampler for navigateTo option.
 
         Loads the entire iGibson env to perform collision checking and
@@ -2945,28 +2949,33 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         env.check_state_closeness_and_load(state)
         # The navigation nsrts are designed such that the target
         # obj is always last in the params list.
-        obj_to_sample_near = objects[-1]
+        obj_to_sample_near = objects[0]
         return sample_navigation_params(env.igibson_behavior_env,
                                         obj_to_sample_near, rng,
-                                        max_internal_samples=max_internal_samples)
+                                        max_internal_samples=max_internal_samples,
+                                        return_failed_samples=return_failed_samples)
 
     # Grasp sampler definition.
     def grasp_obj_param_sampler(state: State, goal: Set[GroundAtom],
                                 rng: Generator,
                                 objects: Sequence["URDFObject"],
-                                max_internal_samples=None) -> Array:
+                                max_internal_samples=None,
+                                return_failed_samples=False) -> Array:
         """Sampler for grasp option."""
         del state, goal, objects
         x_offset = (rng.random() * 0.4) - 0.2
         y_offset = (rng.random() * 0.4) - 0.2
         z_offset = rng.random() * 0.2
+        if return_failed_samples:
+            return np.array([x_offset, y_offset, z_offset]), 1, []
         return np.array([x_offset, y_offset, z_offset]), 1
 
     # Place OnTop sampler definition.
     def place_ontop_obj_pos_sampler(
             state: State, goal: Set[GroundAtom], rng: Generator,
             objects: Union["URDFObject", "RoomFloor"],
-            max_internal_samples=None) -> Array:
+            max_internal_samples=None,
+            return_failed_samples=False) -> Array:
         """Sampler for placeOnTop option."""
         del goal
         assert rng is not None
@@ -2975,7 +2984,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         # The BEHAVIOR NSRT's are designed such that objA is the 0th
         # argument, and objB is the last.
         objA = objects[0]
-        objB = objects[-1]
+        objB = objects[1]
 
         params = {
             "max_angle_with_z_axis": 0.17,
@@ -3005,16 +3014,20 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             assert isinstance(env, BehaviorEnv)
             env.check_state_closeness_and_load(state)
             return sample_place_ontop_params(env.igibson_behavior_env, objB,
-                                             rng, max_internal_samples=max_internal_samples)
+                                             rng, max_internal_samples=max_internal_samples,
+                                             return_failed_samples=return_failed_samples)
 
         rnd_params = np.subtract(sampling_results[0][0], objB.get_position())
+        if return_failed_samples:
+            return rnd_params, 1, []
         return rnd_params, 1
 
     # Place Inside sampler definition.
     def place_inside_obj_pos_sampler(
             state: State, goal: Set[GroundAtom], rng: Generator,
             objects: Union["URDFObject", "RoomFloor"],
-            max_internal_samples=None) -> Array:
+            max_internal_samples=None,
+            return_failed_samples=False) -> Array:
         """Sampler for placeOnTop option."""
         del state, goal
         assert rng is not None
@@ -3023,7 +3036,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         # The BEHAVIOR NSRT's are designed such that objA is the 0th
         # argument, and objB is the last.
         objA = objects[0]
-        objB = objects[-1]
+        objB = objects[1]
 
         params = {
             "max_angle_with_z_axis": 0.17,
@@ -3049,15 +3062,19 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         if sampling_results[0] is None or sampling_results[0][0] is None:
             # If sampling fails, fall back onto custom-defined object-specific
             # samplers
-            return sample_place_inside_params(objB, rng, max_internal_samples=max_internal_samples)
+            return sample_place_inside_params(objB, rng, max_internal_samples=max_internal_samples,
+                            return_failed_samples=return_failed_samples)
 
         rnd_params = np.subtract(sampling_results[0][0], objB.get_position())
+        if return_failed_samples:
+            return rnd_params, 1, []
         return rnd_params, 1
 
     def place_next_to_obj_pos_sampler(
             state: State, goal: Set[GroundAtom], rng: Generator,
             objects: Union["URDFObject", "RoomFloor"],
-            max_internal_samples=None) -> Array:
+            max_internal_samples=None,
+            return_failed_samples=False) -> Array:
         """Sampler for placeNextT0 option."""
         del goal
         assert rng is not None
@@ -3065,18 +3082,19 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         # objB is the surface that it must be placed under.
         # The BEHAVIOR NSRT's are designed such that objA is the 0th
         # argument, and objB is the last.
-        objB = objects[-1]
+        objB = objects[1]
 
         env = get_or_create_env("behavior")
         assert isinstance(env, BehaviorEnv)
         env.check_state_closeness_and_load(state)
-        return sample_place_next_to_params(env.igibson_behavior_env, objB, rng, max_internal_samples=max_internal_samples)
+        return sample_place_next_to_params(env.igibson_behavior_env, objB, rng, max_internal_samples=max_internal_samples, return_failed_samples=return_failed_samples)
 
     # Place Under sampler definition
     def place_under_obj_pos_sampler(
             state: State, goal: Set[GroundAtom], rng: Generator,
             objects: Union["URDFObject", "RoomFloor"],
-            max_internal_samples=None) -> Array:
+            max_internal_samples=None,
+            return_failed_samples=False) -> Array:
         """Sampler for placeUnder option."""
         del goal
         assert rng is not None
@@ -3084,13 +3102,15 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         # objB is the surface that it must be placed under.
         # The BEHAVIOR NSRT's are designed such that objA is the 0th
         # argument, and objB is the last.
-        objB = objects[-1]
+        objB = objects[1]
 
         env = get_or_create_env("behavior")
         assert isinstance(env, BehaviorEnv)
         env.check_state_closeness_and_load(state)
-        return sample_place_under_params(env.igibson_behavior_env, objB, rng, max_internal_samples=max_internal_samples)
+        return sample_place_under_params(env.igibson_behavior_env, objB, rng, max_internal_samples=max_internal_samples, return_failed_samples=return_failed_samples)
 
+    agent_type = type_name_to_type["agent"]
+    agent_obj = Variable("?agent", agent_type)
     for option in env.options:
         split_name = option.name.split("-")
         base_option_name = split_name[0]
@@ -3109,7 +3129,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             if target_obj_type_name in ["agent", "room_floor"]:
                 continue
             # Navigate To.
-            parameters = [target_obj]
+            parameters = [target_obj, agent_obj]
             option_vars = [target_obj]
             preconditions: Set[LiftedAtom] = set()
             add_effects = {_get_lifted_atom("reachable", [target_obj])}
@@ -3119,7 +3139,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                 f"{option.name}-{next(op_name_count_nav)}", parameters,
                 preconditions, add_effects, delete_effects,
                 reachable_predicates, option, option_vars,
-                lambda s, g, r, o, max_internal_samples=None: navigate_to_param_sampler(
+                lambda s, g, r, o, max_internal_samples=None, return_failed_samples=False: navigate_to_param_sampler(
                     s,
                     g,
                     r,
@@ -3127,7 +3147,8 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                         env.object_to_ig_object(o_i)
                         if isinstance(o_i, Object) else o_i for o_i in o
                     ],
-                    max_internal_samples=max_internal_samples
+                    max_internal_samples=max_internal_samples,
+                    return_failed_samples=return_failed_samples
                 ))
             nsrts.add(nsrt)
 
@@ -3207,7 +3228,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                 if held_obj_types.name not in PICK_PLACE_OBJECT_TYPES:
                     continue
                 held_obj = Variable("?held", held_obj_types)
-                parameters = [held_obj, surf_obj]
+                parameters = [held_obj, surf_obj, agent_obj]
                 option_vars = [surf_obj]
                 handempty = _get_lifted_atom("handempty", [])
                 held_holding = _get_lifted_atom("holding", [held_obj])
@@ -3226,7 +3247,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     set(),
                     option,
                     option_vars,
-                    lambda s, g, r, o, max_internal_samples=None: place_ontop_obj_pos_sampler(
+                    lambda s, g, r, o, max_internal_samples=None, return_failed_samples=False: place_ontop_obj_pos_sampler(
                         s,
                         g,
                         objects=[
@@ -3234,7 +3255,8 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                             if isinstance(o_i, Object) else o_i for o_i in o
                         ],
                         rng=r,
-                        max_internal_samples=max_internal_samples
+                        max_internal_samples=max_internal_samples,
+                        return_failed_samples=return_failed_samples
                     ),
                 )
                 nsrts.add(nsrt)
@@ -3264,7 +3286,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             nsrt = NSRT(
                 f"{option.name}-{next(op_name_count_open)}", parameters,
                 preconditions, add_effects, delete_effects, set(), option,
-                option_vars, lambda s, g, r, o, max_internal_samples=None: dummy_param_sampler(
+                option_vars, lambda s, g, r, o, max_internal_samples=None, return_failed_samples=False: dummy_param_sampler(
                     s,
                     g,
                     r,
@@ -3272,7 +3294,8 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                         env.object_to_ig_object(o_i)
                         if isinstance(o_i, Object) else o_i for o_i in o
                     ],
-                    max_internal_samples=max_internal_samples
+                    max_internal_samples=max_internal_samples,
+                    return_failed_samples=return_failed_samples
                 ))
             nsrts.add(nsrt)
 
@@ -3297,7 +3320,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             nsrt = NSRT(
                 f"{option.name}-{next(op_name_count_close)}", parameters,
                 preconditions, add_effects, delete_effects, set(), option,
-                option_vars, lambda s, g, r, o, max_internal_samples=None: dummy_param_sampler(
+                option_vars, lambda s, g, r, o, max_internal_samples=None, return_failed_samples=False: dummy_param_sampler(
                     s,
                     g,
                     r,
@@ -3305,7 +3328,8 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                         env.object_to_ig_object(o_i)
                         if isinstance(o_i, Object) else o_i for o_i in o
                     ],
-                    max_internal_samples=max_internal_samples
+                    max_internal_samples=max_internal_samples,
+                    return_failed_samples=return_failed_samples
                 ))
             nsrts.add(nsrt)
 
@@ -3332,7 +3356,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     held_obj_types.name == surf_obj_type.name:
                     continue
                 held_obj = Variable("?held", held_obj_types)
-                parameters = [held_obj, surf_obj]
+                parameters = [held_obj, surf_obj, agent_obj]
                 option_vars = [surf_obj]
                 handempty = _get_lifted_atom("handempty", [])
                 held_holding = _get_lifted_atom("holding", [held_obj])
@@ -3361,7 +3385,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     set(),
                     option,
                     option_vars,
-                    lambda s, g, r, o, max_internal_samples=None: place_inside_obj_pos_sampler(
+                    lambda s, g, r, o, max_internal_samples=None, return_failed_samples=False: place_inside_obj_pos_sampler(
                         s,
                         g,
                         objects=[
@@ -3369,7 +3393,8 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                             if isinstance(o_i, Object) else o_i for o_i in o
                         ],
                         rng=r,
-                        max_internal_samples=max_internal_samples
+                        max_internal_samples=max_internal_samples,
+                        return_failed_samples=return_failed_samples
                     ),
                 )
                 nsrts.add(openable_nsrt)
@@ -3383,7 +3408,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     set(),
                     option,
                     option_vars,
-                    lambda s, g, r, o, max_internal_samples=None: place_inside_obj_pos_sampler(
+                    lambda s, g, r, o, max_internal_samples=None, return_failed_samples=False: place_inside_obj_pos_sampler(
                         s,
                         g,
                         objects=[
@@ -3391,7 +3416,8 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                             if isinstance(o_i, Object) else o_i for o_i in o
                         ],
                         rng=r,
-                        max_internal_samples=max_internal_samples
+                        max_internal_samples=max_internal_samples,
+                        return_failed_samples=return_failed_samples
                     ),
                 )
                 nsrts.add(not_openable_nsrt)
@@ -3417,7 +3443,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     held_obj_types.name == surf_obj_type.name:
                     continue
                 held_obj = Variable("?held", held_obj_types)
-                parameters = [held_obj, surf_obj]
+                parameters = [held_obj, surf_obj, agent_obj]
                 option_vars = [surf_obj]
                 handempty = _get_lifted_atom("handempty", [])
                 held_holding = _get_lifted_atom("holding", [held_obj])
@@ -3431,7 +3457,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     f"{option.name}-{next(op_name_count_place_under)}",
                     parameters, preconditions, add_effects, delete_effects,
                     set(), option, option_vars,
-                    lambda s, g, r, o, max_internal_samples=None: place_under_obj_pos_sampler(
+                    lambda s, g, r, o, max_internal_samples=None, return_failed_samples=False: place_under_obj_pos_sampler(
                         s,
                         g,
                         r,
@@ -3439,7 +3465,8 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                             env.object_to_ig_object(o_i)
                             if isinstance(o_i, Object) else o_i for o_i in o
                         ],
-                        max_internal_samples=max_internal_samples
+                        max_internal_samples=max_internal_samples,
+                        return_failed_samples=return_failed_samples
                     ))
                 nsrts.add(nsrt)
 
@@ -3464,7 +3491,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             nsrt = NSRT(
                 f"{option.name}-{next(op_name_count_close)}", parameters,
                 preconditions, add_effects, delete_effects, set(), option,
-                option_vars, lambda s, g, r, o, max_internal_samples=None: dummy_param_sampler(
+                option_vars, lambda s, g, r, o, max_internal_samples=None, return_failed_samples=False: dummy_param_sampler(
                     s,
                     g,
                     r,
@@ -3472,7 +3499,8 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                         env.object_to_ig_object(o_i)
                         if isinstance(o_i, Object) else o_i for o_i in o
                     ],
-                    max_internal_samples=max_internal_samples
+                    max_internal_samples=max_internal_samples,
+                    return_failed_samples=return_failed_samples
                 ))
             nsrts.add(nsrt)
 
@@ -3503,7 +3531,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                         continue
 
                     ontop_obj = Variable("?ontop", ontop_obj_types)
-                    parameters = [held_obj, surf_obj, ontop_obj]
+                    parameters = [held_obj, surf_obj, ontop_obj, agent_obj]
                     option_vars = [surf_obj]
                     handempty = _get_lifted_atom("handempty", [])
                     held_holding = _get_lifted_atom("holding", [held_obj])
@@ -3523,7 +3551,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                         f"{option.name}-{next(op_name_count_place_next_to)}",
                         parameters, preconditions, add_effects, delete_effects,
                         set(), option, option_vars,
-                        lambda s, g, r, o, max_internal_samples=None: place_next_to_obj_pos_sampler(
+                        lambda s, g, r, o, max_internal_samples=None, return_failed_samples=False: place_next_to_obj_pos_sampler(
                             s,
                             g,
                             r,
@@ -3532,7 +3560,8 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                                 if isinstance(o_i, Object) else o_i
                                 for o_i in o
                             ],
-                            max_internal_samples=max_internal_samples
+                            max_internal_samples=max_internal_samples,
+                            return_failed_samples=return_failed_samples
                         ))
                     nsrts.add(nsrt)
         elif base_option_name == "CleanDusty":
@@ -3564,7 +3593,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     f"{option.name}-{next(op_name_count_clean)}",
                     parameters, preconditions, add_effects, delete_effects,
                     set(), option, option_vars,
-                    lambda s, g, r, o, max_internal_samples=None: dummy_param_sampler(
+                    lambda s, g, r, o, max_internal_samples=None, return_failed_samples=False: dummy_param_sampler(
                         s,
                         g,
                         r,
@@ -3572,7 +3601,8 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                             env.object_to_ig_object(o_i)
                             if isinstance(o_i, Object) else o_i for o_i in o
                         ],
-                        max_internal_samples=max_internal_samples
+                        max_internal_samples=max_internal_samples,
+                        return_failed_samples=return_failed_samples
                     ))
                 nsrts.add(nsrt)
 

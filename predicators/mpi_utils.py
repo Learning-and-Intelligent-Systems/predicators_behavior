@@ -68,6 +68,10 @@ def mpi_concatenate(x, root=0):
     MPI.COMM_WORLD.Gatherv(x, (rcv_buf, sendcounts), root=root)
     return rcv_buf
 
+def mpi_concatenate_object(obj, root=0):
+    received = MPI.COMM_WORLD.gather(obj, root=root)
+    return received
+
 def mpi_op(x, op):
     x, scalar = ([x], True) if np.isscalar(x) else (x, False)
     x = np.asarray(x, dtype=np.float32)
