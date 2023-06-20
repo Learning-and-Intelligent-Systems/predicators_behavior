@@ -153,8 +153,9 @@ FLAGS:  # general flags
   timeout: 1000.0
   horizon: 1000
   behavior_override_learned_samplers: True
+  behavior_ignore_discover_failures: True
   num_train_tasks: 0
   num_test_tasks: 5
-START_SEED: 0
+START_SEED: 465
 NUM_SEEDS: 1
 USE_GPU: False
