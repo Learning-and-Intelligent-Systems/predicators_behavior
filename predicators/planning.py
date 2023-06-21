@@ -605,16 +605,17 @@ def run_low_level_search(
                     # utils.abstract(traj[cur_idx], predicates).
                     if all(a.holds(traj[cur_idx]) for a in expected_atoms):
                         can_continue_on = True
-                        # logging.info("Success: Expected Atoms Check Passed!")
+                        logging.info(f"[{plan[cur_idx - 1].name}] Success: Expected Atoms Check Passed!")
                         if cur_idx == len(skeleton):
                             if return_all_failed_refinements:
                                 return [plan] + all_failed_refinements, True, [traj] + all_failed_trajs
                             return plan, True, traj  # success!
                     else:
-                        # logging.info("Failure: Expected Atoms Check Failed.")
-                        # for a in expected_atoms:
-                        #     if not a.holds(traj[cur_idx]):
-                        #         logging.info(a)
+                        logging.info(f"[{plan[cur_idx - 1].name}] Failure: Expected Atoms Check Failed.")
+                        for a in expected_atoms:
+                            if not a.holds(traj[cur_idx]):
+                                logging.info(f"\t{a}")
+                        logging.info(f"\tParams: {plan[cur_idx - 1].params}")
                         can_continue_on = False
                 else:
                     # If we're not checking expected_atoms, we need to
@@ -1078,6 +1079,8 @@ def _sesame_plan_with_fast_downward(
     prob_file = tempfile.NamedTemporaryFile(delete=False).name
     with open(prob_file, "w", encoding="utf-8") as f:
         f.write(prob_str)
+    domain_files_time = time.perf_counter()
+    logging.info(f"Time to create domain files: {domain_files_time - start_time}")
     # The SAS file is used when augmenting the grounded operators,
     # during dicovered failures, and it's important that we give
     # it a name, because otherwise Fast Downward uses a fixed
@@ -1102,6 +1105,8 @@ def _sesame_plan_with_fast_downward(
     cmd_str = (f"{timeout_cmd} {timeout} {exec_str} "
                f"--sas-file {sas_file} {dom_file} {prob_file}")
     output = subprocess.getoutput(cmd_str)
+    sas_file_time = time.perf_counter()
+    logging.info(f"Time to create sas file: {sas_file_time - domain_files_time}")
     partial_refinements = []
     while True:
         if optimal:
@@ -1111,8 +1116,12 @@ def _sesame_plan_with_fast_downward(
             cmd_str = (
                 f"{timeout_cmd} {timeout} {exec_str} {sas_file} {alias_flag}")
         output = subprocess.getoutput(cmd_str)
+        fd_time = time.perf_counter()
+        logging.info(f"Time to run FD: {fd_time - sas_file_time}")
         cleanup_cmd_str = f"{exec_str} --cleanup"
         subprocess.getoutput(cleanup_cmd_str)
+        cleanup_time = time.perf_counter()
+        logging.info(f"Time to clean up FD run: {cleanup_time - fd_time}")
         if time.perf_counter() - start_time > timeout:
             raise PlanningTimeout("Planning timed out in call to FD!")
         # Parse and log metrics.
@@ -1168,15 +1177,21 @@ def _sesame_plan_with_fast_downward(
         low_level_timeout = timeout - (time.perf_counter() - start_time)
         metrics["num_skeletons_optimized"] = 1
         metrics["num_failures_discovered"] = 0
+        metrics_time = time.perf_counter()
+        logging.info(f"Time to get metrics from FD: {metrics_time - cleanup_time}")
         try:
             necessary_atoms_seq = utils.compute_necessary_atoms_seq(
                 skeleton, atoms_sequence, task.goal)
+            atoms_time = time.perf_counter()
+            logging.info(f"Time to get necessary_atoms_seq: {atoms_time - metrics_time}")
             plan, suc, traj = run_low_level_search(task, option_model,
                                                    skeleton,
                                                    necessary_atoms_seq, seed,
                                                    low_level_timeout, metrics,
                                                    max_horizon,
                                                    return_all_failed_refinements)
+            sampling_time = time.perf_counter()
+            logging.info(f"Sampling time: {sampling_time - atoms_time}")
             if not suc:
                 if return_all_failed_refinements:
                     partial_refinements += [(skeleton, p, t) for p, t in zip(plan, traj)]

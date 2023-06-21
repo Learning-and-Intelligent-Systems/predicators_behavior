@@ -195,7 +195,7 @@ def _aux_labels(nsrt_name, x, a):
         hand_orn = x[30: 34]
 
         # 3 params: offset x,y,z
-        offset = a
+        offset = copy.copy(a)
         offset[2] += 0.2    # not sure why, but this is done in motion_planner or option_model_fn
         end_hand_pos = offset + surf_pos
         end_hand_orn = p.getQuaternionFromEuler((0, np.pi * 7 / 6, 0))  # Obtained from motion_planner_fns (end_conf)
@@ -271,7 +271,7 @@ def _aux_labels(nsrt_name, x, a):
         hand_orn = x[40: 44]
 
         # 3 params: offset x,y,z
-        offset = a
+        offset = copy.copy(a)
         offset[2] += 0.2    # not sure why, but this is done in motion_planner or option_model_fn
         end_hand_pos = offset + surf_pos
         end_hand_orn = p.getQuaternionFromEuler((0, np.pi * 7 / 6, 0))  # Obtained from motion_planner_fns (end_conf)
@@ -724,15 +724,24 @@ class LifelongSamplerLearningApproachMix(BilevelPlanningApproach):
         for result in results:
             skeleton = result.skeleton
             task = self._train_tasks[result.train_task_idx]
-            state_annotations = []
-            init_atoms = utils.abstract(result.states[0], self._initial_predicates)
-            atoms_sequence = [init_atoms]
-            for ground_nsrt in skeleton:
-                atoms_sequence.append(utils.apply_operator(ground_nsrt, atoms_sequence[-1]))
-            necessary_atoms_sequence = utils.compute_necessary_atoms_seq(skeleton, atoms_sequence, task.goal)
+            state_annotations = [True for _ in result.states[1:]]
+            ######### State annotations
+            # state_annotations = []
+            # init_atoms = utils.abstract(result.states[0], self._initial_predicates)
+            # atoms_sequence = [init_atoms]
+            # for ground_nsrt in skeleton:
+            #     atoms_sequence.append(utils.apply_operator(ground_nsrt, atoms_sequence[-1]))
+            # necessary_atoms_sequence = utils.compute_necessary_atoms_seq(skeleton, atoms_sequence, task.goal)
 
-            for state, expected_atoms, ground_nsrt in zip(result.states[1:], necessary_atoms_sequence[1:], result.skeleton):
-                state_annotations.append(all(a.holds(state) for a in expected_atoms))
+            # for state, expected_atoms, ground_nsrt in zip(result.states[1:], necessary_atoms_sequence[1:], result.skeleton):
+            #     state_annotations.append(all(a.holds(state) for a in expected_atoms))
+            #     if not state_annotations[-1]:
+            #         logging.info("Somehow a state annotation is False")
+            #         logging.info(f"{state}")
+            #         logging.info(f"expected_atoms")
+            #         logging.info(f"{[a.holds(state) for a in expected_Atoms]}")
+            #         exit()
+            ######### End state annotations
             traj = LowLevelTrajectory(result.states, result.options)
             traj_list.append(traj)
             annotations_list.append(state_annotations)
@@ -1010,11 +1019,13 @@ class _LearnedSampler:
     _original_sampler: NSRTSampler
 
     def sampler(self, state: State, goal: Set[GroundAtom],
-                rng: np.random.Generator, objects: Sequence[Object]) -> Array:
+                rng: np.random.Generator, objects: Sequence[Object],
+                return_failed_samples: Optional[bool] = False) -> Array:
         """The sampler corresponding to the given models.
 
         May be used as the _sampler field in an NSRT.
         """
+        assert return_failed_samples == False
         x_lst: List[Any] = []  
         sub = dict(zip(self._variables, objects))
         for var in self._variables:

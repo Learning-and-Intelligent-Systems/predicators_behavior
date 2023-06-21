@@ -1,7 +1,7 @@
 """Definitions of ground truth NSRTs for all environments."""
 
 import itertools
-from typing import List, Sequence, Set, Union, cast
+from typing import List, Optional, Sequence, Set, Union, cast
 
 import numpy as np
 from numpy.random._generator import Generator
@@ -178,7 +178,8 @@ def _get_cover_gt_nsrts(env_name: str) -> Set[NSRT]:
 
         def pick_sampler(state: State, goal: Set[GroundAtom],
                          rng: np.random.Generator,
-                         objs: Sequence[Object]) -> Array:
+                         objs: Sequence[Object],
+                         return_failed_samples: Optional[bool] = False) -> Array:
             # The only things that change are the block's grasp, and the
             # robot's grip, holding, x, and y.
             assert len(objs) == 2
@@ -223,12 +224,15 @@ def _get_cover_gt_nsrts(env_name: str) -> Set[NSRT]:
             # x, y, grip, holding
             robot_param = [desired_x - rx, by - ry, 2.0, 2.0]
             param = block_param + robot_param
-            return np.array(param, dtype=np.float32)
+            if return_failed_samples:
+                return np.array(param, dtype=np.float32), 1
+            return np.array(param, dtype=np.float32), 1
     else:
 
         def pick_sampler(state: State, goal: Set[GroundAtom],
                          rng: np.random.Generator,
-                         objs: Sequence[Object]) -> Array:
+                         objs: Sequence[Object],
+                         return_failed_samples: Optional[bool] = False) -> Array:
             del goal  # unused
             if env_name == "cover_handempty":
                 assert len(objs) == 2
@@ -246,7 +250,9 @@ def _get_cover_gt_nsrts(env_name: str) -> Set[NSRT]:
                 lb = max(lb, 0.0)
                 ub = float(state.get(b, "pose") + state.get(b, "width") / 2)
                 ub = min(ub, 1.0)
-            return np.array(rng.uniform(lb, ub, size=(1, )), dtype=np.float32)
+            if return_failed_samples:
+                return np.array(rng.uniform(lb, ub, size=(1, )), dtype=np.float32), 1, []
+            return np.array(rng.uniform(lb, ub, size=(1, )), dtype=np.float32), 1
 
     pick_nsrt = NSRT("Pick", parameters, preconditions, add_effects,
                      delete_effects, set(), option, option_vars, pick_sampler)
@@ -290,7 +296,8 @@ def _get_cover_gt_nsrts(env_name: str) -> Set[NSRT]:
 
         def place_sampler(state: State, goal: Set[GroundAtom],
                           rng: np.random.Generator,
-                          objs: Sequence[Object]) -> Array:
+                          objs: Sequence[Object],
+                          return_failed_samples: Optional[bool] = False) -> Array:
 
             if CFG.cover_multistep_goal_conditioned_sampling:
                 # Goal conditioned sampling currently assumes one goal.
@@ -334,12 +341,15 @@ def _get_cover_gt_nsrts(env_name: str) -> Set[NSRT]:
             # x, grip, holding
             robot_param = [delta_x, -2.0, -2.0]
             param = block_param + robot_param
-            return np.array(param, dtype=np.float32)
+            if return_failed_samples:
+                return np.array(param, dtype=np.float32), 1, []
+            return np.array(param, dtype=np.float32), 1
     else:
 
         def place_sampler(state: State, goal: Set[GroundAtom],
                           rng: np.random.Generator,
-                          objs: Sequence[Object]) -> Array:
+                          objs: Sequence[Object],
+                          return_failed_samples: Optional[bool] = False) -> Array:
             del goal  # unused
             if env_name == "cover_handempty":
                 assert len(objs) == 3
@@ -352,7 +362,9 @@ def _get_cover_gt_nsrts(env_name: str) -> Set[NSRT]:
             lb = max(lb, 0.0)
             ub = float(state.get(t, "pose") + state.get(t, "width") / 10)
             ub = min(ub, 1.0)
-            return np.array(rng.uniform(lb, ub, size=(1, )), dtype=np.float32)
+            if return_failed_samples:
+                return np.array(rng.uniform(lb, ub, size=(1, )), dtype=np.float32), 1, []
+            return np.array(rng.uniform(lb, ub, size=(1, )), dtype=np.float32), 1
 
     place_nsrt = NSRT("Place",
                       parameters, preconditions, add_effects, delete_effects,
@@ -375,13 +387,16 @@ def _get_cover_gt_nsrts(env_name: str) -> Set[NSRT]:
 
         def place_on_table_sampler(state: State, goal: Set[GroundAtom],
                                    rng: np.random.Generator,
-                                   objs: Sequence[Object]) -> Array:
+                                   objs: Sequence[Object],
+                                   return_failed_samples: Optional[bool] = False) -> Array:
             # Always at the current location.
             del goal, rng  # this sampler is deterministic
             assert len(objs) == 1
             held_obj = objs[0]
             x = state.get(held_obj, "pose") + state.get(held_obj, "grasp")
-            return np.array([x], dtype=np.float32)
+            if return_failed_samples:
+                return np.array([x], dtype=np.float32), 1, []
+            return np.array([x], dtype=np.float32), 1
 
         place_on_table_nsrt = NSRT("PlaceOnTable", parameters,
                                    preconditions, add_effects, delete_effects,
@@ -669,9 +684,12 @@ def _get_painting_gt_nsrts(env_name: str) -> Set[NSRT]:
 
     def pickfromtop_sampler(state: State, goal: Set[GroundAtom],
                             rng: np.random.Generator,
-                            objs: Sequence[Object]) -> Array:
+                            objs: Sequence[Object],
+                            return_failed_samples: Optional[bool] = False) -> Array:
         del state, goal, rng, objs  # unused
-        return np.array([1.0], dtype=np.float32)
+        if return_failed_samples:
+            return np.array([1.0], dtype=np.float32), 1, []
+        return np.array([1.0], dtype=np.float32), 1
 
     pickfromtop_nsrt = NSRT("PickFromTop", parameters, preconditions,
                             add_effects, delete_effects, set(), option,
@@ -695,9 +713,12 @@ def _get_painting_gt_nsrts(env_name: str) -> Set[NSRT]:
 
     def pickfromside_sampler(state: State, goal: Set[GroundAtom],
                              rng: np.random.Generator,
-                             objs: Sequence[Object]) -> Array:
+                             objs: Sequence[Object],
+                            return_failed_samples: Optional[bool] = False) -> Array:
         del state, goal, rng, objs  # unused
-        return np.array([0.0], dtype=np.float32)
+        if return_failed_samples:
+            return np.array([0.0], dtype=np.float32), 1, []
+        return np.array([0.0], dtype=np.float32), 1
 
     pickfromside_nsrt = NSRT("PickFromSide", parameters, preconditions,
                              add_effects, delete_effects, set(), option,
@@ -762,10 +783,13 @@ def _get_painting_gt_nsrts(env_name: str) -> Set[NSRT]:
 
     def painttobox_sampler(state: State, goal: Set[GroundAtom],
                            rng: np.random.Generator,
-                           objs: Sequence[Object]) -> Array:
+                           objs: Sequence[Object],
+                           return_failed_samples: Optional[bool] = False) -> Array:
         del goal, rng  # unused
         box_color = state.get(objs[1], "color")
-        return np.array([box_color], dtype=np.float32)
+        if return_failed_samples:
+            return np.array([box_color], dtype=np.float32), 1, []
+        return np.array([box_color], dtype=np.float32), 1
 
     painttobox_nsrt = NSRT("PaintToBox", parameters, preconditions,
                            add_effects, delete_effects, set(), option,
@@ -791,10 +815,13 @@ def _get_painting_gt_nsrts(env_name: str) -> Set[NSRT]:
 
     def painttoshelf_sampler(state: State, goal: Set[GroundAtom],
                              rng: np.random.Generator,
-                             objs: Sequence[Object]) -> Array:
+                             objs: Sequence[Object],
+                            return_failed_samples: Optional[bool] = False) -> Array:
         del goal, rng  # unused
         shelf_color = state.get(objs[1], "color")
-        return np.array([shelf_color], dtype=np.float32)
+        if return_failed_samples:
+            return np.array([shelf_color], dtype=np.float32), 1, []
+        return np.array([shelf_color], dtype=np.float32), 1
 
     painttoshelf_nsrt = NSRT("PaintToShelf", parameters, preconditions,
                              add_effects, delete_effects, set(), option,
@@ -833,7 +860,8 @@ def _get_painting_gt_nsrts(env_name: str) -> Set[NSRT]:
 
     def placeinbox_sampler(state: State, goal: Set[GroundAtom],
                            rng: np.random.Generator,
-                           objs: Sequence[Object]) -> Array:
+                           objs: Sequence[Object],
+                           return_failed_samples: Optional[bool] = False) -> Array:
         del goal  # unused
         x = state.get(objs[0], "pose_x")
         if env_name == "painting":
@@ -843,7 +871,9 @@ def _get_painting_gt_nsrts(env_name: str) -> Set[NSRT]:
             y = rng.uniform(RepeatedNextToPaintingEnv.box_lb,
                             RepeatedNextToPaintingEnv.box_ub)
             z = RepeatedNextToPaintingEnv.obj_z
-        return np.array([x, y, z], dtype=np.float32)
+        if return_failed_samples:
+            return np.array([x, y, z], dtype=np.float32), 1, []
+        return np.array([x, y, z], dtype=np.float32), 1
 
     placeinbox_nsrt = NSRT("PlaceInBox", parameters, preconditions,
                            add_effects, delete_effects, set(), option,
@@ -882,7 +912,8 @@ def _get_painting_gt_nsrts(env_name: str) -> Set[NSRT]:
 
     def placeinshelf_sampler(state: State, goal: Set[GroundAtom],
                              rng: np.random.Generator,
-                             objs: Sequence[Object]) -> Array:
+                             objs: Sequence[Object],
+                             return_failed_samples: Optional[bool] = False) -> Array:
         del goal  # unused
         x = state.get(objs[0], "pose_x")
         if env_name == "painting":
@@ -892,7 +923,9 @@ def _get_painting_gt_nsrts(env_name: str) -> Set[NSRT]:
             y = rng.uniform(RepeatedNextToPaintingEnv.shelf_lb,
                             RepeatedNextToPaintingEnv.shelf_ub)
             z = RepeatedNextToPaintingEnv.obj_z
-        return np.array([x, y, z], dtype=np.float32)
+        if return_failed_samples:
+            return np.array([x, y, z], dtype=np.float32), 1, []
+        return np.array([x, y, z], dtype=np.float32), 1
 
     placeinshelf_nsrt = NSRT("PlaceInShelf", parameters, preconditions,
                              add_effects, delete_effects, set(), option,
@@ -955,7 +988,8 @@ def _get_painting_gt_nsrts(env_name: str) -> Set[NSRT]:
 
     def placeontable_sampler(state: State, goal: Set[GroundAtom],
                              rng: np.random.Generator,
-                             objs: Sequence[Object]) -> Array:
+                             objs: Sequence[Object],
+                             return_failed_samples: Optional[bool] = False) -> Array:
         del goal  # unused
         x = state.get(objs[0], "pose_x")
         if env_name == "painting":
@@ -977,7 +1011,9 @@ def _get_painting_gt_nsrts(env_name: str) -> Set[NSRT]:
                 y_sample_ub = min(table_ub, robot_y + nextto_thresh)
                 y = rng.uniform(y_sample_lb, y_sample_ub)
                 z = RepeatedNextToPaintingEnv.obj_z
-        return np.array([x, y, z], dtype=np.float32)
+        if return_failed_samples:
+            return np.array([x, y, z], dtype=np.float32), 1, []
+        return np.array([x, y, z], dtype=np.float32), 1
 
     placeontable_nsrt = NSRT("PlaceOnTable", parameters, preconditions,
                              add_effects, delete_effects, set(), option,
@@ -988,10 +1024,13 @@ def _get_painting_gt_nsrts(env_name: str) -> Set[NSRT]:
 
         def moveto_sampler(state: State, goal: Set[GroundAtom],
                            _rng: np.random.Generator,
-                           objs: Sequence[Object]) -> Array:
+                           objs: Sequence[Object], 
+                           return_failed_samples: Optional[bool] = False) -> Array:
             del goal  # unused
             y = state.get(objs[1], "pose_y")
-            return np.array([y], dtype=np.float32)
+            if return_failed_samples:
+                return np.array([y], dtype=np.float32), 1, []
+            return np.array([y], dtype=np.float32), 1
 
         # MoveToObj
         robot = Variable("?robot", robot_type)

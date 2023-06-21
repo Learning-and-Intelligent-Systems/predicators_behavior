@@ -2836,10 +2836,13 @@ def parse_config_included_options(env: BaseEnv) -> Set[ParameterizedOption]:
 
 
 def null_sampler(state: State, goal: Set[GroundAtom], rng: np.random.Generator,
-                 objs: Sequence[Object]) -> Array:
+                 objs: Sequence[Object],
+                 return_failed_samples: Optional[bool] = False) -> Array:
     """A sampler for an NSRT with no continuous parameters."""
     del state, goal, rng, objs  # unused
-    return np.array([], dtype=np.float32)  # no continuous parameters
+    if return_failed_samples:
+        return np.array([], dtype=np.float32), 1, []  # no continuous parameters
+    return np.array([], dtype=np.float32), 1  # no continuous parameters
 
 
 @functools.lru_cache(maxsize=None)

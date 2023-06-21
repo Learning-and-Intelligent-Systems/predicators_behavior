@@ -78,7 +78,7 @@ class LifelongSamplerLearningApproachGaussian(BilevelPlanningApproach):
                     self._replay[sampler_name] = self._save_dict[sampler_name]["replay"]
                 else:
                     self._save_dict[sampler_name]["replay"] = None
-                    self._replay[sampler_name] = ([], [], [])
+                    self._replay[sampler_name] = ([], [], [], [])
 
                 regressor._input_scale = self._save_dict[sampler_name]["regressor_input_scale"]
                 regressor._input_shift = self._save_dict[sampler_name]["regressor_input_shift"]
@@ -122,12 +122,12 @@ class LifelongSamplerLearningApproachGaussian(BilevelPlanningApproach):
         return self._initial_predicates
 
     def _get_current_gt_nsrts(self) -> Set[NSRT]:
+        preds = self._get_current_predicates()
         if CFG.env == "behavior":
             env = get_or_create_env("behavior")
-            preds = self._get_current_predicates()
             self._initial_options = env.options
-            self._gt_nsrts = get_gt_nsrts(env.get_name(), preds,
-                                       self._initial_options)
+        self._gt_nsrts = get_gt_nsrts(CFG.env, preds,
+                                   self._initial_options)
         return self._gt_nsrts
 
     def _get_current_nsrts(self) -> Set[NSRT]:
@@ -197,7 +197,7 @@ class LifelongSamplerLearningApproachGaussian(BilevelPlanningApproach):
         for name in specialized_names:
             if name not in self._ebms:
                 self._ebms[name] = self._create_network()
-                self._replay[name] = ([], [], [])
+                self._replay[name] = ([], [], [], [])
 
         # Sort dicts by name so order matches across processes
         self._ebms = dict(sorted(self._ebms.items()))
@@ -391,39 +391,38 @@ class LifelongSamplerLearningApproachGaussian(BilevelPlanningApproach):
 
         atoms_cache = {}
         for result in results:
-            # logging.info("Entering result annotation loop")
-            # logging.info(f"\tTrajectory length: {len(result.options)}")
             skeleton = result.skeleton
             task = self._train_tasks[result.train_task_idx]
             state_annotations = []
-            if result.states[0].vanilla_str() not in atoms_cache:
-                init_atoms = utils.abstract(result.states[0], self._initial_predicates)
-                if len(result.states[0].data) > 0:
-                    atoms_cache[result.states[0].vanilla_str()] = init_atoms
-            else:
-                init_atoms = atoms_cache[result.states[0].vanilla_str()]
-            # logging.info("\tObtained init atoms")
-            atoms_sequence = [init_atoms]
-            for ground_nsrt, state in zip(skeleton, result.states[1:]):
-                atoms_sequence.append(utils.apply_operator(ground_nsrt, atoms_sequence[-1]))
-                if len(state.data) > 0:
-                    if state.vanilla_str() not in atoms_cache:
-                        atoms_cache[state.vanilla_str()] = atoms_sequence[-1]
-                    # else:
-                    #     assert atoms_cache[state.vanilla_str()] == atoms_sequence[-1]
+            my_new_annotations = [True for _ in result.states[1:]]
+            if len(result.states[-1].data) == 0:
+                my_new_annotations[-1] = False
 
-            necessary_atoms_sequence = utils.compute_necessary_atoms_seq(skeleton, atoms_sequence, task.goal)
-            # logging.info("\tObtained necessary atoms sequence")
+            # init_atoms = utils.abstract(result.states[0], self._initial_predicates)
+            # atoms_sequence = [init_atoms]
+            # for ground_nsrt, state in zip(skeleton, result.states[1:]):
+            #     atoms_sequence.append(utils.apply_operator(ground_nsrt, atoms_sequence[-1]))
 
-            for state, expected_atoms, ground_nsrt in zip(result.states[1:], necessary_atoms_sequence[1:], result.skeleton):
-                if len(state.data) == 0:
-                    state_annotations.append(False)     # it is a default state and so the transition failed
-                else:
-                    state_annotations.append(all(a.holds(state) for a in expected_atoms))
+            # necessary_atoms_sequence = utils.compute_necessary_atoms_seq(skeleton, atoms_sequence, task.goal)
+
+            # for state, expected_atoms, ground_nsrt in zip(result.states[1:], necessary_atoms_sequence[1:], result.skeleton):
+            #     if len(state.data) == 0:
+            #         logging.info("It's a default state")                    
+            #         state_annotations.append(False)     # it is a default state and so the transition failed
+            #     else:
+            #         logging.info(f"{[(a, a.holds(state)) for a in expected_atoms]}")
+            #         state_annotations.append(all(a.holds(state) for a in expected_atoms))
             # logging.info("\tObtained state annotations")
+            # logging.info(f"\t\told: {state_annotations}")
+            # logging.info(f"\t\tnew: {my_new_annotations}")
+            # # logging.info(f"{result.states}")
+            # # logging.info(f"{necessary_atoms_sequence}")
+            # logging.info(f"\t\t{[n.name for n in result.skeleton]}")
+            # logging.info(f"\t\t{[o.name for o in result.options]}")
             traj = LowLevelTrajectory(result.states, result.options)
             traj_list.append(traj)
-            annotations_list.append(state_annotations)
+            # annotations_list.append(state_annotations)
+            annotations_list.append(my_new_annotations)
             skeleton_list.append(result.skeleton)
 
         self._update_samplers(traj_list, annotations_list, skeleton_list)
@@ -459,10 +458,10 @@ class LifelongSamplerLearningApproachGaussian(BilevelPlanningApproach):
                             negative_states.append(x)
                             negative_actions.append(a)
 
-            states_arr = np.array(states)
-            actions_arr = np.array(actions)
-            negative_states_arr = np.array(negative_states)
-            negative_actions_arr = np.array(negative_actions)
+            actions_arr, unique_idx = np.unique(np.array(actions), axis=0, return_index=True)
+            states_arr = np.array(states)[unique_idx]
+            negative_actions_arr, unique_idx = np.unique(np.array(negative_actions), axis=0, return_index=True)
+            negative_states_arr = np.array(negative_states)[unique_idx]
 
             states_arr = mpi_concatenate(states_arr)
             actions_arr = mpi_concatenate(actions_arr)
