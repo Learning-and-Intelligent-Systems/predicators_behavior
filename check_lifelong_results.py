@@ -50,9 +50,9 @@ for n_tasks  in num_tasks_per_cycle_list:
                     task_name = task_list[task_index] + '-' + train_scene_list[task_index]
                     for n_iter_task in range(num_iters_task):
                         if model in ['specialized', 'generic']:
-                            fname = f'results_20230606/behavior__lifelong_sampler_learning__{seed}________{n_iter}.pkl'
+                            fname = f'results_lifelong_5/behavior__lifelong_sampler_learning__{seed}________{n_iter}.pkl'
                         else:
-                            fname = f'results_20230606/behavior__lifelong_sampler_learning_mix__{seed}______{shuffled_index}-{task_name}-lifelong__{n_iter_task}.pkl'
+                            fname = f'results_lifelong_5/behavior__lifelong_sampler_learning_mix__{seed}______{shuffled_index}-{task_name}-lifelong__{n_iter_task}.pkl'
                         try: 
                             with open(fname, 'rb') as f:
                                 r = pickle.load(f)
@@ -73,8 +73,8 @@ for n_tasks  in num_tasks_per_cycle_list:
             samples[model, approach][:, final_iter:] = np.nan
 
     
-    successes['default',''] = successes['geometry+', 'retrain-balanced'][:, ::2].repeat(2, axis=1)
-    samples['default',''] = samples['geometry+', 'retrain-balanced'][:, ::2].repeat(2, axis=1)
+    successes['default',''] = successes['geometry+', 'retrain-balanced'][:, ::num_iters_task].repeat(num_iters_task, axis=1)
+    samples['default',''] = samples['geometry+', 'retrain-balanced'][:, ::num_iters_task].repeat(num_iters_task, axis=1)
 
     for model, approach in zip(['geometry+', 'default'], ['retrain-balanced', '']):
         model_legend = model_map[model]
@@ -98,7 +98,7 @@ for n_tasks  in num_tasks_per_cycle_list:
     plt.xlabel('# training iters')
     plt.ylabel('# solved tasks per iter')
     plt.tight_layout()
-    plt.savefig(f'results_20230606/avg_solved_per_iter_{n_tasks}.pdf')
+    plt.savefig(f'results_lifelong_5/avg_solved_per_iter_{n_tasks}.pdf')
     plt.close()
     plt.figure(1)
     plt.legend()
@@ -106,7 +106,7 @@ for n_tasks  in num_tasks_per_cycle_list:
     plt.ylabel('# solved tasks per iter')
     plt.ticklabel_format(axis='x', scilimits=(3,3))
     plt.tight_layout()
-    plt.savefig(f'results_20230606/avg_solved_per_sample_{n_tasks}.pdf')
+    plt.savefig(f'results_lifelong_5/avg_solved_per_sample_{n_tasks}.pdf')
     plt.close()
     plt.figure(2)
     plt.legend()#fontsize=12)
@@ -115,18 +115,18 @@ for n_tasks  in num_tasks_per_cycle_list:
     # plt.ylim(bottom=0)
     plt.ticklabel_format(axis='x', scilimits=(3,3))
     plt.tight_layout()
-    plt.savefig(f'results_20230606/total_solved_{n_tasks}.pdf')
+    plt.savefig(f'results_lifelong_5/total_solved_{n_tasks}.pdf')
     plt.close()
     plt.figure(3)
     plt.legend()
     plt.xlabel('# compute units')
     plt.ylabel('# samples per attempted task')
     plt.ticklabel_format(axis='x', scilimits=(3,3))
-    plt.savefig(f'results_20230606/avg_samples_{n_tasks}.pdf')
+    plt.savefig(f'results_lifelong_5/avg_samples_{n_tasks}.pdf')
     plt.tight_layout()
     plt.close()
     plt.figure(4, figsize=(18,6))
     plt.legend(ncol=2)
-    plt.savefig('results_20230606/legend_lifelong.pdf')
+    plt.savefig('results_lifelong_5/legend_lifelong.pdf')
     plt.close()
     print({model_approach: samples[model_approach][:, 1:].mean() / n_tasks for model_approach in samples})

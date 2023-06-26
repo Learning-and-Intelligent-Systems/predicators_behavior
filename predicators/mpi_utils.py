@@ -56,17 +56,14 @@ def broadcast_object(x, root=0):
     return MPI.COMM_WORLD.bcast(x, root=root)
 
 def mpi_concatenate(x, root=0):
-    sendcounts = np.array(MPI.COMM_WORLD.gather(x.shape[0], root))
-    features = int(mpi_max(x.shape[1] if len(x.shape) > 1 else 0))
-    if len(x) == 0:
-        x = np.empty((0, features), dtype=x.dtype)
+    received = MPI.COMM_WORLD.gather(x, root=root)
     if proc_id() == root:
-        rcv_buf = np.empty((sum(sendcounts), features), dtype=x.dtype)
-        sendcounts = sendcounts * features
-    else:
-        rcv_buf = None
-    MPI.COMM_WORLD.Gatherv(x, (rcv_buf, sendcounts), root=root)
-    return rcv_buf
+        nonzero_received = [elem for elem in received if len(elem) != 0]
+        if len(nonzero_received) == 0:
+            received = np.empty(0)
+        else:
+            received = np.concatenate([elem for elem in received if len(elem) != 0])
+    return received
 
 def mpi_concatenate_object(obj, root=0):
     received = MPI.COMM_WORLD.gather(obj, root=root)
