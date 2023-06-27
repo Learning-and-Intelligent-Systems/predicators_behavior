@@ -60,7 +60,7 @@ def mpi_concatenate(x, root=0):
     if proc_id() == root:
         nonzero_received = [elem for elem in received if len(elem) != 0]
         if len(nonzero_received) == 0:
-            received = np.empty(0)
+            received = np.empty((0, 0))
         else:
             received = np.concatenate([elem for elem in received if len(elem) != 0])
     return received
