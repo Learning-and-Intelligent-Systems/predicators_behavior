@@ -569,14 +569,14 @@ def run_low_level_search(
                     # utils.abstract(traj[cur_idx], predicates).
                     if all(a.holds(traj[cur_idx]) for a in expected_atoms):
                         can_continue_on = True
-                        # logging.info("Success: Expected Atoms Check Passed!")
+                        logging.info(f"Success [{option.name}]: Expected Atoms Check Passed!")
                         if cur_idx == len(skeleton):
                             return plan, True, traj  # success!
                     else:
-                        # logging.info("Failure: Expected Atoms Check Failed.")
-                        # for a in expected_atoms:
-                        #     if not a.holds(traj[cur_idx]):
-                        #         logging.info(a)
+                        logging.info(f"Failure [{option.name}]: Expected Atoms Check Failed.")
+                        for a in expected_atoms:
+                            if not a.holds(traj[cur_idx]):
+                                logging.info(a)
                         can_continue_on = False
                 else:
                     # If we're not checking expected_atoms, we need to

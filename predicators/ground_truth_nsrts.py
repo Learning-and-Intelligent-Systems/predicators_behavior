@@ -13,7 +13,7 @@ from predicators.behavior_utils.behavior_utils import CLEANING_OBJECT_TYPES, \
     PLACE_ONTOP_SURFACE_OBJECT_TYPES, PLACE_UNDER_SURFACE_OBJECT_TYPES, \
     TOGGLEABLE_OBJECT_TYPES, sample_navigation_params, \
     sample_place_inside_params, sample_place_next_to_params, \
-    sample_place_ontop_params, sample_place_under_params check_hand_end_pose, \
+    sample_place_ontop_params, sample_place_under_params, check_hand_end_pose, \
     check_nav_end_pose, load_checkpoint_state, get_closest_point_on_aabb, \
     get_valid_orientation
 from predicators.envs import get_or_create_env
@@ -2976,7 +2976,7 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         ig_env = get_or_create_env("behavior").igibson_behavior_env
         obj = objects[0]
         num_tries = 100
-        logging.info("Sampling params for grasp...")
+        # logging.info("Sampling params for grasp...")
 
         robot_pos = ig_env.robots[0].get_position()
         aabb = obj.states[object_states.AABB].get_value()
@@ -3007,12 +3007,12 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         # Step 1: find successful orientation
         ik_success, orn = get_valid_orientation(ig_env, obj)
         if not ik_success:
-            logging.info("Failed to find valid orientation for grasping")
+            # logging.info("Failed to find valid orientation for grasping")
             x_offset = rng.random() * aabb_extent[0] + aabb[0][0] - obj_closest_point[0]
             y_offset = rng.random() * aabb_extent[1] + aabb[0][1] - obj_closest_point[1]
             z_offset = rng.random() * aabb_extent[2] + aabb[0][2] - obj_closest_point[2]
         else:
-            logging.info(f"Found valid orientation for grasping")
+            # logging.info(f"Found valid orientation for grasping")
             x_offset = y_offset = z_offset = 0
 
         return np.array([x_offset, y_offset, z_offset])

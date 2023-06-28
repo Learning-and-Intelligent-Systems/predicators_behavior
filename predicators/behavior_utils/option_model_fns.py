@@ -26,7 +26,7 @@ try:
     from igibson.object_states.touching import Touching
     from igibson.objects.articulated_object import \
         URDFObject  # pylint: disable=unused-import
-    from igibson.robots.behavior_robot import BRBody, BREye, BRHand \
+    from igibson.robots.behavior_robot import BRBody, BREye, BRHand, \
         BehaviorRobot # pylint: disable=unused-import
 
     from igibson.robots.fetch_gripper_robot import FetchGripper
