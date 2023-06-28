@@ -1063,6 +1063,7 @@ def check_nav_end_pose(
             env.robots[0].get_body_id(),
             obj.get_body_id(),
         ))
+        blocked=False
     if not detect_robot_collision(env.robots[0]) and (not blocked 
         or ignore_blocked) and  (isinstance(env.robots[0], BehaviorRobot)
         or check_hand_end_pose(env, obj, np.zeros(3, dtype=float), 
@@ -1074,6 +1075,15 @@ def check_nav_end_pose(
 
     return valid_position
 
+def get_valid_orientation(env: "BehaviorEnv", obj: Union["URDFObject",
+                                                       "RoomFloor"]) -> Tuple[float]:
+    state = p.saveState()
+    obj_aabb = obj.states[object_states.AABB].get_value()
+    obj_closest_point = get_closest_point_on_aabb(env.robots[0].get_position(), obj_aabb[0], obj_aabb[1])
+    ik_success, orn = env.robots[0].set_eef_position(obj_closest_point)
+    p.restoreState(state)
+    p.removeState(state)
+    return ik_success, orn
 
 def check_hand_end_pose(env: "BehaviorEnv", obj: Union["URDFObject",
                                                        "RoomFloor"],
@@ -1098,31 +1108,32 @@ def check_hand_end_pose(env: "BehaviorEnv", obj: Union["URDFObject",
         if not detect_robot_collision(env.robots[0]):
             ret_bool = True
     else:
-        # Always grasp downward
-        hand_to_obj_unit_vector = np.array([0., 0., 1.])
-        unit_z_vector = np.array([-1.0, 0.0, 0.0])
-        # This is because we assume the hand is originally oriented
-        # so -x is coming out of the palm
-        c_var = np.dot(unit_z_vector, hand_to_obj_unit_vector)
-        if c_var not in [-1.0, 1.0]:
-            v_var = np.cross(unit_z_vector, hand_to_obj_unit_vector)
-            s_var = np.linalg.norm(v_var)
-            v_x = np.array([
-                [0, -v_var[2], v_var[1]],
-                [v_var[2], 0, -v_var[0]],
-                [-v_var[1], v_var[0], 0],
-            ])
-            R = (np.eye(3) + v_x + np.linalg.matrix_power(v_x, 2) * ((1 - c_var) /
-                                                                     (s_var**2)))
-            r = scipy.spatial.transform.Rotation.from_matrix(R)
-            euler_angles = r.as_euler("xyz")
-        else:
-            if c_var == 1.0:
-                euler_angles = np.zeros(3, dtype=float)
-            else:
-                euler_angles = np.array([0.0, np.pi, 0.0])
-        hand_orn = p.getQuaternionFromEuler(euler_angles)
-        ik_success = env.robots[0].set_eef_position_orientation(hand_pos, hand_orn)
+        # # Always grasp downward
+        # hand_to_obj_unit_vector = np.array([0., 0., 1.])
+        # unit_z_vector = np.array([-1.0, 0.0, 0.0])
+        # # This is because we assume the hand is originally oriented
+        # # so -x is coming out of the palm
+        # c_var = np.dot(unit_z_vector, hand_to_obj_unit_vector)
+        # if c_var not in [-1.0, 1.0]:
+        #     v_var = np.cross(unit_z_vector, hand_to_obj_unit_vector)
+        #     s_var = np.linalg.norm(v_var)
+        #     v_x = np.array([
+        #         [0, -v_var[2], v_var[1]],
+        #         [v_var[2], 0, -v_var[0]],
+        #         [-v_var[1], v_var[0], 0],
+        #     ])
+        #     R = (np.eye(3) + v_x + np.linalg.matrix_power(v_x, 2) * ((1 - c_var) /
+        #                                                              (s_var**2)))
+        #     r = scipy.spatial.transform.Rotation.from_matrix(R)
+        #     euler_angles = r.as_euler("xyz")
+        # else:
+        #     if c_var == 1.0:
+        #         euler_angles = np.zeros(3, dtype=float)
+        #     else:
+        #         euler_angles = np.array([0.0, np.pi, 0.0])
+        # hand_orn = p.getQuaternionFromEuler(euler_angles)
+        # ik_success = env.robots[0].set_eef_position_orientation(hand_pos, hand_orn)
+        ik_success, _ = env.robots[0].set_eef_position(hand_pos)
         if ik_success and (ignore_collisions or 
             not detect_robot_collision(env.robots[0])):
             ret_bool = True
@@ -1143,8 +1154,8 @@ def sample_navigation_params(igibson_behavior_env: "BehaviorEnv",
     Implemented in a separate method to enable code reuse in
     option_model_fns.
     """
-    closeness_limit = 2.00 if isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot) else 0.8
-    nearness_limit = 0.15 if isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot) else 0.3
+    closeness_limit = 2.00# if isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot) else 0.8
+    nearness_limit = 0.15# if isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot) else 0.3
     distance = nearness_limit + (
         (closeness_limit - nearness_limit) * rng.random())
     # NOTE: In a previous version, we attempted to sample at a distance d from

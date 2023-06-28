@@ -14,7 +14,8 @@ from predicators.behavior_utils.behavior_utils import CLEANING_OBJECT_TYPES, \
     TOGGLEABLE_OBJECT_TYPES, sample_navigation_params, \
     sample_place_inside_params, sample_place_next_to_params, \
     sample_place_ontop_params, sample_place_under_params check_hand_end_pose, \
-    check_nav_end_pose, load_checkpoint_state, get_closest_point_on_aabb
+    check_nav_end_pose, load_checkpoint_state, get_closest_point_on_aabb, \
+    get_valid_orientation
 from predicators.envs import get_or_create_env
 from predicators.envs.behavior import BehaviorEnv
 from predicators.envs.doors import DoorsEnv
@@ -2982,23 +2983,37 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         aabb_extent = get_aabb_extent(aabb)
         obj_closest_point = get_closest_point_on_aabb(robot_pos, aabb[0], aabb[1])
 
-        for samples in range(num_tries):
-            # x_offset = (rng.random() * 0.4) - 0.2
-            # y_offset = (rng.random() * 0.4) - 0.2
-            # z_offset = rng.random() * .2
+        # for samples in range(num_tries):
+        #     # x_offset = (rng.random() * 0.4) - 0.2
+        #     # y_offset = (rng.random() * 0.4) - 0.2
+        #     # z_offset = rng.random() * .2
                 
-            x = rng.random() * aabb_extent[0] + aabb[0][0]
-            y = rng.random() * aabb_extent[1] + aabb[0][1]
-            z = obj.get_position()[2] + rng.random() * 0.02
+        #     x = rng.random() * aabb_extent[0] + aabb[0][0]
+        #     y = rng.random() * aabb_extent[1] + aabb[0][1]
+        #     # z = obj.get_position()[2] + rng.random() * 0.02
+        #     z = obj.get_position() + rng.ran
 
-            x_offset = x - obj_closest_point[0]
-            y_offset = y - obj_closest_point[1]
-            z_offset = z - obj_closest_point[2]#rng.random() * 0.02
+        #     x_offset = x - obj_closest_point[0]
+        #     y_offset = y - obj_closest_point[1]
+        #     z_offset = z - obj_closest_point[2]#rng.random() * 0.02
 
-            if check_hand_end_pose(ig_env, obj, [x_offset, y_offset, z_offset], ignore_collisions=True):
-                break
+        #     if check_hand_end_pose(ig_env, obj, [x_offset, y_offset, z_offset], ignore_collisions=True):
+        #         break
+        # else:
+        #     logging.info("Did not find params for grasp, return bad params and retry")
+
+        # I'm going to reverse engineer this thing: sample some pose that can reach the object,
+        # and then find a point in that direction vector. 
+        # Step 1: find successful orientation
+        ik_success, orn = get_valid_orientation(ig_env, obj)
+        if not ik_success:
+            logging.info("Failed to find valid orientation for grasping")
+            x_offset = rng.random() * aabb_extent[0] + aabb[0][0] - obj_closest_point[0]
+            y_offset = rng.random() * aabb_extent[1] + aabb[0][1] - obj_closest_point[1]
+            z_offset = rng.random() * aabb_extent[2] + aabb[0][2] - obj_closest_point[2]
         else:
-            logging.info("Did not find params for grasp, return bad params and retry")
+            logging.info(f"Found valid orientation for grasping")
+            x_offset = y_offset = z_offset = 0
 
         return np.array([x_offset, y_offset, z_offset])
 
