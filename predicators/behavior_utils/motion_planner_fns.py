@@ -11,7 +11,7 @@ from numpy.random._generator import Generator
 
 from predicators.behavior_utils.behavior_utils import check_nav_end_pose, \
     get_aabb_volume, get_closest_point_on_aabb, get_scene_body_ids, \
-    reset_and_release_hand, get_aabb_centroid
+    reset_and_release_hand, get_aabb_centroid, get_valid_orientation
 from predicators.settings import CFG
 from predicators.structs import Array
 
@@ -108,20 +108,28 @@ def make_navigation_plan(
     # during test time iff we're using the learned sampler. Right now,
     # this code will also run during oracle execution.
     if not CFG.behavior_override_learned_samplers:
-        valid_position = check_nav_end_pose(env, obj, pos_offset)
+        valid_position, nav_status = check_nav_end_pose(env, obj, pos_offset)
     else:
         rob_pos = env.robots[0].get_position()
         valid_position = ([rob_pos[0], rob_pos[1],
                            rob_pos[2]], original_orientation)
+        nav_status = 0
 
     if valid_position is None:
-        logging.warning("WARNING: Position commanded is in collision!")
+        if nav_status == 1:
+            logging.warning("WARNING: Position commanded is in collision!")
+        elif nav_status == 2:
+            logging.warning("WARNING: Position commanded is blocked!")
+        elif nav_status == 3:
+            logging.warning("WARNING: Position commanded fails to reach object!")        
         p.restoreState(state)
         p.removeState(state)
         logging.warning(f"PRIMITIVE: navigate to {obj.name} with params "
                         f"{pos_offset} fail")
         return None
 
+    assert nav_status == 0
+    logging.info(f"\tNavigating to {valid_position} to reach object at {obj.get_position()}")
     p.restoreState(state)
     end_conf = [
         valid_position[0][0],
@@ -215,7 +223,7 @@ def make_grasp_plan(
         return None
 
     # If the object is too far away, fail and return None
-    if (np.linalg.norm(
+    if isinstance(env.robots[0], BehaviorRobot) and (np.linalg.norm(
             np.array(obj.get_position()) -
             np.array(env.robots[0].get_position())) > 2):
         logging.info(f"PRIMITIVE: grasp {obj.name} fail, too far")
@@ -226,21 +234,15 @@ def make_grasp_plan(
     # try to create a plan to it.
     if isinstance(env.robots[0], BehaviorRobot):
         obj_pos = obj.get_position()
-        hand_x, hand_y, hand_z = (env.robots[0].parts["right_hand"].get_position())
     else:
-        aabb = obj.states[object_states.AABB].get_value()
-        obj_pos = get_closest_point_on_aabb(env.robots[0].get_position(), aabb[0], aabb[1])
-        hand_x, hand_y, hand_z = env.robots[0].get_end_effector_position()
+        # aabb = obj.states[object_states.AABB].get_value()
+        # obj_pos = get_closest_point_on_aabb(env.robots[0].get_position(), aabb[0], aabb[1])
+        points = p.getClosestPoints(env.robots[0].get_body_id(), obj.get_body_id(), distance=10)#, linkIndexA=env.robots[0].grasp_point_joint_id)
+        closest_point = min(points, key=lambda x:x[8])
+        obj_pos = closest_point[6]
     x = obj_pos[0] + grasp_offset[0]
     y = obj_pos[1] + grasp_offset[1]
     z = obj_pos[2] + grasp_offset[2]
-    # hand_x, hand_y, hand_z = env.robots[0].parts["right_hand"].get_position()
-    # minx = min(x, hand_x) - 0.5
-    # miny = min(y, hand_y) - 0.5
-    # minz = min(z, hand_z) - 0.5
-    # maxx = max(x, hand_x) + 0.5
-    # maxy = max(y, hand_y) + 0.5
-    # maxz = max(z, hand_z) + 0.5
 
 
     if isinstance(env.robots[0], BehaviorRobot):
@@ -261,30 +263,38 @@ def make_grasp_plan(
         unit_z_vector = np.array([0.0, 0.0, -1.0])
         # This is because we assume the hand is originally oriented
         # so -z is coming out of the palm
-    else:
-        # Always grasp downward
-        hand_to_obj_unit_vector = np.array([0., 0., 1.])
-        unit_z_vector = np.array([-1.0, 0.0, 0.0])
-        # This is because we assume the hand is originally oriented
-        # so -x is coming out of the palm
-    c_var = np.dot(unit_z_vector, hand_to_obj_unit_vector)
-    if c_var not in [-1.0, 1.0]:
-        v_var = np.cross(unit_z_vector, hand_to_obj_unit_vector)
-        s_var = np.linalg.norm(v_var)
-        v_x = np.array([
-            [0, -v_var[2], v_var[1]],
-            [v_var[2], 0, -v_var[0]],
-            [-v_var[1], v_var[0], 0],
-        ])
-        R = (np.eye(3) + v_x + np.linalg.matrix_power(v_x, 2) * ((1 - c_var) /
-                                                                 (s_var**2)))
-        r = scipy.spatial.transform.Rotation.from_matrix(R)
-        euler_angles = r.as_euler("xyz")
-    else:
-        if c_var == 1.0:
-            euler_angles = np.zeros(3, dtype=float)
+        c_var = np.dot(unit_z_vector, hand_to_obj_unit_vector)
+        if c_var not in [-1.0, 1.0]:
+            v_var = np.cross(unit_z_vector, hand_to_obj_unit_vector)
+            s_var = np.linalg.norm(v_var)
+            v_x = np.array([
+                [0, -v_var[2], v_var[1]],
+                [v_var[2], 0, -v_var[0]],
+                [-v_var[1], v_var[0], 0],
+            ])
+            R = (np.eye(3) + v_x + np.linalg.matrix_power(v_x, 2) * ((1 - c_var) /
+                                                                     (s_var**2)))
+            r = scipy.spatial.transform.Rotation.from_matrix(R)
+            euler_angles = r.as_euler("xyz")
         else:
-            euler_angles = np.array([0.0, np.pi, 0.0])
+            if c_var == 1.0:
+                euler_angles = np.zeros(3, dtype=float)
+            else:
+                euler_angles = np.array([0.0, np.pi, 0.0])
+    else:
+        # For Fetch, we might not be able to get the gripper to get
+        # align the gripper with the grasp trajectory. Instead, we
+        # get any valid orientation for reaching the object's bbox 
+        # and we use that throughout the trajectory
+        from predicators.envs import get_or_create_env
+        ig_env = get_or_create_env("behavior").igibson_behavior_env
+        ik_success, orn = get_valid_orientation(ig_env, obj)
+        if not ik_success:
+            logging.info(f"PRIMITIVE: grasp {obj.name} fail, no valid IK")
+            # logging.info(f"\tFailed to grasp object at {obj.get_position()} from {ig_env.robots[0].get_position()}")
+            return None
+        logging.info(f"PRIMITIVE: grasp orientation {orn}")
+        euler_angles = p.getEulerFromQuaternion(orn)        
 
     state = p.saveState()
     end_conf = [
@@ -352,9 +362,7 @@ def make_grasp_plan(
     if isinstance(env.robots[0], BehaviorRobot):
         closest_point_on_aabb = get_closest_point_on_aabb(hand_pos, lo, hi)
     else:
-        aabb_center = get_aabb_center([lo, hi])
-        closest_point_on_aabb = get_closest_point_on_aabb (hand_pos, lo, hi)
-        closest_point_on_aabb[2] = aabb_center[2]   # make sure the height is really on the object
+        closest_point_on_aabb = obj_pos     # Already got this before, but for contact instead of bbox
     delta_pos_to_obj = [
         closest_point_on_aabb[0] - hand_pos[0],
         closest_point_on_aabb[1] - hand_pos[1],
@@ -366,7 +374,8 @@ def make_grasp_plan(
 
     # move the hand along the vector to the object until it
     # touches the object
-    for _ in range(25):
+    # for _ in range(25):
+    for _ in range(26):
         new_hand_pos = [
             hand_pos[0] + delta_step_to_obj[0],
             hand_pos[1] + delta_step_to_obj[1],
@@ -466,13 +475,6 @@ def make_place_plan(
         if obj.get_body_id() == obj_in_hand_idx
     ][0]
     x, y, z = np.add(place_rel_pos, obj.get_position())
-    # hand_x, hand_y, hand_z = env.robots[0].parts["right_hand"].get_position()
-    # minx = min(x, hand_x) - 1
-    # miny = min(y, hand_y) - 1
-    # minz = min(z, hand_z) - 0.5
-    # maxx = max(x, hand_x) + 1
-    # maxy = max(y, hand_y) + 1
-    # maxz = max(z, hand_z) + 0.5
 
     obstacles = get_scene_body_ids(env, include_self=False)
     if isinstance(env.robots[0], BehaviorRobot):

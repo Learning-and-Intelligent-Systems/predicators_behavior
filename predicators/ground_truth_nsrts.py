@@ -2969,53 +2969,53 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         z_offset = rng.random() * 0.2
         return np.array([x_offset, y_offset, z_offset])
 
-    def grasp_obj_param_sampler_fetch(state: State, goal: Set[GroundAtom],
-                                      rng: Generator,
-                                      objects: Sequence["URDFObject"]) -> Array:
-        """Sampler for grasp option (Fetch)."""
-        ig_env = get_or_create_env("behavior").igibson_behavior_env
-        obj = objects[0]
-        num_tries = 100
-        # logging.info("Sampling params for grasp...")
+    # def grasp_obj_param_sampler_fetch(state: State, goal: Set[GroundAtom],
+    #                                   rng: Generator,
+    #                                   objects: Sequence["URDFObject"]) -> Array:
+    #     """Sampler for grasp option (Fetch)."""
+    #     ig_env = get_or_create_env("behavior").igibson_behavior_env
+    #     obj = objects[0]
+    #     num_tries = 100
+    #     # logging.info("Sampling params for grasp...")
 
-        robot_pos = ig_env.robots[0].get_position()
-        aabb = obj.states[object_states.AABB].get_value()
-        aabb_extent = get_aabb_extent(aabb)
-        obj_closest_point = get_closest_point_on_aabb(robot_pos, aabb[0], aabb[1])
+    #     robot_pos = ig_env.robots[0].get_position()
+    #     aabb = obj.states[object_states.AABB].get_value()
+    #     aabb_extent = get_aabb_extent(aabb)
+    #     obj_closest_point = get_closest_point_on_aabb(robot_pos, aabb[0], aabb[1])
 
-        # for samples in range(num_tries):
-        #     # x_offset = (rng.random() * 0.4) - 0.2
-        #     # y_offset = (rng.random() * 0.4) - 0.2
-        #     # z_offset = rng.random() * .2
+    #     # for samples in range(num_tries):
+    #     #     # x_offset = (rng.random() * 0.4) - 0.2
+    #     #     # y_offset = (rng.random() * 0.4) - 0.2
+    #     #     # z_offset = rng.random() * .2
                 
-        #     x = rng.random() * aabb_extent[0] + aabb[0][0]
-        #     y = rng.random() * aabb_extent[1] + aabb[0][1]
-        #     # z = obj.get_position()[2] + rng.random() * 0.02
-        #     z = obj.get_position() + rng.ran
+    #     #     x = rng.random() * aabb_extent[0] + aabb[0][0]
+    #     #     y = rng.random() * aabb_extent[1] + aabb[0][1]
+    #     #     # z = obj.get_position()[2] + rng.random() * 0.02
+    #     #     z = obj.get_position() + rng.ran
 
-        #     x_offset = x - obj_closest_point[0]
-        #     y_offset = y - obj_closest_point[1]
-        #     z_offset = z - obj_closest_point[2]#rng.random() * 0.02
+    #     #     x_offset = x - obj_closest_point[0]
+    #     #     y_offset = y - obj_closest_point[1]
+    #     #     z_offset = z - obj_closest_point[2]#rng.random() * 0.02
 
-        #     if check_hand_end_pose(ig_env, obj, [x_offset, y_offset, z_offset], ignore_collisions=True):
-        #         break
-        # else:
-        #     logging.info("Did not find params for grasp, return bad params and retry")
+    #     #     if check_hand_end_pose(ig_env, obj, [x_offset, y_offset, z_offset], ignore_collisions=True):
+    #     #         break
+    #     # else:
+    #     #     logging.info("Did not find params for grasp, return bad params and retry")
 
-        # I'm going to reverse engineer this thing: sample some pose that can reach the object,
-        # and then find a point in that direction vector. 
-        # Step 1: find successful orientation
-        ik_success, orn = get_valid_orientation(ig_env, obj)
-        if not ik_success:
-            # logging.info("Failed to find valid orientation for grasping")
-            x_offset = rng.random() * aabb_extent[0] + aabb[0][0] - obj_closest_point[0]
-            y_offset = rng.random() * aabb_extent[1] + aabb[0][1] - obj_closest_point[1]
-            z_offset = rng.random() * aabb_extent[2] + aabb[0][2] - obj_closest_point[2]
-        else:
-            # logging.info(f"Found valid orientation for grasping")
-            x_offset = y_offset = z_offset = 0
+    #     # I'm going to reverse engineer this thing: sample some pose that can reach the object,
+    #     # and then find a point in that direction vector. 
+    #     # Step 1: find successful orientation
+    #     ik_success, orn = get_valid_orientation(ig_env, obj)
+    #     if not ik_success:
+    #         # logging.info("Failed to find valid orientation for grasping")
+    #         x_offset = rng.random() * aabb_extent[0] + aabb[0][0] - obj_closest_point[0]
+    #         y_offset = rng.random() * aabb_extent[1] + aabb[0][1] - obj_closest_point[1]
+    #         z_offset = rng.random() * aabb_extent[2] + aabb[0][2] - obj_closest_point[2]
+    #     else:
+    #         # logging.info(f"Found valid orientation for grasping")
+    #         x_offset = y_offset = z_offset = 0
 
-        return np.array([x_offset, y_offset, z_offset])
+    #     return np.array([x_offset, y_offset, z_offset])
 
     # Place OnTop sampler definition.
     def place_ontop_obj_pos_sampler(
@@ -3215,9 +3215,10 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                 add_effects = {targ_holding}
                 delete_effects_ontop = {handempty, ontop, targ_reachable}
                 delete_effects_inside = {handempty, inside, targ_reachable}
-                sampler = (grasp_obj_param_sampler if 
-                        isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot) 
-                        else grasp_obj_param_sampler_fetch)
+                # sampler = (grasp_obj_param_sampler if 
+                #         isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot) 
+                #         else grasp_obj_param_sampler_fetch)
+                sampler = grasp_obj_param_sampler
                 # NSRT for grasping an object from ontop an object.
                 nsrt = NSRT(
                     f"{option.name}-{next(op_name_count_pick)}",

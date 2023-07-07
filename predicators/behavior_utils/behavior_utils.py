@@ -874,6 +874,11 @@ def detect_collision(bodyA: int, ignore_objects: List[Optional[int]] = None) -> 
             continue
         closest_points = p.getClosestPoints(bodyA, body_id, distance=0.01)
         if len(closest_points) > 0:
+            # from predicators.envs import get_or_create_env
+            # env = get_or_create_env("behavior")
+            # for ig_obj in env._get_task_relevant_objects():
+            #     if ig_obj.body_id == body_id:
+            #         logging.info(f"Body in collision: {env._ig_object_name(ig_obj)}")
             collision = True
             break
     return collision
@@ -1064,16 +1069,23 @@ def check_nav_end_pose(
             obj.get_body_id(),
         ))
         blocked=False
-    if not detect_robot_collision(env.robots[0]) and (not blocked 
-        or ignore_blocked) and  (isinstance(env.robots[0], BehaviorRobot)
-        or check_hand_end_pose(env, obj, np.zeros(3, dtype=float), 
-                                ignore_collisions=True)):
+
+    if detect_robot_collision(env.robots[0]):
+        status = 1
+    elif blocked and not ignore_blocked:
+        status = 2
+    elif not (isinstance(env.robots[0], BehaviorRobot) or 
+        check_hand_end_pose(env, obj, np.zeros(3, dtype=float), 
+        ignore_collisions=True)):
+        status = 3
+    else:
+        status = 0
         valid_position = (pos, orn)
 
     p.restoreState(state)
     p.removeState(state)
 
-    return valid_position
+    return valid_position, status
 
 def get_valid_orientation(env: "BehaviorEnv", obj: Union["URDFObject",
                                                        "RoomFloor"]) -> Tuple[float]:
@@ -1172,7 +1184,7 @@ def sample_navigation_params(igibson_behavior_env: "BehaviorEnv",
     # of tries.
     num_samples_tried = 0
     while (check_nav_end_pose(igibson_behavior_env, obj_to_sample_near,
-                              sampler_output) is None):
+                              sampler_output)[0] is None):
         distance = closeness_limit * rng.random()
         yaw = rng.random() * (2 * np.pi) - np.pi
         x = distance * np.cos(yaw)
@@ -1182,7 +1194,7 @@ def sample_navigation_params(igibson_behavior_env: "BehaviorEnv",
             if check_nav_end_pose(igibson_behavior_env,
                                   obj_to_sample_near,
                                   sampler_output,
-                                  ignore_blocked=True):
+                                  ignore_blocked=True)[0]:
                 return sampler_output
         # NOTE: In many situations, it is impossible to find a good sample
         # no matter how many times we try. Thus, we break this loop after

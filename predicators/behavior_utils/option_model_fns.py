@@ -175,9 +175,8 @@ def create_grasp_option_model(
             else:
                 grasp_obj_body_id = obj_to_grasp.body_id
             # 3.1 Call code that does assisted grasping
-            robot.handle_assisted_grasping(assisted_grasp_action,#)
-                override_ag_data=(grasp_obj_body_id, -1),)
-            assert hasattr(robot, 'child_frame_transform')
+            robot.handle_assisted_grasping(assisted_grasp_action,)
+                # override_ag_data=(grasp_obj_body_id, -1),)
             # 3.2 step the environment a few timesteps to complete grasp
             for _ in range(5):
                 env.step(a)
@@ -193,7 +192,6 @@ def create_grasp_option_model(
             # environment.
             env.step(np.zeros(env.action_space.shape))
 
-            assert hasattr(robot, 'child_frame_transform')
     return graspObjectOptionModel
 
 
@@ -270,13 +268,14 @@ def create_place_option_model(
                 sample_arr = sample_place_ontop_params(env, obj_to_place_onto, rng)
                 target_pos = np.add(sample_arr, \
                     obj_to_place_onto.get_position()).tolist()
-                target_orn = [0, np.pi * 7 / 6, 0]
+                # target_orn = [0, np.pi * 7 / 6, 0]
                 logging.info(f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
                              "and attempting to " +
                              f"place ontop {obj_to_place_onto.name} with "
                              f"params {target_pos}")
 
-            robot.set_eef_position_orientation(target_pos, p.getQuaternionFromEuler(target_orn))
+            # robot.set_eef_position_orientation(target_pos, p.getQuaternionFromEuler(target_orn))
+            robot.set_eef_position(target_pos)
             a = np.zeros(env.action_space.shape, dtype=float)
             a[10] = 1.0
             for _ in range(5):
@@ -467,7 +466,8 @@ def create_place_inside_option_model(
                         obj_in_hand.set_position_orientation(
                             target_pos, p.getQuaternionFromEuler(target_orn))
                     else:
-                        env.robots[0].set_eef_position_orientation(target_pos, p.getQuaternionFromEuler(target_orn))
+                        # env.robots[0].set_eef_position_orientation(target_pos, p.getQuaternionFromEuler(target_orn))
+                        env.robots[0].set_eef_position(target_pos)
                         a = np.zeros(env.action_space.shape, dtype=float)
                         a[10] = 1.0
                         for _ in range(5):
