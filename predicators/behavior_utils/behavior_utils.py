@@ -1221,7 +1221,8 @@ def sample_place_ontop_params(igibson_behavior_env: "BehaviorEnv",
             failed_samples = []
         while not check_hand_end_pose(igibson_behavior_env, obj_to_place_ontop,
                                       sample_params):
-            failed_samples.append(sample_params)
+            if return_failed_samples:
+                failed_samples.append(sample_params)
             sample_params = np.array([
                 rng.uniform(-obj_to_place_ontop_sampling_bounds[0],
                             obj_to_place_ontop_sampling_bounds[0]),

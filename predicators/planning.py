@@ -1192,6 +1192,7 @@ def _sesame_plan_with_fast_downward(
                                                    return_all_failed_refinements)
             sampling_time = time.perf_counter()
             logging.info(f"Sampling time: {sampling_time - atoms_time}")
+            metrics["sampling_time"] = sampling_time - atoms_time
             if not suc:
                 if return_all_failed_refinements:
                     partial_refinements += [(skeleton, p, t) for p, t in zip(plan, traj)]
@@ -1199,9 +1200,11 @@ def _sesame_plan_with_fast_downward(
                     partial_refinements.append((skeleton, plan, traj))
                 if time.perf_counter() - start_time > timeout:
                     raise PlanningTimeout("Planning timed out in refinement!",
-                                          info={"partial_refinements": partial_refinements})
+                                          info={"partial_refinements": partial_refinements,
+                                                "partial_metrics": metrics})
                 raise PlanningFailure("Skeleton produced by FD not refinable!",
-                                      info={"partial_refinements": partial_refinements})
+                                      info={"partial_refinements": partial_refinements,
+                                            "partial_metrics": metrics})
             if return_all_failed_refinements:
                 metrics["plan_length"] = len(plan[0])
             else:

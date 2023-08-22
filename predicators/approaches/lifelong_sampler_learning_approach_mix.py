@@ -399,12 +399,12 @@ class LifelongSamplerLearningApproachMix(BilevelPlanningApproach):
             logging.info("\nLoading lifelong checkpoint...")
             chkpt_config_str = f"behavior__lifelong_sampler_learning_mix__{CFG.seed}__checkpoint.pt"
             self._save_dict = torch.load(f"{CFG.results_dir}/{chkpt_config_str}")
+            self._online_learning_cycle = 1 + max(nsrt_dict["online_learning_cycle"] for nsrt_dict in self._save_dict.values())
             for sampler_name in self._save_dict:
                 ebm = self._create_network()
                 if "replay" in self._save_dict[sampler_name]:
                     # It's a specialized sampler
                     self._ebms[sampler_name] = ebm
-                    self._online_learning_cycle = self._save_dict[sampler_name]["online_learning_cycle"] + 1
                     self._explorer_calls = self._save_dict[sampler_name]["explorer_calls"]
                     if proc_id() == 0:
                         self._replay[sampler_name] = self._save_dict[sampler_name]["replay"]
@@ -512,6 +512,11 @@ class LifelongSamplerLearningApproachMix(BilevelPlanningApproach):
 
         new_nsrts = []
         for nsrt in gt_nsrts:
+            if not (nsrt.name.startswith("NavigateTo") or
+                    nsrt.name.startswith("Place") or
+                    nsrt.name.startswith("Grasp")):
+                new_nsrts.append(nsrt)
+                continue
             specialized_name = '-'.join(nsrt.name.split('-')[:-1])
             generic_name = '-'.join(nsrt.name.split('-')[:-2])
             if self._option_needs_generic_sampler[generic_name]:
@@ -650,13 +655,15 @@ class LifelongSamplerLearningApproachMix(BilevelPlanningApproach):
         for metric_name in [
                 "num_samples", "num_skeletons_optimized", "num_nodes_expanded",
                 "num_nodes_created", "num_nsrts", "num_preds", "plan_length",
-                "num_failures_discovered"
+                "num_failures_discovered", "sampling_time"
         ]:
             total = mpi_sum(explorer_metrics[f"total_{metric_name}"])
             metrics[f"avg_{metric_name}"] = (
                 total / num_solved if num_solved > 0 else float("inf"))
         total = mpi_sum(explorer_metrics["total_num_samples_failed"])
         metrics["avg_num_samples_failed"] = total / num_unsolved if num_unsolved > 0 else float("inf")
+        total = mpi_sum(explorer_metrics["total_sampling_time_failed"])
+        metrics["avg_sampling_time_failed"] = total / num_unsolved if num_unsolved > 0 else float("inf")
         logging.info(f"{(proc_id())} Aggregated metrics for task {train_task_idx}")
 
         if len(CFG.behavior_task_list) != 1:
@@ -678,13 +685,15 @@ class LifelongSamplerLearningApproachMix(BilevelPlanningApproach):
             for metric_name in [
                     "num_samples", "num_skeletons_optimized", "num_nodes_expanded",
                     "num_nodes_created", "num_nsrts", "num_preds", "plan_length",
-                    "num_failures_discovered"
+                    "num_failures_discovered", "sampling_time"
             ]:
                 total = mpi_sum(explorer_metrics[f"env_{subenv_name}_total_{metric_name}"])
                 metrics[f"{subenv_name}_avg_{metric_name}"] = (
                     total / num_solved_env if num_solved_env > 0 else float("inf"))
             total = mpi_sum(explorer_metrics[f"env_{subenv_name}_total_num_samples_failed"])
             metrics[f"{subenv_name}_avg_num_samples_failed"] = total / num_unsolved_env if num_unsolved_env > 0 else float("inf")
+            total = mpi_sum(explorer_metrics[f"env_{subenv_name}_total_sampling_time_failed"])
+            metrics[f"{subenv_name}_avg_sampling_time_failed"] = total / num_unsolved_env if num_unsolved_env > 0 else float("inf")
 
 
         if proc_id() == 0:

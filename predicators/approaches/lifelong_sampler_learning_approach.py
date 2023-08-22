@@ -28,7 +28,7 @@ from predicators.envs.behavior import BehaviorEnv
 from multiprocessing import Pool
 from predicators.teacher import Teacher, TeacherInteractionMonitor
 
-from predicators.mpi_utils import proc_id, num_procs, mpi_sum, mpi_concatenate, broadcast_object, mpi_min, mpi_max
+from predicators.mpi_utils import proc_id, num_procs, mpi_sum, mpi_concatenate, mpi_concatenate_object, broadcast_object, mpi_min, mpi_max
 
 def _featurize_state(state, ground_nsrt_objects):
     return state.vec(ground_nsrt_objects)
@@ -56,6 +56,41 @@ class LifelongSamplerLearningApproach(BilevelPlanningApproach):
         self._save_dict = {}
         self._ebms = {}
         self._replay = {}
+        self._explorer_calls = 0
+
+        if CFG.load_lifelong_checkpoint:
+            logging.info("\nLoading lifeong checkpoint...")
+            chkpt_config_str = f"behavior__lifelong_sampler_learning__{CFG.seed}__checkpoint.pt"
+            self._save_dict = torch.load(f"{CFG.results_dir}/{chkpt_config_str}")
+            self._online_learning_cycle = 1 + max(nsrt_dict["online_learning_cycle"] for nsrt_dict in self._save_dict.values())
+            for sampler_name in self._save_dict:
+                ebm = self._create_network()
+                self._ebms[sampler_name] = ebm
+                # self._online_learning_cycle = self._save_dict[sampler_name]["online_learning_cycle"] + 1
+                self._explorer_calls = self._save_dict[sampler_name]["explorer_calls"]
+                if proc_id() == 0:
+                    self._replay[sampler_name] = self._save_dict[sampler_name]["replay"]
+                else:
+                    self._save_dict[sampler_name]["replay"] = None
+                    self._replay[sampler_name] = ([], [])
+                ebm._input_scale = self._save_dict[sampler_name]["input_scale"]
+                ebm._input_shift = self._save_dict[sampler_name]["input_shift"]
+                ebm._output_scale = self._save_dict[sampler_name]["output_scale"]
+                ebm._output_shift = self._save_dict[sampler_name]["output_shift"]
+                ebm.is_trained = self._save_dict[sampler_name]["is_trained"]
+                ebm._x_cond_dim = self._save_dict[sampler_name]["x_cond_dim"]
+                ebm._t_dim = self._save_dict[sampler_name]["t_dim"]
+                ebm._y_dim = self._save_dict[sampler_name]["y_dim"]
+                ebm._x_dim = self._save_dict[sampler_name]["x_dim"]
+                ebm._initialize_net()
+                ebm.to(ebm._device)
+                ebm.load_state_dict(self._save_dict[sampler_name]["model_state"])
+                if proc_id() == 0:
+                    ebm._create_optimizer()
+                    ebm._optimizer.load_state_dict(self._save_dict[sampler_name]["optimizer_state"])
+            tasks_so_far = (CFG.lifelong_burnin_period or CFG.interactive_num_requests_per_cycle) + (self._online_learning_cycle - 1) * CFG.interactive_num_requests_per_cycle
+            tasks_so_far_local = int(np.ceil(tasks_so_far / num_procs()))
+            self._next_train_task = tasks_so_far_local
 
     @classmethod
     def get_name(cls) -> str:
@@ -129,6 +164,20 @@ class LifelongSamplerLearningApproach(BilevelPlanningApproach):
                                   nsrt.option_vars, new_sampler))
         self._nsrts = new_nsrts
 
+        ebm_names = mpi_concatenate_object(set(self._ebms.keys()))
+        if proc_id() == 0:
+            ebm_names = set.union(*ebm_names)
+        ebm_names = broadcast_object(ebm_names)
+        for name in ebm_names:
+            if name not in self._ebms:
+                self._ebms[name] = self._create_network()
+                self._replay[name] = ([], [])
+
+        # Sort dicts by name so order matches across processes
+        self._ebms = dict(sorted(self._ebms.items()))
+        self._replay = dict(sorted(self._replay.items()))
+
+
     def load(self, online_learning_cycle: Optional[int]) -> None:
         raise 'NotImplementedError'
         # TODO: I should probably implement checkpointing here
@@ -189,23 +238,30 @@ class LifelongSamplerLearningApproach(BilevelPlanningApproach):
                 self._train_tasks,
                 nsrts,
                 self._option_model)
+            explorer._num_calls = self._explorer_calls
+            logging.info(f"({proc_id()}) Created explorer for task {train_task_idx}")
             explorer.initialize_metrics(explorer_metrics)
-
+            
             query_policy = self._create_none_query_policy()
             explore_start = time.perf_counter()
+            logging.info(f"{(proc_id())} Creating exploration strategy for task {train_task_idx}")
             option_plan, termination_fn, skeleton, traj = explorer.get_exploration_strategy(
                 train_task_idx, CFG.timeout)
             explore_time = time.perf_counter() - explore_start
+            logging.info(f"{(proc_id())} Creating interaction request for task {train_task_idx}")
             requests.append(InteractionRequest(train_task_idx, option_plan, query_policy, termination_fn, skeleton, traj))
+            logging.info(f"{(proc_id())} Created interaction request for task {train_task_idx}")
             total_time += explore_time
 
             explorer_metrics = explorer.metrics
+            self._explorer_calls = explorer._num_calls
         
+        logging.info(f"{(proc_id())} Aggregating metrics for task {train_task_idx}")
         num_unsolved = int(mpi_sum(explorer_metrics["num_unsolved"]))
         num_solved = int(mpi_sum(explorer_metrics["num_solved"]))
         num_total = num_unsolved + num_solved
         avg_time = mpi_sum(total_time) / num_tasks
-        assert num_total == num_tasks
+        assert num_total == num_tasks, f"Tasks don't match: {num_total} (={num_solved}+{num_unsolved}), {num_tasks}"
         metrics["num_solved"] = num_solved
         metrics["num_unsolved"] = num_unsolved
         metrics["num_total"] = num_tasks
@@ -226,6 +282,7 @@ class LifelongSamplerLearningApproach(BilevelPlanningApproach):
                 total / num_solved if num_solved > 0 else float("inf"))
         total = mpi_sum(explorer_metrics["total_num_samples_failed"])
         metrics["avg_num_samples_failed"] = total / num_unsolved if num_unsolved > 0 else float("inf")
+        logging.info(f"{(proc_id())} Aggregated metrics for task {train_task_idx}")
 
         if len(CFG.behavior_task_list) != 1:
             env = get_or_create_env(CFG.env)
@@ -292,16 +349,17 @@ class LifelongSamplerLearningApproach(BilevelPlanningApproach):
         for result in results:
             skeleton = result.skeleton
             task = self._train_tasks[result.train_task_idx]
-            state_annotations = []
-            init_atoms = utils.abstract(result.states[0], self._initial_predicates)
-            atoms_sequence = [init_atoms]
-            for ground_nsrt in skeleton:
-                atoms_sequence.append(utils.apply_operator(ground_nsrt, atoms_sequence[-1]))
-            necessary_atoms_sequence = utils.compute_necessary_atoms_seq(skeleton, atoms_sequence, task.goal)
+            state_annotations = [True for _ in result.states[1:]]
+            # state_annotations = []
+            # init_atoms = utils.abstract(result.states[0], self._initial_predicates)
+            # atoms_sequence = [init_atoms]
+            # for ground_nsrt in skeleton:
+            #     atoms_sequence.append(utils.apply_operator(ground_nsrt, atoms_sequence[-1]))
+            # necessary_atoms_sequence = utils.compute_necessary_atoms_seq(skeleton, atoms_sequence, task.goal)
 
-            for state, expected_atoms, ground_nsrt in zip(result.states[1:], necessary_atoms_sequence[1:], result.skeleton):
-                state_annotations.append(all(a.holds(state) for a in expected_atoms))
-            logging.info(f"State annotations: {state_annotations}")
+            # for state, expected_atoms, ground_nsrt in zip(result.states[1:], necessary_atoms_sequence[1:], result.skeleton):
+            #     state_annotations.append(all(a.holds(state) for a in expected_atoms))
+            # logging.info(f"State annotations: {state_annotations}")
             traj = LowLevelTrajectory(result.states, result.options)
             traj_list.append(traj)
             annotations_list.append(state_annotations)
@@ -395,10 +453,14 @@ class LifelongSamplerLearningApproach(BilevelPlanningApproach):
                         "x_dim": ebm._x_dim,
                         "replay": replay,
                         "online_learning_cycle": self._online_learning_cycle,
+                        "explorer_calls": self._explorer_calls,
                     }   
+        logging.info(f"Out of training loop ({proc_id()})")
         if proc_id() == 0:
-            torch.save(self._save_dict, f"{CFG.results_dir}/{utils.get_config_path_str()}__checkpoint.pt")
+            chkpt_config_str = f"behavior__lifelong_sampler_learning__{CFG.seed}__checkpoint.pt"
+            torch.save(self._save_dict, f"{CFG.results_dir}/{chkpt_config_str}")
         self._save_dict = broadcast_object(self._save_dict, root=0)
+        logging.info(f"Broadcasted save_dict ({proc_id()})")
         if proc_id() != 0:
             for sampler_name in self._ebms.keys():
                 ebm = self._ebms[sampler_name]

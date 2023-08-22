@@ -537,6 +537,7 @@ class GlobalSettings:
     load_lifelong_checkpoint = False
     tmp_dir = '/tmp'
     procid_seed_offset = 10000
+    train_on_test_tasks = False
 
 
     @staticmethod

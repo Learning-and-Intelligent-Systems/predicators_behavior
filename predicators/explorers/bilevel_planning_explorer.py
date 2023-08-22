@@ -72,7 +72,7 @@ class BilevelPlanningExplorer(BaseExplorer):
         for metric in [
                 "num_samples", "num_skeletons_optimized",
                 "num_failures_discovered", "num_nodes_expanded",
-                "num_nodes_created", "plan_length"
+                "num_nodes_created", "plan_length", "sampling_time"
         ]:
             self._metrics[f"total_{metric}"] += metrics[metric]
         for metric in [
@@ -92,7 +92,7 @@ class BilevelPlanningExplorer(BaseExplorer):
             for metric in [
                     "num_samples", "num_skeletons_optimized",
                     "num_failures_discovered", "num_nodes_expanded",
-                    "num_nodes_created", "plan_length"
+                    "num_nodes_created", "plan_length", "sampling_time"
             ]:
                 self._metrics[f"env_{subenv_name}_total_{metric}"] += metrics[metric]
             for metric in [

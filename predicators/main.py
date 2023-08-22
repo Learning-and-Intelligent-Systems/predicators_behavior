@@ -96,7 +96,11 @@ def main() -> None:
     assert env.goal_predicates.issubset(env.predicates)
     preds, _ = utils.parse_config_excluded_predicates(env)
     # Create the train tasks.
-    train_tasks = env.get_train_tasks()
+    if CFG.train_on_test_tasks:
+        logging.warn("TRAINING ON TEST TASKS. MAKE SURE YOU KNOW WHAT YOU'RE DOING!!!")
+        train_tasks = env.get_test_tasks()
+    else:
+        train_tasks = env.get_train_tasks()
     # If train tasks have goals that involve excluded predicates, strip those
     # predicate classifiers to prevent leaking information to the approaches.
     # stripped_train_tasks = [
@@ -170,7 +174,9 @@ def _run_pipeline(env: BaseEnv,
                 logging.info("Reached online_learning_max_transitions, "
                              "terminating")
                 break
+            logging.warning("CAREFUL!! THIS WILL EXIT RIGHT AFTER COLLECTING INTERACTION REQUESTS")
             interaction_requests = approach.get_interaction_requests()
+            exit()
             if not interaction_requests:
                 logging.info("Did not receive any interaction requests, "
                              "terminating")
