@@ -113,13 +113,11 @@ def main() -> None:
     # Create the agent (approach).
     approach = create_approach(CFG.approach, preds, options, env.types,
                                env.action_space, stripped_train_tasks)
-    if approach.is_learning_based:
-        # Create the offline dataset. Note that this needs to be done using
-        # the non-stripped train tasks because dataset generation may need
-        # to use the oracle predicates (e.g. demo data generation).
-        offline_dataset = create_dataset(env, train_tasks, options)
-    else:
-        offline_dataset = None
+    # Create the offline dataset. Note that this needs to be done using
+    # the non-stripped train tasks because dataset generation may need
+    # to use the oracle predicates (e.g. demo data generation).
+    offline_dataset = create_dataset(env, train_tasks, options)
+
     # Run the full pipeline.
     _run_pipeline(env, approach, stripped_train_tasks, offline_dataset)
     script_time = time.perf_counter() - script_start
