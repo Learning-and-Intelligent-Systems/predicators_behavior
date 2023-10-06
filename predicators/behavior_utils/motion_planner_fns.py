@@ -135,6 +135,7 @@ def make_navigation_plan(
             obstacles=obstacles,
             override_sample_fn=lambda: sample_fn(env, rng),
             rng=rng,
+            max_distance=0.01,
         )
         p.restoreState(state)
     else:

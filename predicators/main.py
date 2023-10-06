@@ -34,6 +34,8 @@ To run grammar search predicate invention (example):
         --seed 0 --excluded_predicates all
 """
 
+import curses
+import numpy as np
 import logging
 import os
 import sys
@@ -51,7 +53,7 @@ from predicators.approaches.bilevel_planning_approach import \
     BilevelPlanningApproach
 from predicators.approaches.gnn_approach import GNNApproach
 from predicators.datasets import create_dataset
-from predicators.envs import BaseEnv, create_new_env
+from predicators.envs import BaseEnv, create_new_env, get_or_create_env
 from predicators.envs.behavior import BehaviorEnv
 from predicators.planning import _run_plan_with_option_model
 from predicators.settings import CFG
@@ -340,6 +342,23 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
                 last_plan = approach.get_last_plan()
                 last_traj = approach.get_last_traj()
                 option_model_start_time = time.time()
+                if CFG.env == "behavior" and \
+                    CFG.behavior_mode == 'iggui':  # pragma: no cover
+                    env = get_or_create_env('behavior')
+                    assert isinstance(env, BehaviorEnv)
+                    win = curses.initscr()
+                    win.nodelay(True)
+                    win.addstr(
+                        0, 0,
+                        "VIDEO CREATION MODE: You have time to position the iggui window \
+                        to the location you want for recording. Type 'q' to indicate you \
+                        have finished positioning: ")
+                    flag = win.getch()
+                    while flag == -1 or chr(flag) != 'q':
+                        env.igibson_behavior_env.step(np.zeros(env.action_space.shape))
+                        flag = win.getch()
+                    curses.endwin()
+                    logging.info("VIDEO CREATION MODE: Starting planning.")
                 traj, solved = _run_plan_with_option_model(
                     task, test_task_idx, approach.get_option_model(),
                     last_plan, last_traj)

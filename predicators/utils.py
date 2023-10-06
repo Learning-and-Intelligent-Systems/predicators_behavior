@@ -2542,7 +2542,10 @@ class VideoMonitor(Monitor):
 
     def observe(self, state: State, action: Optional[Action]) -> None:
         del state  # unused
-        self._video.extend(self._render_fn(action, None))
+        render_state = self._render_fn(action, None)
+        self._video.extend(render_state)
+        self._video.extend(render_state)
+        self._video.extend(render_state)
 
     def get_video(self) -> Video:
         """Return the video."""

@@ -123,7 +123,11 @@ def create_grasp_option_model(
             rh_final_grasp_postion,
             p.getQuaternionFromEuler(rh_final_grasp_orn))
 
-        # 3. Close hand and simulate grasp
+        # 1.1 step the environment a few timesteps to update location.
+        for _ in range(3):
+            env.step(np.zeros(env.action_space.shape))
+
+        # 2. Close hand and simulate grasp.
         a = np.zeros(env.action_space.shape, dtype=float)
         a[16] = 1.0
         assisted_grasp_action = np.zeros(28, dtype=float)
@@ -141,7 +145,7 @@ def create_grasp_option_model(
         env.robots[0].parts["right_hand"].handle_assisted_grasping(
             assisted_grasp_action,
             override_ag_data=(grasp_obj_body_id, -1),
-            bypass_force_check=True)
+            bypass_force_check=False)
         # 3.2 step the environment a few timesteps to complete grasp
         for _ in range(5):
             env.step(a)
@@ -216,7 +220,7 @@ def create_place_option_model(
             rh_orig_grasp_position, rh_orig_grasp_orn)
         # this is running a series of zero action to step simulator
         # to let the object fall into its place
-        for _ in range(15):
+        for _ in range(25):
             env.step(np.zeros(env.action_space.shape))
         # Check whether object is ontop of not a target object
         objs_under = set()
