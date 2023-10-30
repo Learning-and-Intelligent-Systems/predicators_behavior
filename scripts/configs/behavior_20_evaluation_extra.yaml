@@ -7,20 +7,6 @@ APPROACHES:
       plan_only_eval: True
       sesame_task_planner: fdopt
 ENVS:
-  setting_mousetraps-Benevolence_2_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Benevolence_2_int
-      behavior_test_scene_name: Benevolence_2_int
-      behavior_task_list: "[setting_mousetraps]"
-      behavior_option_model_eval: True
-  cleaning_a_car-Ihlen_0_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Ihlen_0_int
-      behavior_test_scene_name: Ihlen_0_int
-      behavior_task_list: "[cleaning_a_car]"
-      behavior_option_model_eval: True
   installing_a_fax_machine-Pomaria_0_int:
     NAME: "behavior"
     FLAGS:
@@ -28,19 +14,19 @@ ENVS:
       behavior_test_scene_name: Pomaria_0_int
       behavior_task_list: "[installing_a_fax_machine]"
       behavior_option_model_eval: True
+  polishing_silver-Wainscott_0_int:
+    NAME: "behavior"
+    FLAGS:
+      behavior_train_scene_name: Wainscott_0_int
+      behavior_test_scene_name: Wainscott_0_int
+      behavior_task_list: "[polishing_silver]"
+      behavior_option_model_eval: True
   loading_the_dishwasher-Pomaria_1_int:
     NAME: "behavior"
     FLAGS:
       behavior_train_scene_name: Pomaria_1_int
       behavior_test_scene_name: Pomaria_1_int
       behavior_task_list: "[loading_the_dishwasher]"
-      behavior_option_model_eval: True
-  re-shelving_library_books-Pomaria_1_int:
-    NAME: "behavior"
-    FLAGS:
-      behavior_train_scene_name: Pomaria_1_int
-      behavior_test_scene_name: Pomaria_1_int
-      behavior_task_list: "[re-shelving_library_books]"
       behavior_option_model_eval: True
 ARGS: {}
 FLAGS:  # general flags
