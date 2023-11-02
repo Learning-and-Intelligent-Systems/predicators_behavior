@@ -91,7 +91,18 @@ python predicators/main.py --env behavior --approach oracle --option_model_name 
 * Be sure to set `--plan_only_eval True`: this is necessary to account for the fact that the iGibson simulator is non-deterministic when saving and loading states (which is currently an unresolved bug).
 * Example command: `python predicators/main.py --env behavior --approach oracle --option_model_name oracle_behavior --num_train_tasks 0 --num_test_tasks 1 --behavior_train_scene_name Pomaria_2_int --behavior_test_scene_name Pomaria_2_int --behavior_task_list "[opening_packages]" --seed 1000 --offline_data_planning_timeout 500.0 --timeout 500.0 --behavior_option_model_eval True --plan_only_eval True`.
 
+## Creating and Saving Video
+The codebase is also equipped with functionality to create and save videos of robot execution. For most videos, you'll want to do actual motion planning for navigation, but teleport the hands for grasping/placing (you can do actual motion planning for these as well, but it tends to get rather slow).
+
+Here is an example command that creates and saves video:
+```
+python predicators/main.py --env behavior --approach oracle --option_model_name oracle_behavior --num_train_tasks 0 --num_test_tasks 1 --behavior_train_scene_name Pomaria_2_int --behavior_test_scene_name Pomaria_2_int --behavior_task_list "[collecting_aluminum_cans]" --seed 456 --offline_data_planning_timeout 500.0 --timeout 500.0 --behavior_option_model_eval True --plan_only_eval True --behavior_mode iggui --behavior_save_video True --sesame_task_planner fdopt --simulate_nav True --behavior_option_model_rrt True
+```
+
 ## Troubleshooting
+### Common Error Messages
+- `invalid render device choice 0 < 0`. This means there is a CUDA driver-related mismatch. If this wasn't happening before and starts happening suddenly, then just run `sudo reboot` to reboot your machine and it should go away.
+
 ### Visualizing what the robot is doing
 If a lot of plans are failing in refinement, then visualization can be an extremely powerful debugging tool (e.g. it's often the case that samplers are simply struggling to find good samples to accomplish a particular action). Unfortunately, due to OpenGL version issues on MIT SuperCloud, visualization cannot be done on SuperCloud itself and requires a local installation. Moreover, some minor file editing is required:
 1. Open the `igibson/render/mesh_renderer/shaders/450/optimized_vert.shader` within the `iGibson` repo (remember, this should be the LIS fork of iGibson!).
