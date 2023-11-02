@@ -35,7 +35,6 @@ To run grammar search predicate invention (example):
 """
 
 import curses
-import numpy as np
 import logging
 import os
 import sys
@@ -45,6 +44,7 @@ from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
 import dill as pkl
+import numpy as np
 
 from predicators import utils
 from predicators.approaches import ApproachFailure, ApproachTimeout, \
@@ -355,7 +355,8 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
                         have finished positioning: ")
                     flag = win.getch()
                     while flag == -1 or chr(flag) != 'q':
-                        env.igibson_behavior_env.step(np.zeros(env.action_space.shape))
+                        env.igibson_behavior_env.step(
+                            np.zeros(env.action_space.shape))
                         flag = win.getch()
                     curses.endwin()
                     logging.info("VIDEO CREATION MODE: Starting planning.")

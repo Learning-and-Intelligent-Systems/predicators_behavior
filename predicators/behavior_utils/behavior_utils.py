@@ -855,6 +855,7 @@ def get_scene_body_ids(
 
     return ids
 
+
 def get_relevant_scene_body_ids(
     env: "BehaviorEnv",
     include_self: bool = False,
@@ -1110,7 +1111,7 @@ def sample_navigation_params(igibson_behavior_env: "BehaviorEnv",
     Implemented in a separate method to enable code reuse in
     option_model_fns.
     """
-    closeness_limit = 1.00 #2.00
+    closeness_limit = 1.00  #2.00
     nearness_limit = 0.15
     distance = nearness_limit + (
         (closeness_limit - nearness_limit) * rng.random())

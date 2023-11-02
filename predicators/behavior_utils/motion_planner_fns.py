@@ -128,7 +128,8 @@ def make_navigation_plan(
         obstacles = get_relevant_scene_body_ids(env)
         if env.robots[0].parts["right_hand"].object_in_hand is not None:
             if env.robots[0].parts["right_hand"].object_in_hand in obstacles:
-                obstacles.remove(env.robots[0].parts["right_hand"].object_in_hand)
+                obstacles.remove(
+                    env.robots[0].parts["right_hand"].object_in_hand)
         plan = plan_base_motion_br(
             robot=env.robots[0],
             end_conf=end_conf,
@@ -287,8 +288,8 @@ def make_grasp_plan(
             end_conf=end_conf,
             hand_limits=((minx, miny, minz), (maxx, maxy, maxz)),
             obstacles=get_relevant_scene_body_ids(env,
-                                         include_self=True,
-                                         include_right_hand=True),
+                                                  include_self=True,
+                                                  include_right_hand=True),
             rng=rng,
         )
         p.restoreState(state)
@@ -296,7 +297,8 @@ def make_grasp_plan(
         pos = env.robots[0].parts["right_hand"].get_position()
         plan = [[pos[0], pos[1], pos[2]] + list(
             p.getEulerFromQuaternion(
-                env.robots[0].parts["right_hand"].get_orientation())), end_conf]
+                env.robots[0].parts["right_hand"].get_orientation())),
+                end_conf]
 
     # NOTE: This below line is *VERY* important after the
     # pybullet state is restored. The hands keep an internal
@@ -457,7 +459,8 @@ def make_place_plan(
         pos = env.robots[0].parts["right_hand"].get_position()
         plan = [[pos[0], pos[1], pos[2]] + list(
             p.getEulerFromQuaternion(
-                env.robots[0].parts["right_hand"].get_orientation())), end_conf]
+                env.robots[0].parts["right_hand"].get_orientation())),
+                end_conf]
 
     # NOTE: This below line is *VERY* important after the
     # pybullet state is restored. The hands keep an internal
