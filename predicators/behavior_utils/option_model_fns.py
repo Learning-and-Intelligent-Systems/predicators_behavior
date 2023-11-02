@@ -118,7 +118,7 @@ def create_grasp_option_model(
             "right_hand"].get_position()
         rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
 
-        # TODO 0 Simulate Arm Movement
+        # Simulate Arm Movement
         for step in plan:
             env.robots[0].parts["right_hand"].set_position_orientation(
                 step[0:3],
@@ -158,7 +158,7 @@ def create_grasp_option_model(
         for _ in range(5):
             env.step(a)
 
-        # TODO 0 Simulate Arm Movement (Backwards)
+        # Simulate Arm Movement (Backwards)
         for step in reversed(plan):
             env.robots[0].parts["right_hand"].set_position_orientation(
                 step[0:3],
@@ -217,7 +217,7 @@ def create_place_option_model(
                          f"place ontop {obj_to_place_onto.name} with "
                          f"params {target_pos}")
 
-        # TODO 0 Simulate Arm Movement
+        # Simulate Arm Movement
         for step in plan:
             env.robots[0].parts["right_hand"].set_position_orientation(
                 step[0:3],
@@ -241,7 +241,7 @@ def create_place_option_model(
             angularVelocity=[0, 0, 0],
         )
 
-        # TODO 0 Simulate Arm Movement (Backwards)
+        # Simulate Arm Movement (Backwards)
         for step in reversed(plan):
             env.robots[0].parts["right_hand"].set_position_orientation(
                 step[0:3],
@@ -417,7 +417,7 @@ def create_place_inside_option_model(
                             f"place inside to {obj_to_place_into.name} with "
                             f"params {target_pos}")
 
-                    # TODO 0 Simulate Arm Movement
+                    # Simulate Arm Movement
                     for step in plan:
                         env.robots[0].parts["right_hand"].set_position_orientation(
                             step[0:3],
@@ -439,7 +439,7 @@ def create_place_inside_option_model(
                         linearVelocity=[0, 0, 0],
                         angularVelocity=[0, 0, 0],
                     )
-                    # TODO 0 Simulate Arm Movement (Backwards)
+                    # Simulate Arm Movement (Backwards)
                     for step in reversed(plan):
                         env.robots[0].parts["right_hand"].set_position_orientation(
                             step[0:3],
@@ -527,7 +527,7 @@ def create_place_under_option_model(
                             f"place under to {obj_to_place_under.name} with "
                             f"params {target_pos}")
 
-                    # TODO 0 Simulate Arm Movement
+                    # Simulate Arm Movement
                     for step in plan:
                         env.robots[0].parts["right_hand"].set_position_orientation(
                             step[0:3],
@@ -550,7 +550,7 @@ def create_place_under_option_model(
                         angularVelocity=[0, 0, 0],
                     )
 
-                    # TODO 0 Simulate Arm Movement (Backwards)
+                    # Simulate Arm Movement (Backwards)
                     for step in reversed(plan):
                         env.robots[0].parts["right_hand"].set_position_orientation(
                             step[0:3],
@@ -668,7 +668,7 @@ def create_place_nextto_option_model(
                             f"place next to {obj_to_place_nextto.name} with "
                             f"params {target_pos}")
 
-                    # TODO 0 Simulate Arm Movement
+                    # Simulate Arm Movement
                     for step in plan:
                         env.robots[0].parts["right_hand"].set_position_orientation(
                             step[0:3],
@@ -691,7 +691,7 @@ def create_place_nextto_option_model(
                         angularVelocity=[0, 0, 0],
                     )
 
-                    # TODO 0 Simulate Arm Movement (Backwards)
+                    # Simulate Arm Movement (Backwards)
                     for step in reversed(plan):
                         env.robots[0].parts["right_hand"].set_position_orientation(
                             step[0:3],
