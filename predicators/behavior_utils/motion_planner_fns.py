@@ -10,7 +10,7 @@ import scipy
 from numpy.random._generator import Generator
 
 from predicators.behavior_utils.behavior_utils import check_nav_end_pose, \
-    get_aabb_volume, get_closest_point_on_aabb, get_scene_body_ids, \
+    get_aabb_volume, get_closest_point_on_aabb, get_relevant_scene_body_ids, \
     reset_and_release_hand
 from predicators.settings import CFG
 from predicators.structs import Array
@@ -124,8 +124,8 @@ def make_navigation_plan(
         valid_position[0][1],
         valid_position[1][2],
     ]
-    if env.use_rrt:
-        obstacles = get_scene_body_ids(env)
+    if CFG.behavior_option_model_rrt:
+        obstacles = get_relevant_scene_body_ids(env)
         if env.robots[0].parts["right_hand"].object_in_hand is not None:
             obstacles.remove(env.robots[0].parts["right_hand"].object_in_hand)
         plan = plan_base_motion_br(
@@ -148,6 +148,7 @@ def make_navigation_plan(
         logging.info(f"PRIMITIVE: navigate to {obj.name} with params "
                      f"{pos_offset} failed; birrt failed to sample a plan!")
         return None
+    plan = plan + [end_conf]
 
     p.restoreState(state)
     p.removeState(state)
@@ -284,7 +285,7 @@ def make_grasp_plan(
             obj_in_hand=None,
             end_conf=end_conf,
             hand_limits=((minx, miny, minz), (maxx, maxy, maxz)),
-            obstacles=get_scene_body_ids(env,
+            obstacles=get_relevant_scene_body_ids(env,
                                          include_self=True,
                                          include_right_hand=True),
             rng=rng,
@@ -311,6 +312,7 @@ def make_grasp_plan(
         logging.info(f"PRIMITIVE: grasp {obj.name} fail, failed "
                      f"to find plan to continuous params {grasp_offset}")
         return None
+    plan = plan + [end_conf]
 
     # Grasping Phase 2: Move along the vector from the
     # position the hand ends up in to the object and
@@ -427,7 +429,7 @@ def make_place_plan(
     maxy = max(y, hand_y) + 1
     maxz = max(z, hand_z) + 0.5
 
-    obstacles = get_scene_body_ids(env, include_self=False)
+    obstacles = get_relevant_scene_body_ids(env, include_self=False)
     obstacles.remove(env.robots[0].parts["right_hand"].object_in_hand)
     end_conf = [
         x,
@@ -470,6 +472,7 @@ def make_place_plan(
         logging.info(f"PRIMITIVE: placeOnTop/inside {obj.name} fail, failed "
                      f"to find plan to continuous params {place_rel_pos}")
         return None
+    plan = plan + [end_conf]
 
     original_orientation = list(
         p.getEulerFromQuaternion(

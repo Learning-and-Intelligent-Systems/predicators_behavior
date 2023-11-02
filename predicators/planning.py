@@ -77,7 +77,8 @@ def sesame_plan(
     """
 
     if CFG.env == "behavior" and \
-        CFG.behavior_mode == 'iggui':  # pragma: no cover
+        CFG.behavior_mode == 'iggui' and \
+        CFG.plan_only_eval:  # pragma: no cover
         env = get_or_create_env('behavior')
         assert isinstance(env, BehaviorEnv)
         win = curses.initscr()
@@ -581,10 +582,10 @@ def run_low_level_search(
                         if cur_idx == len(skeleton):
                             return plan, True, traj  # success!
                     else:
-                        # logging.info("Failure: Expected Atoms Check Failed.")
-                        # for a in expected_atoms:
-                        #     if not a.holds(traj[cur_idx]):
-                        #         logging.info(a)
+                        logging.info("Failure: Expected Atoms Check Failed.")
+                        for a in expected_atoms:
+                            if not a.holds(traj[cur_idx]):
+                                logging.info(a)
                         can_continue_on = False
                 else:
                     # If we're not checking expected_atoms, we need to
