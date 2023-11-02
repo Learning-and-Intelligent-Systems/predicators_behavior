@@ -133,6 +133,7 @@ class GlobalSettings:
     behavior_closeness_limit = 1.00
     # if this is True, then we will not use discovered failures in behavior.
     behavior_ignore_discover_failures = True
+    is_running_rrt = False
     create_training_dataset = False
     simulate_nav = False
 

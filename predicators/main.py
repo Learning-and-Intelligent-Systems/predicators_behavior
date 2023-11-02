@@ -344,6 +344,7 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
                 option_model_start_time = time.time()
                 if CFG.env == "behavior" and \
                     CFG.behavior_mode == 'iggui':  # pragma: no cover
+                    CFG.is_running_rrt = True
                     env = get_or_create_env('behavior')
                     assert isinstance(env, BehaviorEnv)
                     win = curses.initscr()
