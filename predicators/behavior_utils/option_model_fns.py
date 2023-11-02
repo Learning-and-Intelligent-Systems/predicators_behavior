@@ -119,11 +119,12 @@ def create_grasp_option_model(
         rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
 
         # Simulate Arm Movement
-        for step in plan:
-            env.robots[0].parts["right_hand"].set_position_orientation(
-                step[0:3], p.getQuaternionFromEuler(step[3:6]))
-            for _ in range(1):
-                env.step(np.zeros(env.action_space.shape))
+        if CFG.behavior_option_model_rrt:
+            for step in plan:
+                env.robots[0].parts["right_hand"].set_position_orientation(
+                    step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                for _ in range(1):
+                    env.step(np.zeros(env.action_space.shape))
 
         # 1 Teleport Hand to Grasp offset location
         env.robots[0].parts["right_hand"].set_position_orientation(
@@ -158,11 +159,12 @@ def create_grasp_option_model(
             env.step(a)
 
         # Simulate Arm Movement (Backwards)
-        for step in reversed(plan):
-            env.robots[0].parts["right_hand"].set_position_orientation(
-                step[0:3], p.getQuaternionFromEuler(step[3:6]))
-            for _ in range(1):
-                env.step(np.zeros(env.action_space.shape))
+        if CFG.behavior_option_model_rrt:
+            for step in reversed(plan):
+                env.robots[0].parts["right_hand"].set_position_orientation(
+                    step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                for _ in range(1):
+                    env.step(np.zeros(env.action_space.shape))
 
         # 4 Move Hand to Original Location
         env.robots[0].parts["right_hand"].set_position_orientation(
@@ -216,11 +218,12 @@ def create_place_option_model(
                          f"params {target_pos}")
 
         # Simulate Arm Movement
-        for step in plan:
-            env.robots[0].parts["right_hand"].set_position_orientation(
-                step[0:3], p.getQuaternionFromEuler(step[3:6]))
-            for _ in range(1):
-                env.step(np.zeros(env.action_space.shape))
+        if CFG.behavior_option_model_rrt:
+            for step in plan:
+                env.robots[0].parts["right_hand"].set_position_orientation(
+                    step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                for _ in range(1):
+                    env.step(np.zeros(env.action_space.shape))
 
         env.robots[0].parts["right_hand"].set_position_orientation(
             target_pos, p.getQuaternionFromEuler(target_orn))
@@ -239,11 +242,12 @@ def create_place_option_model(
         )
 
         # Simulate Arm Movement (Backwards)
-        for step in reversed(plan):
-            env.robots[0].parts["right_hand"].set_position_orientation(
-                step[0:3], p.getQuaternionFromEuler(step[3:6]))
-            for _ in range(1):
-                env.step(np.zeros(env.action_space.shape))
+        if CFG.behavior_option_model_rrt:
+            for step in reversed(plan):
+                env.robots[0].parts["right_hand"].set_position_orientation(
+                    step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                for _ in range(1):
+                    env.step(np.zeros(env.action_space.shape))
 
         env.robots[0].parts["right_hand"].set_position_orientation(
             rh_orig_grasp_position, rh_orig_grasp_orn)
@@ -414,12 +418,14 @@ def create_place_inside_option_model(
                             f"params {target_pos}")
 
                     # Simulate Arm Movement
-                    for step in plan:
-                        env.robots[0].parts[
-                            "right_hand"].set_position_orientation(
-                                step[0:3], p.getQuaternionFromEuler(step[3:6]))
-                        for _ in range(1):
-                            env.step(np.zeros(env.action_space.shape))
+                    if CFG.behavior_option_model_rrt:
+                        for step in plan:
+                            env.robots[0].parts[
+                                "right_hand"].set_position_orientation(
+                                    step[0:3],
+                                    p.getQuaternionFromEuler(step[3:6]))
+                            for _ in range(1):
+                                env.step(np.zeros(env.action_space.shape))
 
                     env.robots[0].parts["right_hand"].force_release_obj()
                     obj_to_place_into.force_wakeup()
@@ -436,12 +442,14 @@ def create_place_inside_option_model(
                         angularVelocity=[0, 0, 0],
                     )
                     # Simulate Arm Movement (Backwards)
-                    for step in reversed(plan):
-                        env.robots[0].parts[
-                            "right_hand"].set_position_orientation(
-                                step[0:3], p.getQuaternionFromEuler(step[3:6]))
-                        for _ in range(1):
-                            env.step(np.zeros(env.action_space.shape))
+                    if CFG.behavior_option_model_rrt:
+                        for step in reversed(plan):
+                            env.robots[0].parts[
+                                "right_hand"].set_position_orientation(
+                                    step[0:3],
+                                    p.getQuaternionFromEuler(step[3:6]))
+                            for _ in range(1):
+                                env.step(np.zeros(env.action_space.shape))
 
                     env.robots[0].parts["right_hand"].set_position_orientation(
                         rh_orig_grasp_position, rh_orig_grasp_orn)
@@ -524,12 +532,14 @@ def create_place_under_option_model(
                             f"params {target_pos}")
 
                     # Simulate Arm Movement
-                    for step in plan:
-                        env.robots[0].parts[
-                            "right_hand"].set_position_orientation(
-                                step[0:3], p.getQuaternionFromEuler(step[3:6]))
-                        for _ in range(1):
-                            env.step(np.zeros(env.action_space.shape))
+                    if CFG.behavior_option_model_rrt:
+                        for step in plan:
+                            env.robots[0].parts[
+                                "right_hand"].set_position_orientation(
+                                    step[0:3],
+                                    p.getQuaternionFromEuler(step[3:6]))
+                            for _ in range(1):
+                                env.step(np.zeros(env.action_space.shape))
 
                     env.robots[0].parts["right_hand"].force_release_obj()
                     obj_to_place_under.force_wakeup()
@@ -547,12 +557,14 @@ def create_place_under_option_model(
                     )
 
                     # Simulate Arm Movement (Backwards)
-                    for step in reversed(plan):
-                        env.robots[0].parts[
-                            "right_hand"].set_position_orientation(
-                                step[0:3], p.getQuaternionFromEuler(step[3:6]))
-                        for _ in range(1):
-                            env.step(np.zeros(env.action_space.shape))
+                    if CFG.behavior_option_model_rrt:
+                        for step in reversed(plan):
+                            env.robots[0].parts[
+                                "right_hand"].set_position_orientation(
+                                    step[0:3],
+                                    p.getQuaternionFromEuler(step[3:6]))
+                            for _ in range(1):
+                                env.step(np.zeros(env.action_space.shape))
 
                     env.robots[0].parts["right_hand"].set_position_orientation(
                         rh_orig_grasp_position, rh_orig_grasp_orn)
@@ -665,12 +677,14 @@ def create_place_nextto_option_model(
                             f"params {target_pos}")
 
                     # Simulate Arm Movement
-                    for step in plan:
-                        env.robots[0].parts[
-                            "right_hand"].set_position_orientation(
-                                step[0:3], p.getQuaternionFromEuler(step[3:6]))
-                        for _ in range(1):
-                            env.step(np.zeros(env.action_space.shape))
+                    if CFG.behavior_option_model_rrt:
+                        for step in plan:
+                            env.robots[0].parts[
+                                "right_hand"].set_position_orientation(
+                                    step[0:3],
+                                    p.getQuaternionFromEuler(step[3:6]))
+                            for _ in range(1):
+                                env.step(np.zeros(env.action_space.shape))
 
                     env.robots[0].parts["right_hand"].force_release_obj()
                     obj_to_place_nextto.force_wakeup()
@@ -688,12 +702,14 @@ def create_place_nextto_option_model(
                     )
 
                     # Simulate Arm Movement (Backwards)
-                    for step in reversed(plan):
-                        env.robots[0].parts[
-                            "right_hand"].set_position_orientation(
-                                step[0:3], p.getQuaternionFromEuler(step[3:6]))
-                        for _ in range(1):
-                            env.step(np.zeros(env.action_space.shape))
+                    if CFG.behavior_option_model_rrt:
+                        for step in reversed(plan):
+                            env.robots[0].parts[
+                                "right_hand"].set_position_orientation(
+                                    step[0:3],
+                                    p.getQuaternionFromEuler(step[3:6]))
+                            for _ in range(1):
+                                env.step(np.zeros(env.action_space.shape))
 
                     env.robots[0].parts["right_hand"].set_position_orientation(
                         rh_orig_grasp_position, rh_orig_grasp_orn)
