@@ -2542,10 +2542,7 @@ class VideoMonitor(Monitor):
 
     def observe(self, state: State, action: Optional[Action]) -> None:
         del state  # unused
-        render_state = self._render_fn(action, None)
-        self._video.extend(render_state)
-        self._video.extend(render_state)
-        self._video.extend(render_state)
+        self._video.extend(self._render_fn(action, None))
 
     def get_video(self) -> Video:
         """Return the video."""
@@ -2622,7 +2619,7 @@ def save_video(outfile: str, video: Video) -> None:
     """Save the video to video_dir/outfile."""
     outdir = CFG.video_dir
     os.makedirs(outdir, exist_ok=True)
-    outpath = os.path.join(outdir, str(CFG.seed) + "_" + outfile)
+    outpath = os.path.join(outdir, outfile)
     imageio.mimwrite(outpath, video, fps=CFG.video_fps)  # type: ignore
     logging.info(f"Wrote out to {outpath}")
 
