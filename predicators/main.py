@@ -40,6 +40,7 @@ import sys
 import time
 from collections import defaultdict
 from pathlib import Path
+import numpy as np
 from typing import List, Optional, Sequence, Tuple
 
 import dill as pkl
@@ -391,6 +392,14 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
             total_suc_time += (solve_time + exec_time)
             make_video = CFG.make_test_videos
             video_file = f"{save_prefix}__task{test_task_idx+1}.mp4"
+            if CFG.env == "behavior": # pragma: no cover
+                assert isinstance(env, BehaviorEnv)
+                # Step the environment with a dummy action a few
+                # times so that video making doesn't get abruptly
+                # cut off.
+                for _ in range(25):
+                    env.igibson_behavior_env.step(np.zeros(
+                env.igibson_behavior_env.action_space.shape))
         else:
             if not caught_exception:
                 log_message = "Policy failed to reach goal"
