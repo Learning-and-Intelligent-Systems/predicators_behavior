@@ -127,7 +127,8 @@ def make_navigation_plan(
     if CFG.behavior_option_model_rrt:
         obstacles = get_relevant_scene_body_ids(env)
         if env.robots[0].parts["right_hand"].object_in_hand is not None:
-            obstacles.remove(env.robots[0].parts["right_hand"].object_in_hand)
+            if env.robots[0].parts["right_hand"].object_in_hand in obstacles:
+                obstacles.remove(env.robots[0].parts["right_hand"].object_in_hand)
         plan = plan_base_motion_br(
             robot=env.robots[0],
             end_conf=end_conf,
@@ -430,7 +431,8 @@ def make_place_plan(
     maxz = max(z, hand_z) + 0.5
 
     obstacles = get_relevant_scene_body_ids(env, include_self=False)
-    obstacles.remove(env.robots[0].parts["right_hand"].object_in_hand)
+    if env.robots[0].parts["right_hand"].object_in_hand in obstacles:
+        obstacles.remove(env.robots[0].parts["right_hand"].object_in_hand)
     end_conf = [
         x,
         y,
