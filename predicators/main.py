@@ -350,9 +350,9 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
                     win.nodelay(True)
                     win.addstr(
                         0, 0,
-                        "VIDEO CREATION MODE: You have time to position the iggui window \
-                        to the location you want for recording. Type 'q' to indicate you \
-                        have finished positioning: ")
+                        "VIDEO CREATION MODE: You have time to position the \
+                        iggui window to the location you want for recording. \
+                        Type 'q' to indicate you have finished positioning: ")
                     flag = win.getch()
                     while flag == -1 or chr(flag) != 'q':
                         env.igibson_behavior_env.step(
