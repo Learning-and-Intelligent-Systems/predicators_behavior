@@ -775,7 +775,7 @@ class BehaviorEnv(BaseEnv):
             return False
         return (np.linalg.norm(  # type: ignore
             np.array(robot_obj.get_position()) -
-            np.array(ig_obj.get_position())) < 2)
+            np.array(ig_obj.get_position())) < CFG.behavior_closeness_limit)
 
     def _reachable_nothing_classifier(
             self,

@@ -856,6 +856,41 @@ def get_scene_body_ids(
     return ids
 
 
+def get_relevant_scene_body_ids(
+    env: "BehaviorEnv",
+    include_self: bool = False,
+    include_right_hand: bool = False,
+) -> List[int]:
+    """Function to return list of body_ids for relveant objs in the scene for
+    collision checking depending on whether navigation or grasping/ placing is
+    being done."""
+    ids = []
+    for obj in env.scene.get_objects():
+        if isinstance(obj, URDFObject):
+            # We want to exclude the floor since we're always floating and
+            # will never practically collide with it, but if we include it
+            # in collision checking, we always seem to collide.
+            if obj.name != "floors":
+                # Here are the list of relevant objects.
+                if "bed" in obj.name:
+                    ids.extend(obj.body_ids)
+
+    if include_self:
+        ids.append(env.robots[0].parts["left_hand"].get_body_id())
+        ids.append(env.robots[0].parts["body"].get_body_id())
+        ids.append(env.robots[0].parts["eye"].get_body_id())
+        if not include_right_hand:
+            ids.append(env.robots[0].parts["right_hand"].get_body_id())
+
+    all_obj_ids = []
+    for obj in env.scene.get_objects():
+        if isinstance(obj, URDFObject):
+            all_obj_ids.append([obj.name, obj.body_ids])
+    print("ALL OBJ IDS:", all_obj_ids)
+
+    return ids
+
+
 def detect_collision(bodyA: int, object_in_hand: Optional[int] = None) -> bool:
     """Detects collisions between bodyA in the scene (except for the object in
     the robot's hand)"""
@@ -1076,7 +1111,7 @@ def sample_navigation_params(igibson_behavior_env: "BehaviorEnv",
     Implemented in a separate method to enable code reuse in
     option_model_fns.
     """
-    closeness_limit = 2.00
+    closeness_limit = CFG.behavior_closeness_limit
     nearness_limit = 0.15
     distance = nearness_limit + (
         (closeness_limit - nearness_limit) * rng.random())
