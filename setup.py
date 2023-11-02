@@ -8,6 +8,7 @@ setup(
     version="0.1.0",
     packages=find_packages(include=["predicators", "predicators.*"]),
     install_requires=[
+        "mypy",
         "numpy>=1.22.3",
         "pytest",
         "gym==0.26.2",
@@ -15,7 +16,7 @@ setup(
         "imageio",
         "imageio-ffmpeg",
         "pandas",
-        "torch",
+        "torch==2.0.1",
         "scipy",
         "tabulate",
         "dill",
@@ -44,7 +45,5 @@ setup(
             "yapf==0.32.0",
             "docformatter==1.4",
             "isort==5.10.1",
-            "mypy@git+https://github.com/python/mypy.git@9bd651758e8ea2494" +
-            "837814092af70f8d9e6f7a1",
         ]
     })
