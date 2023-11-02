@@ -8,6 +8,7 @@ setup(
     version="0.1.0",
     packages=find_packages(include=["predicators", "predicators.*"]),
     install_requires=[
+        "mypy",
         "numpy>=1.22.3",
         "pytest",
         "gym==0.26.2",
@@ -44,6 +45,5 @@ setup(
             "yapf==0.32.0",
             "docformatter==1.4",
             "isort==5.10.1",
-            "mypy",
         ]
     })

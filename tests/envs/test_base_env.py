@@ -1,7 +1,7 @@
 """Test cases for the base environment class."""
 
 import pytest
-from test_oracle_approach import ENV_NAME_AND_CLS
+from test_oracle_approach import ENV_NAME_AND_CLS # type: ignore
 
 from predicators import utils
 from predicators.envs import BaseEnv, create_new_env, get_or_create_env
