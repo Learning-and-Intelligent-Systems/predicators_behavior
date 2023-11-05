@@ -192,10 +192,13 @@ def create_place_option_model(
     def placeOntopObjectOptionModel(_init_state: State,
                                     env: "BehaviorEnv") -> None:
         obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
-        obj_in_hand = [
-            obj for obj in env.scene.get_objects()
-            if obj.get_body_id() == obj_in_hand_idx
-        ][0]
+        try:
+            obj_in_hand = [
+                obj for obj in env.scene.get_objects()
+                if obj.get_body_id() == obj_in_hand_idx
+            ][0]
+        except:
+            return
         rh_orig_grasp_position = env.robots[0].parts[
             "right_hand"].get_position()
         rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
@@ -320,7 +323,7 @@ def create_open_option_model(
         logging.info(f"PRIMITIVE: Attempting to open {obj_to_open.name}")
         if np.linalg.norm(
                 np.array(obj_to_open.get_position()) -
-                np.array(env.robots[0].get_position())) < 2:
+                np.array(env.robots[0].get_position())) < CFG.behavior_closeness_limit:
             if hasattr(obj_to_open,
                        "states") and object_states.Open in obj_to_open.states:
                 obj_to_open.states[object_states.Open].set_value(True)
@@ -345,7 +348,7 @@ def create_close_option_model(
         logging.info(f"PRIMITIVE: Attempting to close {obj_to_close.name}")
         if np.linalg.norm(
                 np.array(obj_to_close.get_position()) -
-                np.array(env.robots[0].get_position())) < 2:
+                np.array(env.robots[0].get_position())) < CFG.behavior_closeness_limit:
             if hasattr(obj_to_close,
                        "states") and object_states.Open in obj_to_close.states:
                 obj_to_close.states[object_states.Open].set_value(False)
@@ -384,7 +387,7 @@ def create_place_inside_option_model(
                 f"{obj_to_place_into.name}")
             if np.linalg.norm(
                     np.array(obj_to_place_into.get_position()) -
-                    np.array(env.robots[0].get_position())) < 2:
+                    np.array(env.robots[0].get_position())) < CFG.behavior_closeness_limit:
                 if (hasattr(obj_to_place_into, "states")
                         and object_states.Open in obj_to_place_into.states
                         and obj_to_place_into.states[object_states.Open].
@@ -498,7 +501,7 @@ def create_place_under_option_model(
                 f"{obj_to_place_under.name}")
             if np.linalg.norm(
                     np.array(obj_to_place_under.get_position()) -
-                    np.array(env.robots[0].get_position())) < 2:
+                    np.array(env.robots[0].get_position())) < CFG.behavior_closeness_limit:
                 if (hasattr(obj_to_place_under, "states")
                         and object_states.Under in obj_to_place_under.states):
                     if obj_in_hand.states[object_states.Under].get_value(
@@ -602,7 +605,7 @@ def create_toggle_on_option_model(
             f"PRIMITIVE: Attempting to toggle on {obj_to_toggled_on.name}")
         if np.linalg.norm(
                 np.array(obj_to_toggled_on.get_position()) -
-                np.array(env.robots[0].get_position())) < 2:
+                np.array(env.robots[0].get_position())) < CFG.behavior_closeness_limit:
             if hasattr(
                     obj_to_toggled_on, "states"
             ) and object_states.ToggledOn in obj_to_toggled_on.states:
@@ -643,7 +646,7 @@ def create_place_nextto_option_model(
                 f"{obj_to_place_nextto.name}")
             if np.linalg.norm(
                     np.array(obj_to_place_nextto.get_position()) -
-                    np.array(env.robots[0].get_position())) < 2:
+                    np.array(env.robots[0].get_position())) < CFG.behavior_closeness_limit:
                 if (hasattr(obj_to_place_nextto, "states") and
                         object_states.NextTo in obj_to_place_nextto.states):
                     if obj_in_hand.states[object_states.NextTo].get_value(
@@ -747,7 +750,7 @@ def create_clean_dusty_option_model(
         logging.info(f"PRIMITIVE: Attempting to clean {obj_to_clean.name}")
         if np.linalg.norm(
                 np.array(obj_to_clean.get_position()) -
-                np.array(env.robots[0].get_position())) < 2:
+                np.array(env.robots[0].get_position())) < CFG.behavior_closeness_limit:
             if hasattr(
                     obj_to_clean,
                     "states") and object_states.Dusty in obj_to_clean.states:

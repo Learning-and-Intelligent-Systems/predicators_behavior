@@ -11,7 +11,7 @@ from numpy.random._generator import Generator
 
 from predicators.behavior_utils.behavior_utils import check_nav_end_pose, \
     get_aabb_volume, get_closest_point_on_aabb, get_relevant_scene_body_ids, \
-    reset_and_release_hand
+    reset_and_release_hand, get_scene_body_ids
 from predicators.settings import CFG
 from predicators.structs import Array
 
@@ -126,6 +126,7 @@ def make_navigation_plan(
     ]
     if CFG.behavior_option_model_rrt:
         obstacles = get_relevant_scene_body_ids(env)
+        # obstacles = get_scene_body_ids(env)
         if env.robots[0].parts["right_hand"].object_in_hand is not None:
             if env.robots[0].parts["right_hand"].object_in_hand in obstacles:
                 obstacles.remove(
@@ -214,7 +215,7 @@ def make_grasp_plan(
     # If the object is too far away, fail and return None
     if (np.linalg.norm(
             np.array(obj.get_position()) -
-            np.array(env.robots[0].get_position())) > 2):
+            np.array(env.robots[0].get_position())) > CFG.behavior_closeness_limit):
         logging.info(f"PRIMITIVE: grasp {obj.name} fail, too far")
         return None
 
@@ -433,6 +434,7 @@ def make_place_plan(
     maxz = max(z, hand_z) + 0.5
 
     obstacles = get_relevant_scene_body_ids(env, include_self=False)
+    # obstacles = get_scene_body_ids(env, include_self=False)
     if env.robots[0].parts["right_hand"].object_in_hand in obstacles:
         obstacles.remove(env.robots[0].parts["right_hand"].object_in_hand)
     end_conf = [
