@@ -27,5 +27,6 @@ tests/_fake_trajs
 tests/_fake_results
 saved_dataset_behavior
 dataset_backup
+video_frames
 # Jetbrains IDEs
 .idea/

@@ -245,17 +245,10 @@ def make_grasp_plan(
         points = p.getClosestPoints(env.robots[0].get_body_id(), obj.get_body_id(), distance=10)#, linkIndexA=env.robots[0].grasp_point_joint_id)
         closest_point = min(points, key=lambda x:x[8])
         obj_pos = closest_point[6]
+
     x = obj_pos[0] + grasp_offset[0]
     y = obj_pos[1] + grasp_offset[1]
     z = obj_pos[2] + grasp_offset[2]
-    hand_x, hand_y, hand_z = env.robots[0].parts["right_hand"].get_position()
-    minx = min(x, hand_x) - 0.5
-    miny = min(y, hand_y) - 0.5
-    minz = min(z, hand_z) - 0.5
-    maxx = max(x, hand_x) + 0.5
-    maxy = max(y, hand_y) + 0.5
-    maxz = max(z, hand_z) + 0.5
-
 
     if isinstance(env.robots[0], BehaviorRobot):
         # compute the angle the hand must be in such that it can
@@ -267,6 +260,15 @@ def make_grasp_plan(
         # https://math.stackexchange.com/questions/180418/
         # calculate-rotation-matrix-to-align-vector-a-to-vector
         # -b-in-3d
+
+        hand_x, hand_y, hand_z = env.robots[0].parts["right_hand"].get_position()
+        minx = min(x, hand_x) - 0.5
+        miny = min(y, hand_y) - 0.5
+        minz = min(z, hand_z) - 0.5
+        maxx = max(x, hand_x) + 0.5
+        maxy = max(y, hand_y) + 0.5
+        maxz = max(z, hand_z) + 0.5
+
         hand_to_obj_vector = np.array(grasp_offset[:3])
         hand_to_obj_unit_vector = hand_to_obj_vector / \
             np.linalg.norm(

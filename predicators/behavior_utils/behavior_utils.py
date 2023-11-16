@@ -898,7 +898,7 @@ def get_relevant_scene_body_ids(
     return ids
 
 
-def detect_collision(bodyA: int, object_in_hand: Optional[int] = None) -> bool:
+def detect_collision(bodyA: int, ignore_objects: Optional[int] = None) -> bool:
     """Detects collisions between bodyA in the scene (except for the object in
     the robot's hand)"""
     if not isinstance(ignore_objects, list):
