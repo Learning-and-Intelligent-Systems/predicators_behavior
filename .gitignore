@@ -25,6 +25,7 @@ machines.txt
 *_vision_data
 tests/_fake_trajs
 tests/_fake_results
-
+saved_dataset_behavior
+dataset_backup
 # Jetbrains IDEs
 .idea/
