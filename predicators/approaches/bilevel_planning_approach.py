@@ -5,6 +5,7 @@ then Execution.
 """
 
 import abc
+import logging
 from typing import Any, Callable, List, Set, Tuple
 
 from gym.spaces import Box
@@ -64,13 +65,24 @@ class BilevelPlanningApproach(BaseApproach):
                 load_checkpoint_state(task.init, env, reset=True)
 
         nsrts = self._get_current_nsrts()
+        logging.info(f"NSRTS !!!!!!!!!"
+                     f"params {nsrts}")
         preds = self._get_current_predicates()
+        logging.info(f"PREDICATES !!!!!!!!!"
+                     f"params {preds}")
+
+        logging.info(f"RUNNING_SESAME!")
         plan, metrics, traj = self._run_sesame_plan(task, nsrts, preds,
                                                     timeout, seed)
+        logging.info(f"SESAME!_finishGGG")
         self._save_metrics(metrics, nsrts, preds)
         self._last_plan = plan
         self._last_traj = traj
         option_policy = utils.option_plan_to_policy(plan)
+        logging.info(f"plan !!!!!!!!!"
+                     f"params {plan}")
+        logging.info(f"traj !!!!!!!!!"
+                     f"params {traj}")
 
         def _policy(s: State) -> Action:
             try:
@@ -103,6 +115,7 @@ class BilevelPlanningApproach(BaseApproach):
                 allow_noops=CFG.sesame_allow_noops,
                 use_visited_state_set=CFG.sesame_use_visited_state_set,
                 **kwargs)
+
         except PlanningFailure as e:
             raise ApproachFailure(e.args[0], e.info)
         except PlanningTimeout as e:

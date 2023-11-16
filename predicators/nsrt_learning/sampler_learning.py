@@ -11,7 +11,7 @@ from predicators.envs import get_or_create_env
 from predicators.ground_truth_nsrts import get_gt_nsrts
 from predicators.ml_models import BinaryClassifier, \
     DegenerateMLPDistributionRegressor, DistributionRegressor, \
-    MLPBinaryClassifier, NeuralGaussianRegressor
+    MLPBinaryClassifier, NeuralGaussianRegressor, DiffusionRegressor
 from predicators.settings import CFG
 from predicators.structs import NSRT, Array, Datastore, EntToEntSub, \
     GroundAtom, LiftedAtom, NSRTSampler, Object, OptionSpec, \
@@ -200,6 +200,15 @@ def _learn_neural_sampler(datastores: List[Datastore], nsrt_name: str,
             clip_gradients=CFG.mlp_regressor_clip_gradients,
             clip_value=CFG.mlp_regressor_gradient_clip_value,
             learning_rate=CFG.learning_rate)
+    elif CFG.sampler_learning_regressor_model == "diffusion":
+        assert CFG.sampler_disable_classifier
+        regressor = DiffusionRegressor(
+            seed=CFG.seed,
+            hid_sizes=CFG.neural_gaus_regressor_hid_sizes,
+            max_train_iters=CFG.neural_gaus_regressor_max_itr,
+            timesteps=100,
+            learning_rate=CFG.learning_rate,
+        )
     else:
         assert CFG.sampler_learning_regressor_model == "degenerate_mlp"
         regressor = DegenerateMLPDistributionRegressor(

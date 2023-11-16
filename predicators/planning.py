@@ -85,6 +85,7 @@ def sesame_plan(
         while time.time() - start_time < 30.0:
             env.igibson_behavior_env.step(np.zeros(env.action_space.shape))
         logging.info("VIDEO CREATION MODE: Starting planning.")
+        logging.info(f"CFG {CFG.sesame_task_planner}")
 
     if CFG.sesame_task_planner == "astar":
         return _sesame_plan_with_astar(
@@ -508,14 +509,14 @@ def run_low_level_search(
             return longest_failed_refinement, False, traj
         assert num_tries[cur_idx] < max_tries[cur_idx]
         # Good debug point #2: if you have a skeleton that you think is
-        # reasonable, but sampling isn't working, print num_tries here to
+        # reasonable, but sampling isn't working, print num_tries hsere to
         # see at what step the backtracking search is getting stuck.
         num_tries[cur_idx] += 1
         state = traj[cur_idx]
         nsrt = skeleton[cur_idx]
         # Ground the NSRT's ParameterizedOption into an _Option.
         # This invokes the NSRT's sampler.
-        option = nsrt.sample_option(state, task.goal, rng_sampler)
+        option = nsrt.sample_option(state, task.goal, skeleton, rng_sampler)
         plan[cur_idx] = option
         # Increment num_samples metric by 1
         metrics["num_samples"] += 1

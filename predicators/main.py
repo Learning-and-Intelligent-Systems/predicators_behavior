@@ -218,7 +218,10 @@ def _generate_interaction_results(
     query_cost = 0.0
     if CFG.make_interaction_videos:
         video = []
-    for request in requests:
+    total_requests = len(requests)
+    for curr_request, request in enumerate(requests):
+        if curr_request % 100 == 0:
+            logging.info(f"\t{curr_request} / {total_requests}")
         if request.train_task_idx < CFG.max_initial_demos and \
             not CFG.allow_interaction_in_demo_tasks:
             raise RuntimeError("Interaction requests cannot be on demo tasks "
@@ -240,7 +243,7 @@ def _generate_interaction_results(
         request_responses = monitor.get_responses()
         query_cost += monitor.get_query_cost()
         result = InteractionResult(traj.states, traj.actions,
-                                   request_responses)
+                                   request_responses, request.skeleton)
         results.append(result)
         if CFG.make_interaction_videos:
             video.extend(monitor.get_video())

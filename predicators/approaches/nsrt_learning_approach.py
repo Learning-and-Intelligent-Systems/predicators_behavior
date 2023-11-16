@@ -89,6 +89,7 @@ class NSRTLearningApproach(BilevelPlanningApproach):
                 pkl.dump(sampler_name_to_sampler, f)
 
         with open(f"{save_path}_{online_learning_cycle}.NSRTs", "wb") as f:
+            logging.info(f)
             if CFG.dump_nsrts_as_strings:
                 pkl.dump(str(self._nsrts), f)
             else:

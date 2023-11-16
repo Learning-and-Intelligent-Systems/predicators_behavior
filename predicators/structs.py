@@ -939,7 +939,7 @@ class _GroundNSRT:
         assert isinstance(other, _GroundNSRT)
         return str(self) > str(other)
 
-    def sample_option(self, state: State, goal: Set[GroundAtom],
+    def sample_option(self, state: State, goal: Set[GroundAtom], skeleton: List[_GroundNSRT],
                       rng: np.random.Generator) -> _Option:
         """Sample an _Option for this ground NSRT, by invoking the contained
         sampler.
@@ -949,7 +949,10 @@ class _GroundNSRT:
         """
         # Note that the sampler takes in ALL self.objects, not just the subset
         # self.option_objs of objects that are passed into the option.
-        params = self._sampler(state, goal, rng, self.objects)
+        try:
+            params = self._sampler(state, goal, rng, self.objects, skeleton)
+        except:
+            params = self._sampler(state, goal, rng, self.objects)
         # Clip the params into the params_space of self.option, for safety.
         low = self.option.params_space.low
         high = self.option.params_space.high
@@ -1281,6 +1284,7 @@ class InteractionRequest:
     act_policy: Callable[[State], Action]
     query_policy: Callable[[State], Optional[Query]]  # query can be None
     termination_function: Callable[[State], bool]
+    skeleton: List[_GroundNSRT]
 
 
 @dataclass(frozen=True, eq=False, repr=False)
@@ -1293,6 +1297,7 @@ class InteractionResult:
     states: List[State]
     actions: List[Action]
     responses: List[Optional[Response]]
+    skeleton: List[_GroundNSRT]
 
     def __post_init__(self) -> None:
         assert len(self.states) == len(self.responses) == len(self.actions) + 1

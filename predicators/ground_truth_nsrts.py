@@ -3210,10 +3210,11 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                 targ_holding = _get_lifted_atom("holding", [target_obj])
                 ontop = _get_lifted_atom("ontop", [target_obj, surf_obj])
                 inside = _get_lifted_atom("inside", [target_obj, surf_obj])
+                under = _get_lifted_atom("under", [surf_obj, target_obj])
                 preconditions_ontop = {handempty, targ_reachable, ontop}
                 preconditions_inside = {handempty, targ_reachable, inside}
                 add_effects = {targ_holding}
-                delete_effects_ontop = {handempty, ontop, targ_reachable}
+                delete_effects_ontop = {handempty, ontop, targ_reachable, under}
                 delete_effects_inside = {handempty, inside, targ_reachable}
                 # sampler = (grasp_obj_param_sampler if 
                 #         isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot) 

@@ -485,6 +485,44 @@ class GlobalSettings:
     glib_max_goal_size = 1
     glib_num_babbles = 10
 
+    # GPU
+    use_cuda = True
+
+    # EBM model
+    ebm_class = 'diff'  # ebm or diff(usion)
+    use_full_state = False
+    use_skeleton_state = False
+    sampler_horizon = 1
+    sampler_learning_single_step = False
+    use_ebm = True
+    sql_reward_scale = 1 / 24  # 1#100#
+    save_only_exploration_results = True
+    lifelong_method = "retrain"  # "retrain", "distill", "2-distill"
+    lifelong_burnin_period = None
+    torch_num_threads = 1
+
+    # bookshelf env parameters
+    bookshelf_num_books_train = [4, 5]  # [3, 4]#[2, 3]#[8, 9]#
+    bookshelf_num_books_test = [5, 6]  # [4, 5]#[3, 4]#[9, 10]#
+    bookshelf_num_obstacles_train = [18, 19]  # [4, 5]#
+    bookshelf_num_obstacles_test = [19, 20]  # [5, 6]#
+    bookshelf_against_wall = False
+    bookshelf_train_tasks_overwrite = None
+    bookshelf_specialized_nsrts = False
+    bookshelf_singlestep_goal = False
+    bookshelf_add_sampler_idx_to_params = False
+    bookshelf_no_obstacles = False
+    # ebm_train_reconstruction = False
+    ebm_aux_training = None  # None, 'reconstruct', 'geometry', 'geometry+'
+    ebm_aux_n_samples = 1  # How many samples to draw and check for each sampler
+    # use_cspace = False
+    # image_only = False
+    ebm_input_mode = 'local'  # 'full-image-only', 'full-image-vector', 'full-image-action', 'full-cspace-only', 'full-cspace-vector', 'full-cspace-action', 'local'
+    classifier_free_guidance = False
+    viz_sampling_distributions = False
+    sesame_max_samples_total = float('inf')
+    exit_if_result_exists = True
+
     # greedy lookahead explorer parameters
     greedy_lookahead_max_num_trajectories = 100
     greedy_lookahead_max_traj_length = 2

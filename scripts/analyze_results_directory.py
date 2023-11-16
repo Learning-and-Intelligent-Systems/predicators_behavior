@@ -26,15 +26,16 @@ COLUMN_NAMES_AND_KEYS = [
     ("EXPERIMENT_ID", "experiment_id"),
     ("SEED", "seed"),
     ("NUM_TRAIN_TASKS", "num_train_tasks"),
+    ("NUM_TEST_TASKS", "num_test_tasks"),
     ("CYCLE", "cycle"),
     ("NUM_SOLVED", "num_solved"),
     ("AVG_NUM_PREDS", "avg_num_preds"),
     ("AVG_TEST_TIME", "avg_suc_time"),
     ("AVG_NODES_CREATED", "avg_num_nodes_created"),
     ("LEARNING_TIME", "learning_time"),
-    # ("AVG_SAMPLES_PER_PLAN", "avg_num_samples"),
-    # ("MIN_SAMPLES_PER_PLAN", "min_num_samples"),
-    # ("MAX_SAMPLES_PER_PLAN", "max_num_samples"),
+    ("AVG_SAMPLES_PER_PLAN", "avg_num_samples"),
+    ("MIN_SAMPLES_PER_PLAN", "min_num_samples"),
+    ("MAX_SAMPLES_PER_PLAN", "max_num_samples"),
     # ("AVG_SKELETONS", "avg_num_skeletons_optimized"),
     # ("MIN_SKELETONS", "min_skeletons_optimized"),
     # ("MAX_SKELETONS", "max_skeletons_optimized"),
@@ -163,18 +164,18 @@ def create_dataframes(
     column_names_and_keys: Sequence[Tuple[str, str]],
     groups: Sequence[str],
     derived_keys: Sequence[Tuple[str, Callable[[Dict[str, float]], float]]],
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Returns means, standard deviations, and sizes."""
     df = create_raw_dataframe(column_names_and_keys, derived_keys)
     grouped = df.groupby(list(groups))
     means = grouped.mean()
     stds = grouped.std(ddof=0)
     sizes = grouped.size().to_frame()
-    return means, stds, sizes
+    return means, stds, sizes, df
 
 
 def _main() -> None:
-    means, stds, sizes = create_dataframes(COLUMN_NAMES_AND_KEYS, GROUPS,
+    means, stds, sizes, df= create_dataframes(COLUMN_NAMES_AND_KEYS, GROUPS,
                                            DERIVED_KEYS)
     # Add standard deviations to the printout.
     for col in means:
@@ -184,10 +185,13 @@ def _main() -> None:
             means.loc[row, col] = f"{mean:.2f} ({std:.2f})"
     means["NUM_SEEDS"] = sizes
     pd.set_option("expand_frame_repr", False)
+    print("\n\nDATA ACROSS SEEDS:")
+    print(df[df["NUM_TEST_TASKS"] == 50])
     print("\n\nAGGREGATED DATA OVER SEEDS:")
-    print(means)
-    means.to_csv("results_summary.csv")
-    print("\n\nWrote out table to results_summary.csv")
+
+    # print(means)
+    # means.to_csv("results_summary.csv")
+    # print("\n\nWrote out table to results_summary.csv")
 
 
 if __name__ == "__main__":

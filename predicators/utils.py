@@ -2091,7 +2091,8 @@ def sample_subsets(universe: Sequence[_T], num_samples: int, min_set_size: int,
 
 def create_dataset_filename_str(
         saving_ground_atoms: bool,
-        online_learning_cycle: Optional[int] = None) -> Tuple[str, str]:
+        online_learning_cycle: Optional[int] = None,
+        idx: int = 0, label: str = "") -> Tuple[str, str]:
     """Generate strings to be used for the filename for a dataset file that is
     about to be saved.
 
@@ -2107,13 +2108,14 @@ def create_dataset_filename_str(
     if saving_ground_atoms:
         suffix_str += "__ground_atoms"
     suffix_str += ".data"
+    suffix_str += "" if label == "" else "__" + label
     if CFG.env == "behavior":  # pragma: no cover
         behavior_task_name = CFG.behavior_task_list[0] if len(
             CFG.behavior_task_list) == 1 else "all"
         dataset_fname_template = (
             f"{CFG.env}__{CFG.behavior_train_scene_name}__{behavior_task_name}"
             + f"__{CFG.offline_data_method}__{CFG.demonstrator}__"
-            f"{regex}__{CFG.included_options}__{CFG.seed}" + suffix_str)
+            f"{regex if idx == 0 else idx}__{CFG.included_options}__{CFG.seed}" + suffix_str)
     else:
         dataset_fname_template = (
             f"{CFG.env}__{CFG.offline_data_method}__{CFG.demonstrator}__"
@@ -2228,6 +2230,9 @@ def get_applicable_operators(
             yield op
 
 
+
+
+
 def apply_operator(op: GroundNSRTOrSTRIPSOperator,
                    atoms: Set[GroundAtom]) -> Set[GroundAtom]:
     """Get a next set of atoms given a current set and a ground operator."""
@@ -2237,8 +2242,15 @@ def apply_operator(op: GroundNSRTOrSTRIPSOperator,
     # will be true, so we don't want to remove them.
     new_atoms = {a for a in atoms if a.predicate not in op.ignore_effects}
     for atom in op.delete_effects:
+        # logging.info(atom)
         new_atoms.discard(atom)
+        '''
+        logging.info("ATOM OBJECTS")
+        logging.info(atom.objects)
+        '''
     for atom in op.add_effects:
+        # logging.info("Add effects")
+        # logging.info(atom)
         new_atoms.add(atom)
     return new_atoms
 

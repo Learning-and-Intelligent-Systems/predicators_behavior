@@ -235,6 +235,7 @@ class BaseSTRIPSLearner(abc.ABC):
                         isub[var] = keep_eff_sub[var]
             for ground_op in utils.all_ground_operators_given_partial(
                     pnad.op, objects, isub):
+                # logging.info("GROUND_OP" + str(ground_op))
                 if len(ground_op.objects) != len(set(ground_op.objects)):
                     continue
                 # If the preconditions don't hold in the segment's
@@ -247,6 +248,11 @@ class BaseSTRIPSLearner(abc.ABC):
                     # If the atoms resulting from apply_operator() don't
                     # all hold in the segment's final atoms, skip.
                     if not next_atoms.issubset(segment.final_atoms):
+                        # logging.info("NEXT ATOMS NOT SUBSET OF SEGMENT FINAL")
+                        # logging.info(f"SEGMENT FINAL ATOMS: {segment.final_atoms}")
+                        # logging.info(f"NEXT ATOMS: {next_atoms}")
+                        # logging.info(f"Set diff next->segment: {next_atoms.difference(segment.final_atoms)}")
+                        # logging.info(f"Set diff segment->next: {segment.final_atoms.difference(next_atoms)}")
                         continue
                     # If the segment has a non-None necessary_add_effects,
                     # and the ground operator's add effects don't fit this,

@@ -26,7 +26,7 @@ def create_demo_data(env: BaseEnv, train_tasks: List[Task],
     """Create offline datasets by collecting demos."""
     assert CFG.demonstrator in ("oracle", "human")
     dataset_fname, dataset_fname_template = utils.create_dataset_filename_str(
-        saving_ground_atoms=False)
+        saving_ground_atoms=False, idx=200, label="fetch")
     os.makedirs(CFG.data_dir, exist_ok=True)
     if CFG.load_data:
         dataset = _create_demo_data_with_loading(env, train_tasks,
@@ -102,11 +102,15 @@ def _create_demo_data_with_loading(env: BaseEnv, train_tasks: List[Task],
         logging.info(f"\n\nLOADED DATASET OF {len(dataset.trajectories)} "
                      "DEMONSTRATIONS")
         return dataset
+    else:
+        logging.info(f"Data load path doesn't exist {dataset_fname}")
     fnames_with_less_data = {}  # used later, in Case 3
+
     for fname in os.listdir(CFG.data_dir):
         regex_match = re.match(dataset_fname_template, fname)
         if not regex_match:
             continue
+        logging.info(regex_match.groups())
         num_train_tasks = int(regex_match.groups()[0])
         assert num_train_tasks != CFG.num_train_tasks  # would be Case 1
         # Case 2: we already have a file with MORE data than we need. Load

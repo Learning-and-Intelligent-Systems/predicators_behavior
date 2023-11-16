@@ -2,7 +2,7 @@
 environment."""
 
 from typing import List, Set
-
+import logging
 from predicators import utils
 from predicators.datasets.demo_only import create_demo_data
 from predicators.datasets.demo_replay import create_demo_replay_data
@@ -19,6 +19,7 @@ def create_dataset(env: BaseEnv, train_tasks: List[Task],
 
     Some or all of this data may be loaded from disk.
     """
+    logging.info(CFG.offline_data_method)
     if CFG.offline_data_method == "demo":
         return create_demo_data(env, train_tasks, known_options)
     if CFG.offline_data_method == "demo+replay":

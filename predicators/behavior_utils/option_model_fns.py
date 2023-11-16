@@ -175,6 +175,8 @@ def create_grasp_option_model(
             else:
                 grasp_obj_body_id = obj_to_grasp.body_id
             # 3.1 Call code that does assisted grasping
+            logging.info("assisted grasping 3.1")
+            logging.info(assisted_grasp_action)
             robot.handle_assisted_grasping(assisted_grasp_action,)
                 # override_ag_data=(grasp_obj_body_id, -1),)
             # 3.2 step the environment a few timesteps to complete grasp
