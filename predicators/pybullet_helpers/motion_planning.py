@@ -13,10 +13,13 @@ from predicators.settings import CFG
 
 
 def run_motion_planning(
-        robot: SingleArmPyBulletRobot, initial_positions: JointPositions,
-        target_positions: JointPositions, collision_bodies: Collection[int],
-        seed: int,
-        physics_client_id: int) -> Optional[Sequence[JointPositions]]:
+    robot: SingleArmPyBulletRobot,
+    initial_positions: JointPositions,
+    target_positions: JointPositions,
+    collision_bodies: Collection[int],
+    seed: int,
+    physics_client_id: int,
+) -> Optional[Sequence[JointPositions]]:
     """Run BiRRT to find a collision-free sequence of joint positions.
 
     Note that this function changes the state of the robot.
@@ -24,8 +27,17 @@ def run_motion_planning(
     rng = np.random.default_rng(seed)
     joint_space = robot.action_space
     joint_space.seed(seed)
-    _sample_fn = lambda _: joint_space.sample()
     num_interp = CFG.pybullet_birrt_extend_num_interp
+
+    def _sample_fn(pt: JointPositions) -> JointPositions:
+        new_pt: JointPositions = list(joint_space.sample())
+        # Don't change the fingers.
+        new_pt[robot.left_finger_joint_idx] = pt[robot.left_finger_joint_idx]
+        new_pt[robot.right_finger_joint_idx] = pt[robot.right_finger_joint_idx]
+        return new_pt
+
+    def _set_state(pt: JointPositions) -> None:
+        robot.set_joints(pt)
 
     def _extend_fn(pt1: JointPositions,
                    pt2: JointPositions) -> Iterator[JointPositions]:
@@ -38,7 +50,7 @@ def run_motion_planning(
             yield list(pt1_arr * (1 - i / num) + pt2_arr * i / num)
 
     def _collision_fn(pt: JointPositions) -> bool:
-        robot.set_joints(pt)
+        _set_state(pt)
         p.performCollisionDetection(physicsClientId=physics_client_id)
         for body in collision_bodies:
             if p.getContactPoints(robot.robot_id,
@@ -48,6 +60,8 @@ def run_motion_planning(
         return False
 
     def _distance_fn(from_pt: JointPositions, to_pt: JointPositions) -> float:
+        # NOTE: only using positions to calculate distance. Should use
+        # orientations as well in the near future.
         from_ee = robot.forward_kinematics(from_pt)
         to_ee = robot.forward_kinematics(to_pt)
         return sum(np.subtract(from_ee, to_ee)**2)

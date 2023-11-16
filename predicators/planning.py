@@ -5,6 +5,7 @@ Mainly, "SeSamE": SEarch-and-SAMple planning, then Execution.
 
 from __future__ import annotations
 
+import curses
 import heapq as hq
 import logging
 import os
@@ -74,18 +75,25 @@ def sesame_plan(
     only consider at most one skeleton, and DiscoveredFailures cannot be
     handled.
     """
+
     if CFG.env == "behavior" and \
-        CFG.behavior_mode == 'iggui':  # pragma: no cover
-        logging.info(  # pylint: disable=logging-not-lazy
-            "VIDEO CREATION MODE: You have 30 seconds to position " +
-            "the iggui window to the location you want for recording.")
+        CFG.behavior_mode == 'iggui' and \
+        CFG.plan_only_eval:  # pragma: no cover
         env = get_or_create_env('behavior')
         assert isinstance(env, BehaviorEnv)
-        start_time = time.time()
-        while time.time() - start_time < 30.0:
+        win = curses.initscr()
+        win.nodelay(True)
+        win.addstr(
+            0, 0,
+            "VIDEO CREATION MODE: You have time to position the iggui window \
+            to the location you want for recording. Type 'q' to indicate you \
+            have finished positioning: ")
+        flag = win.getch()
+        while flag == -1 or chr(flag) != 'q':
             env.igibson_behavior_env.step(np.zeros(env.action_space.shape))
+            flag = win.getch()
+        curses.endwin()
         logging.info("VIDEO CREATION MODE: Starting planning.")
-        logging.info(f"CFG {CFG.sesame_task_planner}")
 
     if CFG.sesame_task_planner == "astar":
         return _sesame_plan_with_astar(
@@ -509,14 +517,14 @@ def run_low_level_search(
             return longest_failed_refinement, False, traj
         assert num_tries[cur_idx] < max_tries[cur_idx]
         # Good debug point #2: if you have a skeleton that you think is
-        # reasonable, but sampling isn't working, print num_tries hsere to
+        # reasonable, but sampling isn't working, print num_tries here to
         # see at what step the backtracking search is getting stuck.
         num_tries[cur_idx] += 1
         state = traj[cur_idx]
         nsrt = skeleton[cur_idx]
         # Ground the NSRT's ParameterizedOption into an _Option.
         # This invokes the NSRT's sampler.
-        option = nsrt.sample_option(state, task.goal, skeleton, rng_sampler)
+        option = nsrt.sample_option(state, task.goal, rng_sampler)
         plan[cur_idx] = option
         # Increment num_samples metric by 1
         metrics["num_samples"] += 1
@@ -570,7 +578,7 @@ def run_low_level_search(
                     # utils.abstract(traj[cur_idx], predicates).
                     if all(a.holds(traj[cur_idx]) for a in expected_atoms):
                         can_continue_on = True
-                        logging.info(f"Success [{option.name}]: Expected Atoms Check Passed!")
+                        # logging.info("Success: Expected Atoms Check Passed!")
                         if cur_idx == len(skeleton):
                             return plan, True, traj  # success!
                     else:
@@ -1004,7 +1012,9 @@ def _sesame_plan_with_fast_downward(
     potentially add effects to null operators, but this ability is not
     implemented here.
     """
-    init_atoms = utils.abstract(task.init, predicates)
+    init_atoms = utils.abstract(task.init,
+                                predicates,
+                                skip_allclose_check=True)
     objects = list(task.init)
     start_time = time.perf_counter()
     # Create the domain and problem strings, then write them to tempfiles.

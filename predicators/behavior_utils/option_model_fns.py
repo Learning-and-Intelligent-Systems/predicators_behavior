@@ -72,21 +72,24 @@ def create_navigate_option_model(
                          f"params {sample_arr}")
 
         if CFG.simulate_nav:
+            # Run a closed-loop controller for navigation.
+            curr_plan = plan[:]
             done_bit = False
             while not done_bit:
                 # Get expected position and orientation from plan.
-                expected_pos = np.array([plan[0][0], plan[0][1], robot_z])
+                expected_pos = np.array(
+                    [curr_plan[0][0], curr_plan[0][1], robot_z])
                 expected_orn = p.getQuaternionFromEuler(
-                    np.array([robot_orn[0], robot_orn[1], plan[0][2]]))
+                    np.array([robot_orn[0], robot_orn[1], curr_plan[0][2]]))
                 # In this case, we're at the final position we wanted to reach.
-                if len(plan) == 1:
+                if len(curr_plan) == 1:
                     done_bit = True
                     logging.info(
                         "PRIMITIVE: navigation policy completed execution!")
                 env.robots[0].set_position_orientation(expected_pos,
                                                        expected_orn)
                 env.step(np.zeros(env.action_space.shape))
-                plan.pop(0)
+                curr_plan.pop(0)
         target_pos = np.array([desired_xpos, desired_ypos, robot_z])
         target_orn = p.getQuaternionFromEuler(
             np.array([robot_orn[0], robot_orn[1], desired_zrot]))
@@ -115,16 +118,29 @@ def create_grasp_option_model(
     def graspObjectOptionModel(_state: State, env: "BehaviorEnv") -> None:
         nonlocal hand_i
         if isinstance(env.robots[0], BehaviorRobot):
-            rh_orig_grasp_postion = env.robots[0].parts["right_hand"].get_position(
-            )
+            nonlocal hand_i
+            rh_orig_grasp_position = env.robots[0].parts[
+                "right_hand"].get_position()
             rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
+
+            # Simulate Arm Movement
+            if CFG.behavior_option_model_rrt:
+                for step in plan:
+                    env.robots[0].parts["right_hand"].set_position_orientation(
+                        step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                    for _ in range(1):
+                        env.step(np.zeros(env.action_space.shape))
 
             # 1 Teleport Hand to Grasp offset location
             env.robots[0].parts["right_hand"].set_position_orientation(
                 rh_final_grasp_postion,
                 p.getQuaternionFromEuler(rh_final_grasp_orn))
 
-            # 3. Close hand and simulate grasp
+            # 1.1 step the environment a few timesteps to update location.
+            for _ in range(3):
+                env.step(np.zeros(env.action_space.shape))
+
+            # 2. Close hand and simulate grasp.
             a = np.zeros(env.action_space.shape, dtype=float)
             a[16] = 1.0
             assisted_grasp_action = np.zeros(28, dtype=float)
@@ -142,14 +158,22 @@ def create_grasp_option_model(
             env.robots[0].parts["right_hand"].handle_assisted_grasping(
                 assisted_grasp_action,
                 override_ag_data=(grasp_obj_body_id, -1),
-                bypass_force_check=True)
+                bypass_force_check=False)
             # 3.2 step the environment a few timesteps to complete grasp
             for _ in range(5):
                 env.step(a)
 
+            # Simulate Arm Movement (Backwards)
+            if CFG.behavior_option_model_rrt:
+                for step in reversed(plan):
+                    env.robots[0].parts["right_hand"].set_position_orientation(
+                        step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                    for _ in range(1):
+                        env.step(np.zeros(env.action_space.shape))
+
             # 4 Move Hand to Original Location
             env.robots[0].parts["right_hand"].set_position_orientation(
-                rh_orig_grasp_postion, rh_orig_grasp_orn)
+                rh_orig_grasp_position, rh_orig_grasp_orn)
             if env.robots[0].parts["right_hand"].object_in_hand is not None:
                 # NOTE: This below line is necessary to update the visualizer.
                 # Also, it only works for URDF objects (but if the object is
@@ -230,15 +254,24 @@ def create_place_option_model(
                     obj_to_place_onto.get_position()).tolist()
                 target_orn = [0, np.pi * 7 / 6, 0]
                 logging.info(f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
-                             "and attempting to " +
-                             f"place ontop {obj_to_place_onto.name} with "
-                             f"params {target_pos}")
+                            "and attempting to " +
+                            f"place ontop {obj_to_place_onto.name} with "
+                            f"params {target_pos}")
+
+            # Simulate Arm Movement
+            if CFG.behavior_option_model_rrt:
+                for step in plan:
+                    env.robots[0].parts["right_hand"].set_position_orientation(
+                        step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                    for _ in range(1):
+                        env.step(np.zeros(env.action_space.shape))
+
             env.robots[0].parts["right_hand"].set_position_orientation(
                 target_pos, p.getQuaternionFromEuler(target_orn))
             env.robots[0].parts["right_hand"].force_release_obj()
             obj_in_hand.set_position_orientation(
                 target_pos, p.getQuaternionFromEuler(target_orn))
-            obj_to_place.force_wakeup()
+            obj_to_place_onto.force_wakeup()
             # this is running a zero action to step simulator
             env.step(np.zeros(env.action_space.shape))
             # reset the released object to zero velocity so it doesn't
@@ -248,11 +281,20 @@ def create_place_option_model(
                 linearVelocity=[0, 0, 0],
                 angularVelocity=[0, 0, 0],
             )
+
+            # Simulate Arm Movement (Backwards)
+            if CFG.behavior_option_model_rrt:
+                for step in reversed(plan):
+                    env.robots[0].parts["right_hand"].set_position_orientation(
+                        step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                    for _ in range(1):
+                        env.step(np.zeros(env.action_space.shape))
+
             env.robots[0].parts["right_hand"].set_position_orientation(
                 rh_orig_grasp_position, rh_orig_grasp_orn)
             # this is running a series of zero action to step simulator
             # to let the object fall into its place
-            for _ in range(15):
+            for _ in range(25):
                 env.step(np.zeros(env.action_space.shape))
         else:
             robot = env.robots[0]
@@ -282,7 +324,7 @@ def create_place_option_model(
             a[10] = 1.0
             for _ in range(5):
                 env.step(a)
-            obj_to_place.force_wakeup()
+            obj_to_place_onto.force_wakeup()
             # this is running a zero action to step simulator
             env.step(np.zeros(env.action_space.shape))
             # reset the released object to zero velocity so it doesn't
@@ -349,6 +391,7 @@ def create_place_option_model(
             if not CFG.behavior_ignore_discover_failures:
                 raise utils.EnvironmentFailure(
                     "collision", {"offending_objects": objs_under})
+            
     return placeOntopObjectOptionModel
 
 
@@ -412,6 +455,16 @@ def create_place_inside_option_model(
     def placeInsideObjectOptionModel(_init_state: State,
                                      env: "BehaviorEnv") -> None:
         if isinstance(env.robots[0], BehaviorRobot):
+            # Simulate Arm Movement
+            if CFG.behavior_option_model_rrt:
+                for step in plan:
+                    env.robots[0].parts[
+                        "right_hand"].set_position_orientation(
+                            step[0:3],
+                            p.getQuaternionFromEuler(step[3:6]))
+                    for _ in range(1):
+                        env.step(np.zeros(env.action_space.shape))
+                        
             obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
             rh_orig_grasp_position = env.robots[0].parts[
                 "right_hand"].get_position()
@@ -487,6 +540,16 @@ def create_place_inside_option_model(
                         angularVelocity=[0, 0, 0],
                     )
                     if isinstance(env.robots[0], BehaviorRobot):
+                        # Simulate Arm Movement (Backwards)
+                        if CFG.behavior_option_model_rrt:
+                            for step in reversed(plan):
+                                env.robots[0].parts[
+                                    "right_hand"].set_position_orientation(
+                                        step[0:3],
+                                        p.getQuaternionFromEuler(step[3:6]))
+                                for _ in range(1):
+                                    env.step(np.zeros(env.action_space.shape))
+
                         env.robots[0].parts["right_hand"].set_position_orientation(
                             rh_orig_grasp_position, rh_orig_grasp_orn)
                     else:
@@ -568,6 +631,17 @@ def create_place_under_option_model(
                             f", {plan[-1][3:6]}) and attempting to " +
                             f"place under to {obj_to_place_under.name} with "
                             f"params {target_pos}")
+                        
+                    # Simulate Arm Movement
+                    if CFG.behavior_option_model_rrt:
+                        for step in plan:
+                            env.robots[0].parts[
+                                "right_hand"].set_position_orientation(
+                                    step[0:3],
+                                    p.getQuaternionFromEuler(step[3:6]))
+                            for _ in range(1):
+                                env.step(np.zeros(env.action_space.shape))
+
                     env.robots[0].parts["right_hand"].force_release_obj()
                     obj_to_place_under.force_wakeup()
                     obj_in_hand.set_position_orientation(
@@ -582,6 +656,18 @@ def create_place_under_option_model(
                         linearVelocity=[0, 0, 0],
                         angularVelocity=[0, 0, 0],
                     )
+
+                    # Simulate Arm Movement (Backwards)
+                    if CFG.behavior_option_model_rrt:
+                        for step in reversed(plan):
+                            env.robots[0].parts[
+                                "right_hand"].set_position_orientation(
+                                    step[0:3],
+                                    p.getQuaternionFromEuler(step[3:6]))
+                            for _ in range(1):
+                                env.step(np.zeros(env.action_space.shape))
+
+
                     env.robots[0].parts["right_hand"].set_position_orientation(
                         rh_orig_grasp_position, rh_orig_grasp_orn)
                     # this is running a series of zero action to step
@@ -691,6 +777,17 @@ def create_place_nextto_option_model(
                             f", {plan[-1][3:6]}) and attempting to " +
                             f"place next to {obj_to_place_nextto.name} with "
                             f"params {target_pos}")
+                        
+                    # Simulate Arm Movement
+                    if CFG.behavior_option_model_rrt:
+                        for step in plan:
+                            env.robots[0].parts[
+                                "right_hand"].set_position_orientation(
+                                    step[0:3],
+                                    p.getQuaternionFromEuler(step[3:6]))
+                            for _ in range(1):
+                                env.step(np.zeros(env.action_space.shape))
+                    
                     env.robots[0].parts["right_hand"].force_release_obj()
                     obj_to_place_nextto.force_wakeup()
                     obj_in_hand.set_position_orientation(
@@ -705,6 +802,18 @@ def create_place_nextto_option_model(
                         linearVelocity=[0, 0, 0],
                         angularVelocity=[0, 0, 0],
                     )
+
+                    # Simulate Arm Movement (Backwards)
+                    if CFG.behavior_option_model_rrt:
+                        for step in reversed(plan):
+                            env.robots[0].parts[
+                                "right_hand"].set_position_orientation(
+                                    step[0:3],
+                                    p.getQuaternionFromEuler(step[3:6]))
+                            for _ in range(1):
+                                env.step(np.zeros(env.action_space.shape))
+
+
                     env.robots[0].parts["right_hand"].set_position_orientation(
                         rh_orig_grasp_position, rh_orig_grasp_orn)
                     # this is running a series of zero action to step

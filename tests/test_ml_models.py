@@ -1,8 +1,6 @@
 """Tests for models."""
 
-import logging
 import time
-from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -174,17 +172,17 @@ def test_mlp_classifier():
     assert prediction
     assert model.predict_proba(np.ones(input_size)) > 0.5
     # Test for early stopping
+    start_time = time.perf_counter()
     model = MLPBinaryClassifier(seed=123,
                                 balance_data=True,
                                 max_train_iters=100000,
                                 learning_rate=1e-2,
-                                n_iter_no_change=-1,
+                                n_iter_no_change=1,
                                 hid_sizes=[32, 32],
                                 n_reinitialize_tries=1,
                                 weight_init="default")
-    with patch.object(logging, "info", return_value=None) as mock_logging_info:
-        model.fit(X, y)
-    assert mock_logging_info.call_count < 5
+    model.fit(X, y)
+    assert time.perf_counter() - start_time < 3, "Didn't early stop"
     # Test with no positive examples.
     num_class_samples = 1000
     X = np.concatenate([

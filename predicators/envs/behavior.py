@@ -586,6 +586,9 @@ class BehaviorEnv(BaseEnv):
         """Sets/resets the igibson_behavior_env."""
         np.random.seed(seed)
         env_creation_attempts = 0
+        save_video = CFG.env == "behavior" and CFG.behavior_save_video
+        if CFG.env == "behavior":
+            task_name = str(CFG.behavior_task_list)[2:-2]
         # NOTE: this while loop is necessary because in some cases
         # when CFG.randomize_init_state is True, creating a new
         # iGibson env may fail and we need to keep trying until
@@ -602,8 +605,10 @@ class BehaviorEnv(BaseEnv):
                 instance_id=task_instance_id,
                 rng=self._rng,
             )
-            self.igibson_behavior_env.step(
-                np.zeros(self.igibson_behavior_env.action_space.shape))
+            self.igibson_behavior_env.step(np.zeros(
+                self.igibson_behavior_env.action_space.shape),
+                                           save_video=save_video,
+                                           task_name=task_name)
             ig_objs_bddl_scope = [
                 self._ig_object_name(obj) for obj in list(
                     self.igibson_behavior_env.task.object_scope.values())
@@ -786,8 +791,8 @@ class BehaviorEnv(BaseEnv):
         obj_closest_point = get_closest_point_on_aabb(robot_pos, obj_aabb[0], obj_aabb[1])
         if isinstance(robot_obj, BehaviorRobot):
             return (np.linalg.norm(  # type: ignore
-                np.array(robot_pos) -
-                np.array(obj_closest_point)) < 2)
+                np.array(robot_obj.get_position()) -
+                np.array(ig_obj.get_position())) < CFG.behavior_closeness_limit)
 
         # Note: these are magic numbers computed from visualizing a scene.
         # It corresponds to a 120 degree section of a cylinder with a hole 
@@ -802,7 +807,6 @@ class BehaviorEnv(BaseEnv):
             gamma += 2 * np.pi
         return check_hand_end_pose(self.igibson_behavior_env, ig_obj,
                                     np.zeros(3, dtype=float), ignore_collisions=True)
-
 
 
     def _reachable_nothing_classifier(
