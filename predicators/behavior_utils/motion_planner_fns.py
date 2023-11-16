@@ -10,7 +10,7 @@ import scipy
 from numpy.random._generator import Generator
 
 from predicators.behavior_utils.behavior_utils import check_nav_end_pose, \
-    get_aabb_volume, get_closest_point_on_aabb, get_scene_body_ids, \
+    get_aabb_volume, get_closest_point_on_aabb, get_relevant_scene_body_ids, \
     reset_and_release_hand
 from predicators.settings import CFG
 from predicators.structs import Array
@@ -24,7 +24,7 @@ try:
         RoomFloor  # pylint: disable=unused-import
     from igibson.objects.articulated_object import URDFObject
     from igibson.utils.behavior_robot_planning_utils import \
-        plan_base_motion_br  # , plan_hand_motion_br
+        plan_base_motion_br, plan_hand_motion_br
 
 except (ImportError, ModuleNotFoundError) as e:
     pass
@@ -124,10 +124,12 @@ def make_navigation_plan(
         valid_position[0][1],
         valid_position[1][2],
     ]
-    if env.use_rrt:
-        obstacles = get_scene_body_ids(env)
+    if CFG.behavior_option_model_rrt:
+        obstacles = get_relevant_scene_body_ids(env)
         if env.robots[0].parts["right_hand"].object_in_hand is not None:
-            obstacles.remove(env.robots[0].parts["right_hand"].object_in_hand)
+            if env.robots[0].parts["right_hand"].object_in_hand in obstacles:
+                obstacles.remove(
+                    env.robots[0].parts["right_hand"].object_in_hand)
         plan = plan_base_motion_br(
             robot=env.robots[0],
             end_conf=end_conf,
@@ -135,6 +137,7 @@ def make_navigation_plan(
             obstacles=obstacles,
             override_sample_fn=lambda: sample_fn(env, rng),
             rng=rng,
+            max_distance=0.01,
         )
         p.restoreState(state)
     else:
@@ -147,6 +150,7 @@ def make_navigation_plan(
         logging.info(f"PRIMITIVE: navigate to {obj.name} with params "
                      f"{pos_offset} failed; birrt failed to sample a plan!")
         return None
+    plan = plan + [end_conf]
 
     p.restoreState(state)
     p.removeState(state)
@@ -221,13 +225,13 @@ def make_grasp_plan(
     x = obj_pos[0] + grasp_offset[0]
     y = obj_pos[1] + grasp_offset[1]
     z = obj_pos[2] + grasp_offset[2]
-    # hand_x, hand_y, hand_z = env.robots[0].parts["right_hand"].get_position()
-    # minx = min(x, hand_x) - 0.5
-    # miny = min(y, hand_y) - 0.5
-    # minz = min(z, hand_z) - 0.5
-    # maxx = max(x, hand_x) + 0.5
-    # maxy = max(y, hand_y) + 0.5
-    # maxz = max(z, hand_z) + 0.5
+    hand_x, hand_y, hand_z = env.robots[0].parts["right_hand"].get_position()
+    minx = min(x, hand_x) - 0.5
+    miny = min(y, hand_y) - 0.5
+    minz = min(z, hand_z) - 0.5
+    maxx = max(x, hand_x) + 0.5
+    maxy = max(y, hand_y) + 0.5
+    maxz = max(z, hand_z) + 0.5
 
     # compute the angle the hand must be in such that it can
     # grasp the object from its current offset position
@@ -275,25 +279,26 @@ def make_grasp_plan(
         euler_angles[2],
     ]
     # For now we are not running rrt with grasp.
-    # if env.use_rrt:
-    #     # plan a motion to the pose [x, y, z, euler_angles[0],
-    #     # euler_angles[1], euler_angles[2]]
-    #     plan = plan_hand_motion_br(
-    #         robot=env.robots[0],
-    #         obj_in_hand=None,
-    #         end_conf=end_conf,
-    #         hand_limits=((minx, miny, minz), (maxx, maxy, maxz)),
-    #         obstacles=get_scene_body_ids(env,
-    #                                      include_self=True,
-    #                                      include_right_hand=True),
-    #         rng=rng,
-    #     )
-    #     p.restoreState(state)
-    # else:
-    pos = env.robots[0].parts["right_hand"].get_position()
-    plan = [[pos[0], pos[1], pos[2]] + list(
-        p.getEulerFromQuaternion(
-            env.robots[0].parts["right_hand"].get_orientation())), end_conf]
+    if CFG.behavior_option_model_rrt:
+        # plan a motion to the pose [x, y, z, euler_angles[0],
+        # euler_angles[1], euler_angles[2]]
+        plan = plan_hand_motion_br(
+            robot=env.robots[0],
+            obj_in_hand=None,
+            end_conf=end_conf,
+            hand_limits=((minx, miny, minz), (maxx, maxy, maxz)),
+            obstacles=get_relevant_scene_body_ids(env,
+                                                  include_self=True,
+                                                  include_right_hand=True),
+            rng=rng,
+        )
+        p.restoreState(state)
+    else:
+        pos = env.robots[0].parts["right_hand"].get_position()
+        plan = [[pos[0], pos[1], pos[2]] + list(
+            p.getEulerFromQuaternion(
+                env.robots[0].parts["right_hand"].get_orientation())),
+                end_conf]
 
     # NOTE: This below line is *VERY* important after the
     # pybullet state is restored. The hands keep an internal
@@ -305,11 +310,12 @@ def make_grasp_plan(
     env.robots[0].parts["left_hand"].set_position(
         env.robots[0].parts["left_hand"].get_position())
 
-    # # If RRT planning fails, fail and return None
-    # if plan is None:
-    #     logging.info(f"PRIMITIVE: grasp {obj.name} fail, failed "
-    #                  f"to find plan to continuous params {grasp_offset}")
-    #     return None
+    # If RRT planning fails, fail and return None
+    if plan is None:
+        logging.info(f"PRIMITIVE: grasp {obj.name} fail, failed "
+                     f"to find plan to continuous params {grasp_offset}")
+        return None
+    plan = plan + [end_conf]
 
     # Grasping Phase 2: Move along the vector from the
     # position the hand ends up in to the object and
@@ -417,17 +423,18 @@ def make_place_plan(
         if obj.get_body_id() == obj_in_hand_idx
     ][0]
     x, y, z = np.add(place_rel_pos, obj.get_position())
-    # hand_x, hand_y, hand_z = env.robots[0].parts["right_hand"].get_position()
+    hand_x, hand_y, hand_z = env.robots[0].parts["right_hand"].get_position()
 
-    # minx = min(x, hand_x) - 1
-    # miny = min(y, hand_y) - 1
-    # minz = min(z, hand_z) - 0.5
-    # maxx = max(x, hand_x) + 1
-    # maxy = max(y, hand_y) + 1
-    # maxz = max(z, hand_z) + 0.5
+    minx = min(x, hand_x) - 1
+    miny = min(y, hand_y) - 1
+    minz = min(z, hand_z) - 0.5
+    maxx = max(x, hand_x) + 1
+    maxy = max(y, hand_y) + 1
+    maxz = max(z, hand_z) + 0.5
 
-    obstacles = get_scene_body_ids(env, include_self=False)
-    obstacles.remove(env.robots[0].parts["right_hand"].object_in_hand)
+    obstacles = get_relevant_scene_body_ids(env, include_self=False)
+    if env.robots[0].parts["right_hand"].object_in_hand in obstacles:
+        obstacles.remove(env.robots[0].parts["right_hand"].object_in_hand)
     end_conf = [
         x,
         y,
@@ -437,22 +444,23 @@ def make_place_plan(
         0,
     ]
     # For now we are not running rrt with place.
-    # if False:
-    #     plan = plan_hand_motion_br(
-    #         robot=env.robots[0],
-    #         obj_in_hand=obj_in_hand,
-    #         end_conf=end_conf,
-    #         hand_limits=((minx, miny, minz), (maxx, maxy, maxz)),
-    #         obstacles=obstacles,
-    #         rng=rng,
-    #     )
-    #     p.restoreState(state)
-    #     p.removeState(state)
-    # else:
-    pos = env.robots[0].parts["right_hand"].get_position()
-    plan = [[pos[0], pos[1], pos[2]] + list(
-        p.getEulerFromQuaternion(
-            env.robots[0].parts["right_hand"].get_orientation())), end_conf]
+    if CFG.behavior_option_model_rrt:
+        plan = plan_hand_motion_br(
+            robot=env.robots[0],
+            obj_in_hand=obj_in_hand,
+            end_conf=end_conf,
+            hand_limits=((minx, miny, minz), (maxx, maxy, maxz)),
+            obstacles=obstacles,
+            rng=rng,
+        )
+        p.restoreState(state)
+        p.removeState(state)
+    else:
+        pos = env.robots[0].parts["right_hand"].get_position()
+        plan = [[pos[0], pos[1], pos[2]] + list(
+            p.getEulerFromQuaternion(
+                env.robots[0].parts["right_hand"].get_orientation())),
+                end_conf]
 
     # NOTE: This below line is *VERY* important after the
     # pybullet state is restored. The hands keep an internal
@@ -464,11 +472,12 @@ def make_place_plan(
     env.robots[0].parts["left_hand"].set_position(
         env.robots[0].parts["left_hand"].get_position())
 
-    # # If RRT planning fails, fail and return None
-    # if plan is None:
-    #     logging.info(f"PRIMITIVE: placeOnTop/inside {obj.name} fail, failed "
-    #                  f"to find plan to continuous params {place_rel_pos}")
-    #     return None
+    # If RRT planning fails, fail and return None
+    if plan is None:
+        logging.info(f"PRIMITIVE: placeOnTop/inside {obj.name} fail, failed "
+                     f"to find plan to continuous params {place_rel_pos}")
+        return None
+    plan = plan + [end_conf]
 
     original_orientation = list(
         p.getEulerFromQuaternion(

@@ -34,6 +34,7 @@ To run grammar search predicate invention (example):
         --seed 0 --excluded_predicates all
 """
 
+import curses
 import logging
 import os
 import sys
@@ -43,6 +44,7 @@ from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
 import dill as pkl
+import numpy as np
 
 from predicators import utils
 from predicators.approaches import ApproachFailure, ApproachTimeout, \
@@ -51,7 +53,7 @@ from predicators.approaches.bilevel_planning_approach import \
     BilevelPlanningApproach
 from predicators.approaches.gnn_approach import GNNApproach
 from predicators.datasets import create_dataset
-from predicators.envs import BaseEnv, create_new_env
+from predicators.envs import BaseEnv, create_new_env, get_or_create_env
 from predicators.envs.behavior import BehaviorEnv
 from predicators.planning import _run_plan_with_option_model
 from predicators.settings import CFG
@@ -113,17 +115,15 @@ def main() -> None:
     # Create the agent (approach).
     approach = create_approach(CFG.approach, preds, options, env.types,
                                env.action_space, stripped_train_tasks)
-    if approach.is_learning_based:
-        # Create the offline dataset. Note that this needs to be done using
-        # the non-stripped train tasks because dataset generation may need
-        # to use the oracle predicates (e.g. demo data generation).
-        offline_dataset = create_dataset(env, train_tasks, options)
-    else:
-        offline_dataset = None
+    # Create the offline dataset. Note that this needs to be done using
+    # the non-stripped train tasks because dataset generation may need
+    # to use the oracle predicates (e.g. demo data generation).
+    offline_dataset = create_dataset(env, train_tasks, options)
+
     # Run the full pipeline.
     _run_pipeline(env, approach, stripped_train_tasks, offline_dataset)
     script_time = time.perf_counter() - script_start
-    if CFG.env == "behavior":  # pragma: no cover
+    if CFG.env == "behavior" and CFG.behavior_save_video:  # pragma: no cover
         assert isinstance(env, BehaviorEnv)
         task_name = str(CFG.behavior_task_list)[2:-2]
         env.igibson_behavior_env.simulator.viewer.make_video(
@@ -342,6 +342,24 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
                 last_plan = approach.get_last_plan()
                 last_traj = approach.get_last_traj()
                 option_model_start_time = time.time()
+                if CFG.env == "behavior" and \
+                    CFG.behavior_mode == 'iggui':  # pragma: no cover
+                    env = get_or_create_env('behavior')
+                    assert isinstance(env, BehaviorEnv)
+                    win = curses.initscr()
+                    win.nodelay(True)
+                    win.addstr(
+                        0, 0,
+                        "VIDEO CREATION MODE: You have time to position the \
+                        iggui window to the location you want for recording. \
+                        Type 'q' to indicate you have finished positioning: ")
+                    flag = win.getch()
+                    while flag == -1 or chr(flag) != 'q':
+                        env.igibson_behavior_env.step(
+                            np.zeros(env.action_space.shape))
+                        flag = win.getch()
+                    curses.endwin()
+                    logging.info("VIDEO CREATION MODE: Starting planning.")
                 traj, solved = _run_plan_with_option_model(
                     task, test_task_idx, approach.get_option_model(),
                     last_plan, last_traj)
@@ -391,6 +409,14 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
             total_suc_time += (solve_time + exec_time)
             make_video = CFG.make_test_videos
             video_file = f"{save_prefix}__task{test_task_idx+1}.mp4"
+            if CFG.env == "behavior":  # pragma: no cover
+                assert isinstance(env, BehaviorEnv)
+                # Step the environment with a dummy action a few
+                # times so that video making doesn't get abruptly
+                # cut off.
+                for _ in range(25):
+                    env.igibson_behavior_env.step(
+                        np.zeros(env.igibson_behavior_env.action_space.shape))
         else:
             if not caught_exception:
                 log_message = "Policy failed to reach goal"
