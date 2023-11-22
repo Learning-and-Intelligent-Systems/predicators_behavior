@@ -61,8 +61,22 @@ from predicators.structs import Dataset, InteractionRequest, \
     InteractionResult, Metrics, Task
 from predicators.teacher import Teacher, TeacherInteractionMonitorWithVideo
 
+
+def ensure_pythonhashseed(seed=0):
+    if os.name == "nt":
+        current_seed = os.environ.get("PYTHONHASHSEED")
+
+        seed = str(seed)
+        if current_seed is None or current_seed != seed:
+            print(f'Setting PYTHONHASHSEED="{seed}"')
+            os.environ["PYTHONHASHSEED"] = seed
+            # restart the current process
+            os.execl(sys.executable, sys.executable, *sys.argv)
+
+
+ensure_pythonhashseed()
 assert os.environ.get("PYTHONHASHSEED") == "0", \
-        "Please add `export PYTHONHASHSEED=0` to your bash profile!"
+    "Please add `export PYTHONHASHSEED=0` to your bash profile!"
 
 
 def main() -> None:
@@ -226,7 +240,7 @@ def _generate_interaction_results(
         video = []
     for request in requests:
         if request.train_task_idx < CFG.max_initial_demos and \
-            not CFG.allow_interaction_in_demo_tasks:
+                not CFG.allow_interaction_in_demo_tasks:
             raise RuntimeError("Interaction requests cannot be on demo tasks "
                                "if allow_interaction_in_demo_tasks is False.")
         monitor = TeacherInteractionMonitorWithVideo(env.render, request,
@@ -278,7 +292,7 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
         try:
             policy = approach.solve(task, timeout=CFG.timeout)
         except (ApproachTimeout, ApproachFailure) as e:
-            logging.info(f"Task {test_task_idx+1} / {len(test_tasks)}: "
+            logging.info(f"Task {test_task_idx + 1} / {len(test_tasks)}: "
                          f"Approach failed to solve with error: {e}")
             if isinstance(e, ApproachTimeout):
                 total_num_solve_timeouts += 1
@@ -288,7 +302,7 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
                 video = utils.create_video_from_partial_refinements(
                     e.info["partial_refinements"], env, "test", test_task_idx,
                     CFG.horizon)
-                outfile = f"{save_prefix}__task{test_task_idx+1}_failure.mp4"
+                outfile = f"{save_prefix}__task{test_task_idx + 1}_failure.mp4"
                 utils.save_video(outfile, video)
             if CFG.crash_on_failure:
                 raise e
@@ -297,10 +311,10 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
         metrics[f"PER_TASK_task{test_task_idx}_solve_time"] = solve_time
         metrics[
             f"PER_TASK_task{test_task_idx}_nodes_created"] = approach.metrics[
-                "total_num_nodes_created"] - curr_num_nodes_created
+                                                                 "total_num_nodes_created"] - curr_num_nodes_created
         metrics[
             f"PER_TASK_task{test_task_idx}_nodes_expanded"] = approach.metrics[
-                "total_num_nodes_expanded"] - curr_num_nodes_expanded
+                                                                  "total_num_nodes_expanded"] - curr_num_nodes_expanded
         curr_num_nodes_created = approach.metrics["total_num_nodes_created"]
         curr_num_nodes_expanded = approach.metrics["total_num_nodes_expanded"]
 
@@ -343,23 +357,23 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
                 last_traj = approach.get_last_traj()
                 option_model_start_time = time.time()
                 if CFG.env == "behavior" and \
-                    CFG.behavior_mode == 'iggui':  # pragma: no cover
+                        CFG.behavior_mode == 'iggui':  # pragma: no cover
                     env = get_or_create_env('behavior')
                     assert isinstance(env, BehaviorEnv)
-                    win = curses.initscr()
-                    win.nodelay(True)
-                    win.addstr(
-                        0, 0,
-                        "VIDEO CREATION MODE: You have time to position the \
-                        iggui window to the location you want for recording. \
-                        Type 'q' to indicate you have finished positioning: ")
-                    flag = win.getch()
-                    while flag == -1 or chr(flag) != 'q':
-                        env.igibson_behavior_env.step(
-                            np.zeros(env.action_space.shape))
-                        flag = win.getch()
-                    curses.endwin()
-                    logging.info("VIDEO CREATION MODE: Starting planning.")
+                    # win = curses.initscr()
+                    # win.nodelay(True)
+                    # win.addstr(
+                    #     0, 0,
+                    #     "VIDEO CREATION MODE MAIN: You have time to position the \
+                    #     iggui window to the location you want for recording. \
+                    #     Type 'q' to indicate you have finished positioning: ")
+                    # flag = win.getch()
+                    # while flag == -1 or chr(flag) != 'q':
+                    #     env.igibson_behavior_env.step(
+                    #         np.zeros(env.action_space.shape))
+                    #     flag = win.getch()
+                    # curses.endwin()
+                    # logging.info("VIDEO CREATION MODE: Starting planning.")
                 traj, solved = _run_plan_with_option_model(
                     task, test_task_idx, approach.get_option_model(),
                     last_plan, last_traj)
@@ -382,7 +396,7 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
             # This is because we cannot save behavior traj_data.
             if not CFG.plan_only_eval and CFG.env != "behavior":
                 # Save the successful trajectory, e.g., for playback on a robot.
-                traj_file = f"{save_prefix}__task{test_task_idx+1}.traj"
+                traj_file = f"{save_prefix}__task{test_task_idx + 1}.traj"
                 traj_file_path = Path(CFG.eval_trajectories_dir) / traj_file
                 # Include the original task too so we know the goal.
                 traj_data = {
@@ -408,7 +422,7 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
             num_solved += 1
             total_suc_time += (solve_time + exec_time)
             make_video = CFG.make_test_videos
-            video_file = f"{save_prefix}__task{test_task_idx+1}.mp4"
+            video_file = f"{save_prefix}__task{test_task_idx + 1}.mp4"
             if CFG.env == "behavior":  # pragma: no cover
                 assert isinstance(env, BehaviorEnv)
                 # Step the environment with a dummy action a few
@@ -423,8 +437,8 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
             if CFG.crash_on_failure:
                 raise RuntimeError(log_message)
             make_video = CFG.make_failure_videos
-            video_file = f"{save_prefix}__task{test_task_idx+1}_failure.mp4"
-        logging.info(f"Task {test_task_idx+1} / {len(test_tasks)}: "
+            video_file = f"{save_prefix}__task{test_task_idx + 1}_failure.mp4"
+        logging.info(f"Task {test_task_idx + 1} / {len(test_tasks)}: "
                      f"{log_message}")
         if make_video:
             assert monitor is not None
@@ -436,11 +450,11 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
                                num_solved if num_solved > 0 else float("inf"))
     metrics["min_num_samples"] = approach.metrics[
         "min_num_samples"] if approach.metrics["min_num_samples"] < float(
-            "inf") else 0
+        "inf") else 0
     metrics["max_num_samples"] = approach.metrics["max_num_samples"]
     metrics["min_skeletons_optimized"] = approach.metrics[
         "min_num_skeletons_optimized"] if approach.metrics[
-            "min_num_skeletons_optimized"] < float("inf") else 0
+                                              "min_num_skeletons_optimized"] < float("inf") else 0
     metrics["max_skeletons_optimized"] = approach.metrics[
         "max_num_skeletons_optimized"]
     metrics["num_solve_timeouts"] = total_num_solve_timeouts
@@ -452,9 +466,9 @@ def _run_testing(env: BaseEnv, approach: BaseApproach) -> Metrics:
     # an average wrt the number of solved tasks, which might be more
     # appropriate for some metrics, e.g. avg_suc_time above.
     for metric_name in [
-            "num_samples", "num_skeletons_optimized", "num_nodes_expanded",
-            "num_nodes_created", "num_nsrts", "num_preds", "plan_length",
-            "num_failures_discovered"
+        "num_samples", "num_skeletons_optimized", "num_nodes_expanded",
+        "num_nodes_created", "num_nsrts", "num_preds", "plan_length",
+        "num_failures_discovered"
     ]:
         total = approach.metrics[f"total_{metric_name}"]
         metrics[f"avg_{metric_name}"] = (

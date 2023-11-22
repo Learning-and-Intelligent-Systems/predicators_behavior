@@ -4,6 +4,7 @@
 import functools
 import itertools
 import json
+import logging
 import os
 from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple, Union
 
@@ -29,11 +30,13 @@ try:
     from igibson.simulator import Simulator  # pylint: disable=unused-import
     from igibson.utils.checkpoint_utils import save_checkpoint
     from igibson.utils.utils import modify_config_file
+
     _BEHAVIOR_IMPORTED = True
     bddl.set_backend("iGibson")  # pylint: disable=no-member
     if not os.path.exists("tmp_behavior_states/"):
         os.makedirs("tmp_behavior_states/")
 except (ImportError, ModuleNotFoundError) as e:
+    print(e)
     _BEHAVIOR_IMPORTED = False
 from gym.spaces import Box
 
@@ -69,7 +72,7 @@ class BehaviorEnv(BaseEnv):
                 "predicators/behavior_utils/task_to_preselected_scenes.json"
             with open(path_to_scene_file, 'rb') as f:
                 self.task_to_preselected_scenes: Dict[str,
-                                                      List[str]] = json.load(f)
+                List[str]] = json.load(f)
         path_to_broken_inst_file = \
             "predicators/behavior_utils/task_to_broken_inst_ids.json"
         with open(path_to_broken_inst_file, 'rb') as f:
@@ -82,13 +85,13 @@ class BehaviorEnv(BaseEnv):
         # select a valid pre-computed scene.
         if len(CFG.behavior_task_list) != 1:
             assert CFG.behavior_train_scene_name == \
-                CFG.behavior_test_scene_name == "all"
+                   CFG.behavior_test_scene_name == "all"
             rng = np.random.default_rng(0)
             self._config_file = modify_config_file(
                 os.path.join(igibson.root_path, CFG.behavior_config_file),
                 CFG.behavior_task_list[0],
                 self.get_random_scene_for_task(CFG.behavior_task_list[0],
-                                               rng), False, CFG.behavior_robot, 
+                                               rng), False, CFG.behavior_robot,
                 CFG.seed)
         else:
             self._config_file = modify_config_file(
@@ -117,7 +120,7 @@ class BehaviorEnv(BaseEnv):
         # a map between task nums and the snapshot id for saving/loading
         # purposes
         self.task_num_task_instance_id_to_igibson_seed: Dict[Tuple[int, int],
-                                                             int] = {}
+        int] = {}
         # Everytime we load a new scene in BEHAVIOR we also need to set
         # the valid options again, because there might be new type combos.
         self.set_options()
@@ -138,25 +141,25 @@ class BehaviorEnv(BaseEnv):
         ]
         option_policy_fns: List[
             Callable[[List[List[float]], List[List[float]]],
-                     Callable[[State, "behavior_env.BehaviorEnv"],
-                              Tuple[Array, bool]]]] = [
-                                  create_navigate_policy, create_grasp_policy,
-                                  create_place_policy, create_dummy_policy
-                              ]
+            Callable[[State, "behavior_env.BehaviorEnv"],
+            Tuple[Array, bool]]]] = [
+            create_navigate_policy, create_grasp_policy,
+            create_place_policy, create_dummy_policy
+        ]
         option_model_fns: List[
             Callable[[List[List[float]], List[List[float]], "URDFObject"],
-                     Callable[[State, "behavior_env.BehaviorEnv"], None]]] = [
-                         create_navigate_option_model,
-                         create_grasp_option_model,
-                         create_place_option_model,
-                         create_open_option_model,
-                         create_close_option_model,
-                         create_place_inside_option_model,
-                         create_toggle_on_option_model,
-                         create_place_nextto_option_model,
-                         create_clean_dusty_option_model,
-                         create_place_under_option_model,
-                     ]
+            Callable[[State, "behavior_env.BehaviorEnv"], None]]] = [
+            create_navigate_option_model,
+            create_grasp_option_model,
+            create_place_option_model,
+            create_open_option_model,
+            create_close_option_model,
+            create_place_inside_option_model,
+            create_toggle_on_option_model,
+            create_place_nextto_option_model,
+            create_clean_dusty_option_model,
+            create_place_under_option_model,
+        ]
 
         # name, planner_fn, option_policy_fn, option_model_fn,
         # param_dim, arity, parameter upper and lower bounds
@@ -193,7 +196,7 @@ class BehaviorEnv(BaseEnv):
                     option_name,
                     types=list(types),
                     params_space=Box(parameter_limits[0], parameter_limits[1],
-                                     (param_dim, )),
+                                     (param_dim,)),
                     planner_fn=planner_fn,
                     policy_fn=policy_fn,
                     option_model_fn=option_model_fn,
@@ -280,7 +283,7 @@ class BehaviorEnv(BaseEnv):
         while len(tasks) < num:
             # BEHAVIOR uses np.random everywhere. This is a somewhat
             # hacky workaround for that.
-            curr_env_seed = rng.integers(0, (2**32) - 1)
+            curr_env_seed = rng.integers(0, (2 ** 32) - 1)
             # ID used to generate scene in BEHAVIOR default scene is 0
             self.task_instance_id = 0
             if not testing:
@@ -307,11 +310,11 @@ class BehaviorEnv(BaseEnv):
                             task_name][scene_name]
                         if testing:
                             while self.task_instance_id in broken_instances[
-                                    'test']:
+                                'test']:
                                 self.task_instance_id = rng.integers(10, 20)
                         else:
                             while self.task_instance_id in broken_instances[
-                                    'train']:
+                                'train']:
                                 self.task_instance_id = rng.integers(0, 10)
                 if len(CFG.behavior_task_list) != 1:
                     self.set_config_by_task_num(self.task_num)
@@ -368,8 +371,8 @@ class BehaviorEnv(BaseEnv):
         goal = set()
         assert len(
             self.igibson_behavior_env.task.ground_goal_state_options) == 1
-        for head_expr in self.igibson_behavior_env.task.\
-            ground_goal_state_options[0]:
+        for head_expr in self.igibson_behavior_env.task. \
+                ground_goal_state_options[0]:
             # BDDL expresses negative goals (such as 'not open').
             # Since our implementation of SeSamE assumes positive preconditions
             # and goals, we must parse these into positive expressions.
@@ -411,25 +414,25 @@ class BehaviorEnv(BaseEnv):
 
         # First, extract predicates from iGibson
         for bddl_name in [
-                "inside",
-                "nextto",
-                "ontop",
-                "under",
-                # "touching",
-                # NOTE: OnFloor(robot, floor) does not evaluate to true
-                # even though it's in the initial BDDL state, because
-                # it uses geometry, and the behaviorbot actually floats
-                # and doesn't touch the floor. But it doesn't matter.
-                "onfloor",
-                # "cooked",
-                # "burnt",
-                # "frozen",
-                # "soaked",
-                "open",
-                # "dusty",
-                # "stained",
-                # "sliced",
-                # "toggled_on", # This pred is broken, changes num of objs
+            "inside",
+            "nextto",
+            "ontop",
+            "under",
+            # "touching",
+            # NOTE: OnFloor(robot, floor) does not evaluate to true
+            # even though it's in the initial BDDL state, because
+            # it uses geometry, and the behaviorbot actually floats
+            # and doesn't touch the floor. But it doesn't matter.
+            "onfloor",
+            # "cooked",
+            # "burnt",
+            # "frozen",
+            # "soaked",
+            "open",
+            # "dusty",
+            # "stained",
+            # "sliced",
+            # "toggled_on", # This pred is broken, changes num of objs
         ]:
             bddl_predicate = SUPPORTED_PREDICATES[bddl_name]
             # We will create one predicate for every combination of types.
@@ -499,13 +502,22 @@ class BehaviorEnv(BaseEnv):
                 continue
             # In the future, we may need other object attributes,
             # but for the moment, we just need position and orientation.
-            obj_type = Type(
-                type_name,
-                [
-                    "pos_x", "pos_y", "pos_z", "orn_0", "orn_1", "orn_2",
-                    "orn_3"
-                ],
-            )
+            if type_name == "agent":
+                obj_type = Type(
+                    type_name,
+                    [
+                        "pos_x", "pos_y", "pos_z", "orn_0", "orn_1", "orn_2",
+                        "orn_3", "hand_pos_x", "hand_pos_y", "hand_pos_z",
+                        "hand_orn_0", "hand_orn_1", "hand_orn_2", "hand_orn_3"
+                    ])
+            else:
+                obj_type = Type(
+                    type_name,
+                    [
+                        "pos_x", "pos_y", "pos_z", "orn_0", "orn_1", "orn_2",
+                        "orn_3", "bbox_0", "bbox_1", "bbox_2"
+                    ],
+                )
             self._type_name_to_type[type_name] = obj_type
 
         return set(self._type_name_to_type.values())
@@ -542,11 +554,11 @@ class BehaviorEnv(BaseEnv):
     def action_space(self) -> Box:
         # 17-dimensional, between -1 and 1
         if isinstance(self.igibson_behavior_env.robots[0], BehaviorRobot):
-            assert self.igibson_behavior_env.action_space.shape == (17, )
+            assert self.igibson_behavior_env.action_space.shape == (17,)
             assert np.all(self.igibson_behavior_env.action_space.low == -1)
             assert np.all(self.igibson_behavior_env.action_space.high == 1)
         elif isinstance(self.igibson_behavior_env.robots[0], FetchGripper):
-            assert self.igibson_behavior_env.action_space.shape == (11, )
+            assert self.igibson_behavior_env.action_space.shape == (11,)
             assert np.all(self.igibson_behavior_env.action_space.low == -1)
             assert np.all(self.igibson_behavior_env.action_space.high == 1)
         else:
@@ -607,8 +619,8 @@ class BehaviorEnv(BaseEnv):
             )
             self.igibson_behavior_env.step(np.zeros(
                 self.igibson_behavior_env.action_space.shape),
-                                           save_video=save_video,
-                                           task_name=task_name)
+                save_video=save_video,
+                task_name=task_name)
             ig_objs_bddl_scope = [
                 self._ig_object_name(obj) for obj in list(
                     self.igibson_behavior_env.task.object_scope.values())
@@ -677,11 +689,36 @@ class BehaviorEnv(BaseEnv):
             obj = self._ig_object_to_object(ig_obj)
             # In the future, we may need other object attributes,
             # but for the moment, we just need position and orientation.
-            obj_state = np.hstack([
-                ig_obj.get_position(),
-                ig_obj.get_orientation(),
-            ])
+            assert not hasattr(ig_obj, "bounding_box") or ig_obj.bounding_box is not None or isinstance(ig_obj, RoomFloor), \
+                "We assume only RoomFloors have no bbox"
+
+            if isinstance(ig_obj, (BRBody, FetchGripper)):
+                robot_obj = self.igibson_behavior_env.robots[0]
+                obj_state = np.hstack([
+                    robot_obj.get_position(),
+                    robot_obj.get_orientation(),
+                    robot_obj.parts["gripper_link"].get_position(),
+                    robot_obj.parts["gripper_link"].get_orientation()
+                ])
+            elif isinstance(ig_obj, (BRBody, BehaviorRobot)):
+                robot_obj = self.igibson_behavior_env.robots[0]
+                obj_state = np.hstack([
+                    robot_obj.get_position(),
+                    robot_obj.get_orientation(),
+                    robot_obj.parts["right_hand"].get_position(),
+                    robot_obj.parts["right_hand"].get_orientation()
+                ])
+            else:
+                obj_state = np.hstack([
+                    ig_obj.get_position(),
+                    ig_obj.get_orientation(),
+                    np.ones(3) if not hasattr(ig_obj, "bounding_box") or ig_obj.bounding_box is None else ig_obj.bounding_box
+                ])
+
             state_data[obj] = obj_state
+            # logging.info(obj_state.shape)
+            # logging.info(bounding_box)
+            #
 
         # NOTE: we set simulator state to none as a 'dummy' value.
         # we should never load a simulator state that was saved when
@@ -704,8 +741,8 @@ class BehaviorEnv(BaseEnv):
             f"{self.task_num}-{self.task_instance_id}-{simulator_state}")
 
     def _create_classifier_from_bddl(
-        self,
-        bddl_predicate: "bddl.AtomicFormula",
+            self,
+            bddl_predicate: "bddl.AtomicFormula",
     ) -> Callable[[State, Sequence[Object]], bool]:
 
         def _classifier(s: State,
@@ -750,7 +787,7 @@ class BehaviorEnv(BaseEnv):
         # don't have associated simulator states and we thus cannot check
         # `allclose` or load...
         if CFG.approach == "gnn_option_policy" and not \
-            CFG.gnn_option_policy_solve_with_shooting:
+                CFG.gnn_option_policy_solve_with_shooting:
             return
         # Additionally, if this function has been called with
         # skip_allclose_check set to true, then we should simply
@@ -806,8 +843,7 @@ class BehaviorEnv(BaseEnv):
         elif gamma <= -np.pi:
             gamma += 2 * np.pi
         return check_hand_end_pose(self.igibson_behavior_env, ig_obj,
-                                    np.zeros(3, dtype=float), ignore_collisions=True)
-
+                                   np.zeros(3, dtype=float), ignore_collisions=True)
 
     def _reachable_nothing_classifier(
             self,
@@ -1007,12 +1043,12 @@ def make_behavior_option(
                 "URDFObject", "RoomFloor"], Array, Optional[Generator]
         ], Optional[Tuple[List[List[float]], List[List[float]]]]],
         policy_fn: Callable[[List[List[float]], List[List[float]]],
-                            Callable[[State, "behavior_env.BehaviorEnv"],
-                                     Tuple[Array, bool]]],
+        Callable[[State, "behavior_env.BehaviorEnv"],
+        Tuple[Array, bool]]],
         option_model_fn: Callable[
             [List[List[float]], List[List[float]], "URDFObject"],
             Callable[[State, "behavior_env.BehaviorEnv"],
-                     None]], rng: Generator) -> ParameterizedOption:
+            None]], rng: Generator) -> ParameterizedOption:
     """Makes an option for a BEHAVIOR env using custom implemented
     controller_fn."""
 

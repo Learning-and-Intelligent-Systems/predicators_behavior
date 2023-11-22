@@ -149,7 +149,7 @@ def get_ground_atoms_dataset(
     If creating a new one, then save a ground atoms dataset file.
     """
     dataset_fname, _ = utils.create_dataset_filename_str(
-        saving_ground_atoms=True, online_learning_cycle=online_learning_cycle, idx=200, label="fetch")
+        saving_ground_atoms=True, online_learning_cycle=online_learning_cycle, idx=1, label="fetch")
     # If CFG.load_atoms is set, then try to create a GroundAtomTrajectory
     # by loading sets of GroundAtoms directly from a saved file.
     if CFG.load_atoms:
@@ -170,7 +170,7 @@ def get_ground_atoms_dataset(
                 # Since we save ground atoms for behavior with dummy
                 # classifiers, we need to restore the correct classifers.
                 for ground_atom_seq in ground_atom_dataset_atoms:
-                    logging.info(ground_atom_seq)
+                    #logging.info(ground_atom_seq)
                     new_ground_atom_seq = []
                     for ground_atom_set in ground_atom_seq:
                         new_ground_atom_set = {

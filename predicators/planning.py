@@ -75,24 +75,30 @@ def sesame_plan(
     only consider at most one skeleton, and DiscoveredFailures cannot be
     handled.
     """
-
+    logging.info("sesame_plan_called")
     if CFG.env == "behavior" and \
         CFG.behavior_mode == 'iggui' and \
         CFG.plan_only_eval:  # pragma: no cover
         env = get_or_create_env('behavior')
+        logging.info("env got/created")
         assert isinstance(env, BehaviorEnv)
-        win = curses.initscr()
-        win.nodelay(True)
-        win.addstr(
-            0, 0,
-            "VIDEO CREATION MODE: You have time to position the iggui window \
-            to the location you want for recording. Type 'q' to indicate you \
-            have finished positioning: ")
-        flag = win.getch()
-        while flag == -1 or chr(flag) != 'q':
-            env.igibson_behavior_env.step(np.zeros(env.action_space.shape))
-            flag = win.getch()
-        curses.endwin()
+        # win = curses.initscr()
+        # logging.info("curses init")
+        # win.nodelay(True)
+        # win.addstr(
+        #     0, 0,
+        #     "VIDEO CREATION MODE PLANNING: You have time to position the iggui window \
+        #     to the location you want for recording. Type 'q' to indicate you \
+        #     have finished positioning: ")
+        # curses.echo()
+        # flag = win.getch()
+        # while flag == -1 or chr(flag) != 'q':
+        #     curses.echo()
+        #     env.igibson_behavior_env.step(np.zeros(env.action_space.shape))
+        #     flag = win.getch()
+        #     curses.echo()
+        # curses.endwin()
+
         logging.info("VIDEO CREATION MODE: Starting planning.")
 
     if CFG.sesame_task_planner == "astar":
