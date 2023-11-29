@@ -36,7 +36,6 @@ except (ImportError, ModuleNotFoundError) as e:
 # NavigateToOptionModel.
 prng = RandomState(10000)
 
-
 def create_navigate_option_model(
         plan: List[List[float]], _original_orientation: List[List[float]],
         _obj_to_nav_to: "URDFObject"
@@ -45,7 +44,7 @@ def create_navigate_option_model(
     plan, which is a list of 3-element lists each containing a series of (x, y,
     rot) waypoints for the robot to pass through."""
 
-    def navigateToOptionModel(_init_state: State, env: "BehaviorEnv") -> None:
+    def navigateToOptionModel(_init_state: State, env: "BehaviorEnv", distribution_samples=None) -> None:
         robot_z = env.robots[0].get_position()[2]
         robot_orn = p.getEulerFromQuaternion(env.robots[0].get_orientation())
         # If we're not overriding the learned samplers, then we will directly
@@ -68,29 +67,40 @@ def create_navigate_option_model(
             #              f"navigate to {_obj_to_nav_to.name} with "
             #              f"params {sample_arr}")
 
+        if distribution_samples is not None:
+            obj_pos = _obj_to_nav_to.get_position()
+            x = obj_pos[0] + distribution_samples[0]
+            y = obj_pos[1] + distribution_samples[1]
+            z = np.ones_like(x) * robot_z
+            print("For navigation: ", distribution_samples.shape)
+            # add_points = list(zip(*(x, y, z)))
+            for sphere, x_i, y_i, z_i in zip(env.viz_spheres, x, y, z):
+                sphere.set_position((x_i, y_i, z_i))
+
         if CFG.simulate_nav:
+            curr_plan = plan[:]
             done_bit = False
             while not done_bit:
-                # Get expected position and orientation from plan.
-                expected_pos = np.array([plan[0][0], plan[0][1], robot_z])
+                # Get expected position and orientation from curr_plan.
+                expected_pos = np.array([curr_plan[0][0], curr_plan[0][1], robot_z])
                 expected_orn = p.getQuaternionFromEuler(
-                    np.array([robot_orn[0], robot_orn[1], plan[0][2]]))
+                    np.array([robot_orn[0], robot_orn[1], curr_plan[0][2]]))
                 # In this case, we're at the final position we wanted to reach.
-                if len(plan) == 1:
+                if len(curr_plan) == 1:
                     done_bit = True
                     # logging.info(
                     #     "PRIMITIVE: navigation policy completed execution!")
                 env.robots[0].set_position_orientation(expected_pos,
                                                        expected_orn)
-                env.step(np.zeros(env.action_space.shape))
-                plan.pop(0)
+                env.step(np.zeros(env.action_space.shape))#, add_points=add_points)
+                curr_plan.pop(0)
         target_pos = np.array([desired_xpos, desired_ypos, robot_z])
         target_orn = p.getQuaternionFromEuler(
             np.array([robot_orn[0], robot_orn[1], desired_zrot]))
         env.robots[0].set_position_orientation(target_pos, target_orn)
         # this is running a zero action to step simulator so
         # the environment updates to the correct final position
-        env.step(np.zeros(env.action_space.shape))
+        env.step(np.zeros(env.action_space.shape))#, add_points=add_points)
 
     return navigateToOptionModel
 
@@ -109,11 +119,22 @@ def create_grasp_option_model(
     rh_final_grasp_postion = plan[hand_i][0:3]
     rh_final_grasp_orn = plan[hand_i][3:6]
 
-    def graspObjectOptionModel(_state: State, env: "BehaviorEnv") -> None:
+    def graspObjectOptionModel(_state: State, env: "BehaviorEnv", distribution_samples=None) -> None:
         nonlocal hand_i
         rh_orig_grasp_position = env.robots[0].parts[
             "right_hand"].get_position()
         rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
+
+
+        if distribution_samples is not None:
+            obj_pos = obj_to_grasp.get_position()
+            print("For grasp: ", distribution_samples.shape)
+            x = obj_pos[0] + distribution_samples[0]
+            y = obj_pos[1] + distribution_samples[1]
+            z = obj_pos[2] + distribution_samples[2]
+            # add_points = list(zip(*(x, y, z)))
+            for sphere, x_i, y_i, z_i in zip(env.viz_spheres, x, y, z):
+                sphere.set_position((x_i, y_i, z_i))
 
         # 1 Teleport Hand to Grasp offset location
         env.robots[0].parts["right_hand"].set_position_orientation(
@@ -141,7 +162,7 @@ def create_grasp_option_model(
             bypass_force_check=True)
         # 3.2 step the environment a few timesteps to complete grasp
         for _ in range(5):
-            env.step(a)
+            env.step(a)#, add_points=add_points)
 
         # 4 Move Hand to Original Location
         env.robots[0].parts["right_hand"].set_position_orientation(
@@ -153,7 +174,7 @@ def create_grasp_option_model(
             obj_to_grasp.force_wakeup()
         # Step a zero-action in the environment to update the visuals of the
         # environment.
-        env.step(np.zeros(env.action_space.shape))
+        env.step(np.zeros(env.action_space.shape))#, add_points=add_points)
 
     return graspObjectOptionModel
 
@@ -167,7 +188,7 @@ def create_place_option_model(
     pitch, yaw) waypoints for the hand to pass through."""
 
     def placeOntopObjectOptionModel(_init_state: State,
-                                    env: "BehaviorEnv") -> None:
+                                    env: "BehaviorEnv", distribution_samples=None) -> None:
         obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
         obj_in_hand = [
             obj for obj in env.scene.get_objects()
@@ -176,6 +197,18 @@ def create_place_option_model(
         rh_orig_grasp_position = env.robots[0].parts[
             "right_hand"].get_position()
         rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
+        
+        if distribution_samples is not None:
+            obj_pos = obj_to_place_onto.get_position()
+            print("For place: ", distribution_samples.shape)
+            x = obj_pos[0] + distribution_samples[0]
+            y = obj_pos[1] + distribution_samples[1]
+            z = obj_pos[2] + distribution_samples[2] + 0.2
+            # add_points = list(zip(*(x, y, z)))
+            for sphere, x_i, y_i, z_i in zip(env.viz_spheres, x, y, z):
+                sphere.set_position((x_i, y_i, z_i))
+
+
         # If we're not overriding the learned samplers, then we will directly
         # use the elements of `plan`, which in turn use the outputs of the
         # learned samplers. Otherwise, we will ignore these and use our
@@ -277,7 +310,7 @@ def create_open_option_model(
     """Instantiates and returns an open option model given a dummy plan."""
     del plan
 
-    def openObjectOptionModel(_init_state: State, env: "BehaviorEnv") -> None:
+    def openObjectOptionModel(_init_state: State, env: "BehaviorEnv", distribution_samples=None) -> None:
         # logging.info(f"PRIMITIVE: Attempting to open {obj_to_open.name}")
         if np.linalg.norm(
                 np.array(obj_to_open.get_position()) -
@@ -304,7 +337,7 @@ def create_close_option_model(
     """Instantiates and returns an close option model given a dummy plan."""
     del plan
 
-    def closeObjectOptionModel(_init_state: State, env: "BehaviorEnv") -> None:
+    def closeObjectOptionModel(_init_state: State, env: "BehaviorEnv", distribution_samples=None) -> None:
         # logging.info(f"PRIMITIVE: Attempting to close {obj_to_close.name}")
         if np.linalg.norm(
                 np.array(obj_to_close.get_position()) -
@@ -333,7 +366,7 @@ def create_place_inside_option_model(
     plan."""
 
     def placeInsideObjectOptionModel(_init_state: State,
-                                     env: "BehaviorEnv") -> None:
+                                     env: "BehaviorEnv", distribution_samples=None) -> None:
         obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
         obj_in_hand = [
             obj for obj in env.scene.get_objects()
@@ -342,6 +375,16 @@ def create_place_inside_option_model(
         rh_orig_grasp_position = env.robots[0].parts[
             "right_hand"].get_position()
         rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
+        
+        if distribution_samples is not None:
+            obj_pos = obj_to_place_into.get_position()
+            x = obj_pos[0] + distribution_samples[0]
+            y = obj_pos[1] + distribution_samples[1]
+            z = obj_pos[2] + distribution_samples[2]
+            # add_points = list(zip(*(x, y, z)))
+            for sphere, x_i, y_i, z_i in zip(env.viz_spheres, x, y, z):
+                sphere.set_position((x_i, y_i, z_i))
+        
         if obj_in_hand is not None and obj_in_hand != obj_to_place_into and \
             isinstance(obj_to_place_into, URDFObject):
             # logging.info(
@@ -429,7 +472,7 @@ def create_place_under_option_model(
     plan."""
 
     def placeUnderObjectOptionModel(_init_state: State,
-                                    env: "BehaviorEnv") -> None:
+                                    env: "BehaviorEnv", distribution_samples=None) -> None:
         obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
         obj_in_hand = [
             obj for obj in env.scene.get_objects()
@@ -438,6 +481,14 @@ def create_place_under_option_model(
         rh_orig_grasp_position = env.robots[0].parts[
             "right_hand"].get_position()
         rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
+        if distribution_samples is not None:
+            obj_pos = obj_to_place_under.get_position()
+            x = obj_pos[0] + distribution_samples[0]
+            y = obj_pos[1] + distribution_samples[1]
+            z = obj_pos[2] + distribution_samples[2]
+            # add_points = list(zip(*(x, y, z)))
+            for sphere, x_i, y_i, z_i in zip(env.viz_spheres, x, y, z):
+                sphere.set_position((x_i, y_i, z_i))
         if obj_in_hand is not None and obj_in_hand != obj_to_place_under and \
             isinstance(obj_to_place_under, URDFObject):
             # logging.info(
@@ -526,7 +577,7 @@ def create_toggle_on_option_model(
     del plan
 
     def toggleOnObjectOptionModel(_init_state: State,
-                                  env: "BehaviorEnv") -> None:
+                                  env: "BehaviorEnv", distribution_samples=None) -> None:
         # logging.info(
             # f"PRIMITIVE: Attempting to toggle on {obj_to_toggled_on.name}")
         if np.linalg.norm(
@@ -558,7 +609,7 @@ def create_place_nextto_option_model(
     plan."""
 
     def placeNextToObjectOptionModel(_init_state: State,
-                                     env: "BehaviorEnv") -> None:
+                                     env: "BehaviorEnv", distribution_samples=None) -> None:
         obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
         obj_in_hand = [
             obj for obj in env.scene.get_objects()
@@ -656,7 +707,7 @@ def create_clean_dusty_option_model(
     del plan
 
     def cleanDustyObjectOptionModel(_init_state: State,
-                                    env: "BehaviorEnv") -> None:
+                                    env: "BehaviorEnv", distribution_samples=None) -> None:
         # logging.info(f"PRIMITIVE: Attempting to clean {obj_to_clean.name}")
         if np.linalg.norm(
                 np.array(obj_to_clean.get_position()) -

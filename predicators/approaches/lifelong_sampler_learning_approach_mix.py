@@ -1029,7 +1029,8 @@ class _LearnedSampler:
 
     def sampler(self, state: State, goal: Set[GroundAtom],
                 rng: np.random.Generator, objects: Sequence[Object],
-                return_failed_samples: Optional[bool] = False) -> Array:
+                return_failed_samples: Optional[bool] = False,
+                return_distribution_samples: Optional[bool] = False) -> Array:
         """The sampler corresponding to the given models.
 
         May be used as the _sampler field in an NSRT.
@@ -1051,7 +1052,7 @@ class _LearnedSampler:
                     return np.array(self._generic_ebm.predict_sample(x, rng),
                                      dtype=self._param_option.params_space.dtype), 1
                 # return self._original_sampler(state, goal, rng, objects, max_internal_samples=1)
-            return self._original_sampler(state, goal, rng, objects)
+            return self._original_sampler(state, goal, rng, objects, return_distribution_samples=return_distribution_samples)
         
         if self._generic_ebm is None:
             num_samplers = 2
@@ -1097,6 +1098,7 @@ class _LearnedSampler:
                 params = np.array(self._ebm.predict_sample(x, rng),
                                   dtype=self._param_option.params_space.dtype)
         elif chosen_sampler_idx == 1:
+            raise ValueError("I thought I'd made this 0 probability")
             params = self._original_sampler(state, goal, rng, objects, max_internal_samples=1)[0]
         else:
             if CFG.ebm_aux_training is not None:# and CFG.ebm_aux_training.startswith('geometry'):
@@ -1104,4 +1106,21 @@ class _LearnedSampler:
             else:
                 params = np.array(self._generic_ebm.predict_sample(x, rng),
                                   dtype=self._param_option.params_space.dtype)
+
+        if return_distribution_samples:
+            distribution_ebm = self._ebm.predict_samples(x, rng, CFG.behavior_distribution_viz_num_samples)
+            aux = np.array([_aux_labels(self._name, x, a) for a in distribution_ebm])
+            ebm_square_err = self._ebm.aux_square_error(np.tile(x.reshape(1, -1), (aux.shape[0], 1)), distribution_ebm, aux)
+            ebm_err = np.sqrt(np.sum(ebm_square_err, axis=1, keepdims=True))
+
+            distribution_generic_ebm = self._generic_ebm.predict_samples(x, rng, CFG.behavior_distribution_viz_num_samples)
+            aux = np.array([_aux_labels(self._name, x, a) for a in distribution_ebm])
+            generic_ebm_square_err = self._ebm.aux_square_error(np.tile(x.reshape(1, -1), (aux.shape[0], 1)), distribution_generic_ebm, aux)
+            generic_ebm_err = np.sqrt(np.sum(generic_ebm_square_err, axis=1, keepdims=True))
+            choice_probabilities = 1 / np.c_[ebm_err + 1e-6, generic_ebm_err + 1e-6]
+
+            choices = (choice_probabilities.cumsum(1) > rng.random(choice_probabilities.shape[0])[:,None]).argmax(1, keepdims=True)
+            distribution_samples = np.where(choices == 0, distribution_ebm, distribution_generic_ebm)
+            return params, 1, distribution_samples.T
+
         return params, 1

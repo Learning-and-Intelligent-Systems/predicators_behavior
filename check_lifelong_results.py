@@ -96,6 +96,10 @@ for n_tasks  in num_tasks_per_cycle_list:
         plt.plot(samples[model,approach].mean(axis=0).cumsum(axis=0), successes[model,approach].mean(axis=0), label=label, linewidth=4)
         plt.figure(2)
         plt.plot(samples[model,approach].mean(axis=0).cumsum(axis=0), successes[model,approach].mean(axis=0).cumsum(axis=0), label=label, linewidth=4)
+        np.savetxt(f'plot_samples_{model}_{approach}.csv', samples[model, approach].mean(axis=0).cumsum(axis=0))
+        np.savetxt(f'plot_solved_{model}_{approach}.csv', successes[model, approach].mean(axis=0).cumsum(axis=0))
+
+
         plt.figure(3)
         div = np.full(samples[model, approach].shape[1], n_tasks)
         div[0] = burnin

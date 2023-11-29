@@ -10,6 +10,7 @@ import logging
 
 import matplotlib
 import numpy as np
+import pybullet as p
 from numpy.random._generator import Generator
 from predicators.mpi_utils import proc_id, broadcast_object, num_procs
 from predicators.settings import CFG
@@ -140,6 +141,7 @@ class BehaviorEnv(BaseEnv):
         self.set_igibson_behavior_env(task_num=self.task_num,
                                       task_instance_id=self.task_instance_id,
                                       seed=self._seed)
+
         self._type_name_to_type: Dict[str, Type] = {}
         # a map between task nums and the snapshot id for saving/loading
         # purposes
@@ -622,6 +624,9 @@ class BehaviorEnv(BaseEnv):
         """Sets/resets the igibson_behavior_env."""
         np.random.seed(seed)
         env_creation_attempts = 0
+        save_video = CFG.env == "behavior" and CFG.behavior_save_video
+        if CFG.env == "behavior":
+            task_name = str(CFG.behavior_task_list)[2:-2]        
         # NOTE: this while loop is necessary because in some cases
         # when CFG.randomize_init_state is True, creating a new
         # iGibson env may fail and we need to keep trying until
@@ -637,9 +642,12 @@ class BehaviorEnv(BaseEnv):
                 action_filter="mobile_manipulation",
                 instance_id=task_instance_id,
                 rng=self._rng,
+                num_viz_spheres=CFG.behavior_distribution_viz_num_samples
             )
-            self.igibson_behavior_env.step(
-                np.zeros(self.igibson_behavior_env.action_space.shape))
+            self.igibson_behavior_env.step(np.zeros(
+                self.igibson_behavior_env.action_space.shape),
+                                           save_video=save_video,
+                                           task_name=task_name)
             ig_objs_bddl_scope = [
                 self._ig_object_name(obj) for obj in list(
                     self.igibson_behavior_env.task.object_scope.values())
@@ -828,9 +836,22 @@ class BehaviorEnv(BaseEnv):
         # appear in any preconditions.
         if ig_obj.name == "agent":
             return False
+
+        robot_x, robot_y, _ = robot_obj.get_position()
+        obj_x, obj_y, _ = ig_obj.get_position()
+        _, _, robot_yaw = p.getEulerFromQuaternion(robot_obj.get_orientation())
+
+        facing_yaw = np.arctan2(robot_y - obj_y, robot_x - obj_x) - np.pi
+        yaw_delta = robot_yaw - facing_yaw
+        while yaw_delta > np.pi:
+            yaw_delta -= (2 * np.pi)
+        while yaw_delta < -np.pi:
+            yaw_delta += (2 * np.pi)
+        assert -np.pi <= yaw_delta <= np.pi
+        facing = abs(yaw_delta) < (30 * np.pi / 180)
         return (np.linalg.norm(  # type: ignore
             np.array(robot_obj.get_position()) -
-            np.array(ig_obj.get_position())) < 2)
+            np.array(ig_obj.get_position())) < 2 and facing)
 
     def _reachable_nothing_classifier(
             self,
@@ -1056,7 +1077,7 @@ def make_behavior_option(
         return Action(action_arr)
 
     def initiable(state: State, memory: Dict, objects: Sequence[Object],
-                  params: Array) -> bool:
+                  params: Array, distribution_samples: Optional[Array] = None) -> bool:
         # Neccessary to make picklable.
         from predicators.envs import \
             get_or_create_env  # pylint: disable=import-outside-toplevel
@@ -1083,7 +1104,8 @@ def make_behavior_option(
         planner_result = planner_fn(env.igibson_behavior_env,
                                     igo[0],
                                     params,
-                                    rng=rng)  # type: ignore
+                                    rng=rng,
+                                    distribution_samples=distribution_samples)  # type: ignore
         if planner_result is not None:
             # We can unpack the planner result into the rrt_plan and the
             # original orientation of the robot or hand.

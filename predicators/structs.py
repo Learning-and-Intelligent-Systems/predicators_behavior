@@ -492,7 +492,8 @@ class ParameterizedOption:
     def __hash__(self) -> int:
         return self._hash
 
-    def ground(self, objects: Sequence[Object], params: Array) -> _Option:
+    def ground(self, objects: Sequence[Object], params: Array, 
+               distribution_samples: Optional[Array] = None) -> _Option:
         """Ground into an Option, given objects and parameter values."""
         assert len(objects) == len(self.types)
         for obj, t in zip(objects, self.types):
@@ -503,12 +504,13 @@ class ParameterizedOption:
         return _Option(
             self.name,
             lambda s: self.policy(s, memory, objects, params),
-            initiable=lambda s: self.initiable(s, memory, objects, params),
+            _initiable=lambda s, dist: self.initiable(s, memory, objects, params, dist),
             terminal=lambda s: self.terminal(s, memory, objects, params),
             parent=self,
             objects=objects,
             params=params,
-            memory=memory)
+            memory=memory,
+            distribution_samples=distribution_samples)
 
 
 @dataclass(eq=False)
@@ -523,7 +525,7 @@ class _Option:
     _policy: Callable[[State], Action] = field(repr=False)
     # An initiation classifier maps a state to a bool, which is True
     # iff the option can start now.
-    initiable: Callable[[State], bool] = field(repr=False)
+    _initiable: Callable[[State], bool] = field(repr=False)
     # A termination condition maps a state to a bool, which is True
     # iff the option should terminate now.
     terminal: Callable[[State], bool] = field(repr=False)
@@ -535,12 +537,16 @@ class _Option:
     params: Array
     # The memory dictionary for this option.
     memory: Dict = field(repr=False)
+    distribution_samples: Optional[Array] = field(repr=False, default=None)
 
     def policy(self, state: State) -> Action:
         """Call the policy and set the action's option."""
         action = self._policy(state)
         action.set_option(self)
         return action
+
+    def initiable(self, state: state) -> bool:
+        return self._initiable(state, self.distribution_samples)
 
 
 DummyOption: _Option = ParameterizedOption(
@@ -967,21 +973,28 @@ class _GroundNSRT:
         """
         # Note that the sampler takes in ALL self.objects, not just the subset
         # self.option_objs of objects that are passed into the option.
+        store_distribution_samples = CFG.behavior_save_video
         if return_failed_options:
             assert return_internal_samples
-        params = self._sampler(state, goal, rng, self.objects, return_failed_samples=return_failed_options)
+        params = self._sampler(state, goal, rng, self.objects, return_failed_samples=return_failed_options, 
+            return_distribution_samples=store_distribution_samples)
         if isinstance(params, tuple):
-            if return_failed_options:
+            if return_failed_options and store_distribution_samples:
+                params, internal_samples, failed_samples, distribution_samples = params
+            elif return_failed_options:
                 params, internal_samples, failed_samples = params
-                # import logging
-                # logging.info(f"Params size in sample_option: ({params.shape}), {[s.shape for s in failed_samples]}")
+            elif store_distribution_samples:
+                params, internal_samples, distribution_samples = params
             else:
                 params, internal_samples = params
         # Clip the params into the params_space of self.option, for safety.
         low = self.option.params_space.low
         high = self.option.params_space.high
         params = np.clip(params, low, high)
-        option = self.option.ground(self.option_objs, params)
+        if store_distribution_samples:
+            option = self.option.ground(self.option_objs, params, distribution_samples)
+        else:
+            option = self.option.ground(self.option_objs, params)
         if return_internal_samples:
             if return_failed_options:
                 failed_options = [self.option.ground(self.option_objs, np.clip(p, low, high)) for p in failed_samples]

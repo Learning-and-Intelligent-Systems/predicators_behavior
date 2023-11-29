@@ -120,6 +120,8 @@ class GlobalSettings:
         "wbm3_modifiable_full_obs.yaml",
     )
     behavior_mode = "headless"  # headless, pbgui, iggui
+    behavior_save_video = False  # True
+    behavior_distribution_viz_num_samples = 100
     behavior_action_timestep = 1.0 / 10.0
     behavior_physics_timestep = 1.0 / 120.0
     behavior_task_list = ["re-shelving_library_books"]
@@ -538,6 +540,7 @@ class GlobalSettings:
     tmp_dir = '/tmp'
     procid_seed_offset = 10000
     train_on_test_tasks = False
+    test_on_train_tasks = False
 
 
     @staticmethod

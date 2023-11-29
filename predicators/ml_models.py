@@ -1069,7 +1069,7 @@ class DiffusionRegressor(nn.Module):
         # calculations for posterior q(x_{t-1} | x_t, x_0)
         self._posterior_variance = self._betas * (1. - alphas_cumprod_prev) / (1. - alphas_cumprod)
 
-        self._cache_num_samples = CFG.sesame_max_samples_per_step #* CFG.ebm_aux_n_samples
+        self._cache_num_samples = 10# CFG.sesame_max_samples_per_step #* CFG.ebm_aux_n_samples
         self._cache = {}
 
     def forward(self, X_cond, Y_out, t, return_aux=False):
@@ -1386,11 +1386,11 @@ class DiffusionRegressor(nn.Module):
     @torch.no_grad()
     def _p_sample_loop(self, x_cond):
         # start from pure noise (for each example in the batch)
-        y_out = torch.randn(self._cache_num_samples, self._y_dim, device=self._device, requires_grad=True)
+        y_out = torch.randn(x_cond.shape[0], self._y_dim, device=self._device, requires_grad=True)
         y_outs = []
 
         for i in reversed(range(0, self._timesteps)):
-            y_out = self._p_sample(x_cond, y_out, torch.full((self._cache_num_samples,), i, device=self._device, dtype=torch.long), i)
+            y_out = self._p_sample(x_cond, y_out, torch.full((x_cond.shape[0],), i, device=self._device, dtype=torch.long), i)
             y_outs.append(y_out.detach().cpu().numpy())
         return y_outs
 
@@ -1403,6 +1403,12 @@ class DiffusionRegressor(nn.Module):
             self._cache[x_cond.round(decimals=4).data.tobytes()] = (samples, 0)   # cache, idx
         sample = self._next_sample_in_cache(x_cond.round(decimals=4))
         return ((sample + 1) / 2 * self._output_scale) + self._output_shift
+
+    def predict_samples(self, x_cond: Array, rng: np.random.Generator, num_samples: int) -> Array:
+        x_cond_tensor = torch.from_numpy(np.array(x_cond, dtype=np.float32)).to(self._device)
+        x_cond_tensor = x_cond_tensor.view(1, -1).expand(num_samples, -1)
+        samples = self._p_sample_loop(x_cond_tensor)[-1]
+        return ((samples + 1) / 2 * self._output_scale) + self._output_shift
 
     def _next_sample_in_cache(self, arr):
         samples, idx = self._cache[arr.data.tobytes()]

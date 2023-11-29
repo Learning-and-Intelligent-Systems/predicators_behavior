@@ -155,7 +155,7 @@ class _BehaviorOptionModel(_OptionModelBase):
                 else:
                     reset = True
                 load_checkpoint_state(state, env, reset=reset)
-        option.memory["model_controller"](state, env.igibson_behavior_env)
+        option.memory["model_controller"](state, env.igibson_behavior_env, option.distribution_samples)
         next_state = env.current_ig_state_to_state(
             use_test_scene=env.task_instance_id >= 10)
         plan, _ = option.memory["planner_result"]
