@@ -28,11 +28,11 @@ try:
         ArticulatedObject  # pylint: disable=unused-import
     from igibson.objects.articulated_object import \
         URDFObject  # pylint: disable=unused-import
-    from igibson.robots.behavior_robot import BRBody
+    from igibson.robots.behavior_robot import BRBody, BehaviorRobot
+    from igibson.robots.fetch_gripper_robot import FetchGripper
     from igibson.simulator import Simulator  # pylint: disable=unused-import
     from igibson.utils.checkpoint_utils import save_checkpoint
     from igibson.utils.utils import modify_config_file
-
     _BEHAVIOR_IMPORTED = True
     bddl.set_backend("iGibson")  # pylint: disable=no-member
     if not os.path.exists(f"{CFG.tmp_dir}/tmp_behavior_states/mpi_{proc_id()}/"):
@@ -43,7 +43,8 @@ from gym.spaces import Box
 
 from predicators import utils
 from predicators.behavior_utils.behavior_utils import \
-    ALL_RELEVANT_OBJECT_TYPES, load_checkpoint_state
+    ALL_RELEVANT_OBJECT_TYPES, load_checkpoint_state, \
+    check_hand_end_pose, get_closest_point_on_aabb
 from predicators.behavior_utils.motion_planner_fns import make_dummy_plan, \
     make_grasp_plan, make_navigation_plan, make_place_plan
 from predicators.behavior_utils.option_fns import create_dummy_policy, \
@@ -90,12 +91,13 @@ class BehaviorEnv(BaseEnv):
                 os.path.join(igibson.root_path, CFG.behavior_config_file),
                 CFG.behavior_task_list[0],
                 self.get_random_scene_for_task(CFG.behavior_task_list[0],
-                                           rng), False, self._seed)
+                                               rng), False, CFG.behavior_robot, 
+                self._seed)
         else:
             self._config_file = modify_config_file(
                 os.path.join(igibson.root_path, CFG.behavior_config_file),
-                CFG.behavior_task_list[0], CFG.behavior_train_scene_name,
-                False, self._seed)
+                CFG.behavior_task_list[0], CFG.behavior_train_scene_name, False,
+                CFG.behavior_robot, self._seed)
 
         self._rng = np.random.default_rng(self._seed)
         self.task_num = 0  # unique id to differentiate tasks
@@ -241,7 +243,7 @@ class BehaviorEnv(BaseEnv):
         self._config_file = modify_config_file(
             os.path.join(igibson.root_path, CFG.behavior_config_file),
             CFG.behavior_task_list[task_index], self.scene_list[task_num],
-            False, self._seed)
+            False, CFG.behavior_robot, self._seed)
 
     def get_random_scene_for_task(self, behavior_task_name: str,
                                   rng: Generator) -> str:
@@ -586,9 +588,16 @@ class BehaviorEnv(BaseEnv):
     @property
     def action_space(self) -> Box:
         # 17-dimensional, between -1 and 1
-        assert self.igibson_behavior_env.action_space.shape == (17, )
-        assert np.all(self.igibson_behavior_env.action_space.low == -1)
-        assert np.all(self.igibson_behavior_env.action_space.high == 1)
+        if isinstance(self.igibson_behavior_env.robots[0], BehaviorRobot):
+            assert self.igibson_behavior_env.action_space.shape == (17, )
+            assert np.all(self.igibson_behavior_env.action_space.low == -1)
+            assert np.all(self.igibson_behavior_env.action_space.high == 1)
+        elif isinstance(self.igibson_behavior_env.robots[0], FetchGripper):
+            assert self.igibson_behavior_env.action_space.shape == (11, )
+            assert np.all(self.igibson_behavior_env.action_space.low == -1)
+            assert np.all(self.igibson_behavior_env.action_space.high == 1)
+        else:
+            raise ValueError("Robot can only be BehavorRobot or FetchGripper")
         return self.igibson_behavior_env.action_space
 
     def render_state_plt(
@@ -660,7 +669,10 @@ class BehaviorEnv(BaseEnv):
             raise RuntimeError("ERROR: Failed to sample iGibson BEHAVIOR "
                                "environment that meets bddl initial "
                                "conditions!")
-        self.igibson_behavior_env.robots[0].initial_z_offset = 0.7
+        if isinstance(self.igibson_behavior_env.robots[0], BehaviorRobot):
+            self.igibson_behavior_env.robots[0].initial_z_offset = 0.7
+        else:
+            self.igibson_behavior_env.robots[0].initial_z_offset = 0.01
         self.igibson_behavior_env.use_rrt = CFG.behavior_option_model_rrt
 
     # Do not add @functools.lru_cache(maxsize=None) here this will
@@ -837,21 +849,25 @@ class BehaviorEnv(BaseEnv):
         if ig_obj.name == "agent":
             return False
 
-        robot_x, robot_y, _ = robot_obj.get_position()
-        obj_x, obj_y, _ = ig_obj.get_position()
-        _, _, robot_yaw = p.getEulerFromQuaternion(robot_obj.get_orientation())
+    if isinstance(robot_obj, BehaviorRobot):
+            robot_x, robot_y, _ = robot_obj.get_position()
+            obj_x, obj_y, _ = ig_obj.get_position()
+            _, _, robot_yaw = p.getEulerFromQuaternion(robot_obj.get_orientation())
 
-        facing_yaw = np.arctan2(robot_y - obj_y, robot_x - obj_x) - np.pi
-        yaw_delta = robot_yaw - facing_yaw
-        while yaw_delta > np.pi:
-            yaw_delta -= (2 * np.pi)
-        while yaw_delta < -np.pi:
-            yaw_delta += (2 * np.pi)
-        assert -np.pi <= yaw_delta <= np.pi
-        facing = abs(yaw_delta) < (30 * np.pi / 180)
-        return (np.linalg.norm(  # type: ignore
-            np.array(robot_obj.get_position()) -
-            np.array(ig_obj.get_position())) < 2 and facing)
+            facing_yaw = np.arctan2(robot_y - obj_y, robot_x - obj_x) - np.pi
+            yaw_delta = robot_yaw - facing_yaw
+            while yaw_delta > np.pi:
+                yaw_delta -= (2 * np.pi)
+            while yaw_delta < -np.pi:
+                yaw_delta += (2 * np.pi)
+            assert -np.pi <= yaw_delta <= np.pi
+            facing = abs(yaw_delta) < (30 * np.pi / 180)
+            return (np.linalg.norm(  # type: ignore
+                np.array(robot_obj.get_position()) -
+                np.array(ig_obj.get_position())) < 2 and facing)
+
+        return check_hand_end_pose(self.igibson_behavior_env, ig_obj,
+                                    np.zeros(3, dtype=float), ignore_collisions=True)
 
     def _reachable_nothing_classifier(
             self,
@@ -1022,7 +1038,7 @@ class BehaviorEnv(BaseEnv):
             return ig_obj.bddl_object_scope
         # Robot does not have a field "bddl_object_scope", so we define
         # its name manually.
-        assert isinstance(ig_obj, BRBody)
+        assert isinstance(ig_obj, (BRBody, FetchGripper)), f"ig_obj type: {type(ig_obj)}"
         return "agent"
 
     @staticmethod

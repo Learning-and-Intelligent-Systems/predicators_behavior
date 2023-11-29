@@ -5,6 +5,7 @@ import os
 from typing import List, Optional, Sequence, Tuple, Union
 
 import numpy as np
+import scipy
 import pybullet as p
 from tqdm import tqdm
 
@@ -15,13 +16,14 @@ from predicators.structs import Array, GroundAtom, GroundAtomTrajectory, \
 from predicators.mpi_utils import proc_id
 
 try:
+    from igibson import object_states
     from igibson.envs.behavior_env import \
         BehaviorEnv  # pylint: disable=unused-import
     from igibson.object_states.on_floor import \
         RoomFloor  # pylint: disable=unused-import
     from igibson.objects.articulated_object import URDFObject
     from igibson.robots.behavior_robot import \
-        BRBody  # pylint: disable=unused-import
+        BRBody, BehaviorRobot  # pylint: disable=unused-import
     from igibson.robots.robot_base import \
         BaseRobot  # pylint: disable=unused-import
     from igibson.utils.checkpoint_utils import load_checkpoint
@@ -829,6 +831,11 @@ def get_closest_point_on_aabb(xyz: List, lo: Array, hi: Array) -> List[float]:
                 closest_point_on_aabb[i] = lo[i]
     return closest_point_on_aabb
 
+def get_aabb_centroid(lo: Array, hi: Array) -> List[float]:
+    """Get the centroid of aabb."""
+    assert np.all(hi >= lo)
+    return [(hi[0] + lo[0]) / 2, (hi[1] + lo[1]) / 2, (hi[2] + lo[2]) / 2]
+
 
 def get_scene_body_ids(
     env: "BehaviorEnv",
@@ -857,15 +864,22 @@ def get_scene_body_ids(
     return ids
 
 
-def detect_collision(bodyA: int, object_in_hand: Optional[int] = None) -> bool:
+def detect_collision(bodyA: int, ignore_objects: List[Optional[int]] = None) -> bool:
     """Detects collisions between bodyA in the scene (except for the object in
     the robot's hand)"""
+    if not isinstance(ignore_objects, list):
+        ignore_objects = [ignore_objects]
     collision = False
     for body_id in range(p.getNumBodies()):
-        if body_id in [bodyA, object_in_hand]:
+        if body_id in ([bodyA] + ignore_objects):
             continue
         closest_points = p.getClosestPoints(bodyA, body_id, distance=0.01)
         if len(closest_points) > 0:
+            # from predicators.envs import get_or_create_env
+            # env = get_or_create_env("behavior")
+            # for ig_obj in env._get_task_relevant_objects():
+            #     if ig_obj.body_id == body_id:
+            #         logging.info(f"Body in collision: {env._ig_object_name(ig_obj)}")
             collision = True
             break
     return collision
@@ -874,21 +888,36 @@ def detect_collision(bodyA: int, object_in_hand: Optional[int] = None) -> bool:
 def detect_robot_collision(robot: "BaseRobot") -> bool:
     """Function to detect whether the robot is currently colliding with any
     object in the scene."""
-    object_in_hand = robot.parts["right_hand"].object_in_hand
-    return (detect_collision(robot.parts["body"].body_id)
-            or detect_collision(robot.parts["left_hand"].body_id)
-            or detect_collision(robot.parts["right_hand"].body_id,
-                                object_in_hand))
+    if isinstance(robot, BehaviorRobot):
+        object_in_hand = robot.parts["right_hand"].object_in_hand
+        return (detect_collision(robot.parts["body"].body_id)
+                or detect_collision(robot.parts["left_hand"].body_id)
+                or detect_collision(robot.parts["right_hand"].body_id,
+                                    object_in_hand))
+    from predicators.envs import \
+        get_or_create_env  # pylint: disable=import-outside-toplevel
+    env = get_or_create_env("behavior")
+    ignore_objects = [robot.object_in_hand] 
+    for obj in env.igibson_behavior_env.scene.objects_by_category["floors"]:
+        ignore_objects.append(obj.get_body_id())
+    return detect_collision(robot.body_id, ignore_objects)
 
 
 def reset_and_release_hand(env: "BehaviorEnv") -> None:
     """Resets the state of the right hand."""
     env.robots[0].set_position_orientation(env.robots[0].get_position(),
                                            env.robots[0].get_orientation())
-    for _ in range(50):
-        env.robots[0].parts["right_hand"].set_close_fraction(0)
-        env.robots[0].parts["right_hand"].trigger_fraction = 0
-        p.stepSimulation()
+    if isinstance(env.robots[0], BehaviorRobot):
+        for _ in range(50):
+            env.robots[0].parts["right_hand"].set_close_fraction(0)
+            env.robots[0].parts["right_hand"].trigger_fraction = 0
+            p.stepSimulation()
+    else:
+        open_action = np.zeros(env.action_space.shape)
+        open_action[10] = 1.0
+        for _ in range(50):
+            env.robots[0].apply_action(open_action)
+            p.stepSimulation()
 
 
 def get_delta_low_level_base_action(robot_z: float,
@@ -934,6 +963,7 @@ def get_delta_low_level_base_action(robot_z: float,
     return ret_action
 
 
+# TODO: implement this for the Fetch
 def get_delta_low_level_hand_action(
     body: "BRBody",
     old_pos: Union[Sequence[float], Array],
@@ -1021,28 +1051,56 @@ def check_nav_end_pose(
     robot_orn = p.getEulerFromQuaternion(env.robots[0].get_orientation())
     orn = [robot_orn[0], robot_orn[1], yaw_angle]
     env.robots[0].set_position_orientation(pos, p.getQuaternionFromEuler(orn))
-    eye_pos = env.robots[0].parts["eye"].get_position()
+    if isinstance(env.robots[0], BehaviorRobot):
+        eye_pos = env.robots[0].parts["eye"].get_position()
+    else:
+        eye_pos = env.robots[0].parts["eyes"].get_position()
     ray_test_res = p.rayTest(eye_pos, obj_pos)
     # Test to see if the robot is obstructed by some object, but make sure
     # that object is not either the robot's body or the object we want to
     # pick up!
-    blocked = len(ray_test_res) > 0 and (ray_test_res[0][0] not in (
-        env.robots[0].parts["body"].get_body_id(),
-        obj.get_body_id(),
-    ))
-    if not detect_robot_collision(env.robots[0]) and (not blocked
-                                                      or ignore_blocked):
+    if isinstance(env.robots[0], BehaviorRobot):
+        blocked = len(ray_test_res) > 0 and (ray_test_res[0][0] not in (
+            env.robots[0].parts["body"].get_body_id(),
+            obj.get_body_id(),
+        ))
+    else:
+        blocked = len(ray_test_res) > 0 and (ray_test_res[0][0] not in (
+            env.robots[0].get_body_id(),
+            obj.get_body_id(),
+        ))
+        blocked=False
+
+    if detect_robot_collision(env.robots[0]):
+        status = 1
+    elif blocked and not ignore_blocked:
+        status = 2
+    elif not (isinstance(env.robots[0], BehaviorRobot) or 
+        check_hand_end_pose(env, obj, np.zeros(3, dtype=float), 
+        ignore_collisions=True)):
+        status = 3
+    else:
+        status = 0
         valid_position = (pos, orn)
 
     p.restoreState(state)
     p.removeState(state)
 
-    return valid_position
+    return valid_position, status
 
+def get_valid_orientation(env: "BehaviorEnv", obj: Union["URDFObject",
+                                                       "RoomFloor"]) -> Tuple[float]:
+    state = p.saveState()
+    obj_aabb = obj.states[object_states.AABB].get_value()
+    obj_closest_point = get_closest_point_on_aabb(env.robots[0].get_position(), obj_aabb[0], obj_aabb[1])
+    ik_success, orn = env.robots[0].set_eef_position(obj_closest_point)
+    p.restoreState(state)
+    p.removeState(state)
+    return ik_success, orn
 
 def check_hand_end_pose(env: "BehaviorEnv", obj: Union["URDFObject",
                                                        "RoomFloor"],
-                        pos_offset: Array) -> bool:
+                        pos_offset: Array, ignore_collisions=False) -> bool:
     """Check that the robot's hand can reach pos_offset from the obj without
     being in collision with anything.
 
@@ -1050,16 +1108,48 @@ def check_hand_end_pose(env: "BehaviorEnv", obj: Union["URDFObject",
     """
     ret_bool = False
     state = p.saveState()
-    obj_pos = obj.get_position()
-    hand_pos = (
-        pos_offset[0] + obj_pos[0],
-        pos_offset[1] + obj_pos[1],
-        pos_offset[2] + obj_pos[2],
-    )
-    env.robots[0].parts["right_hand"].set_position(hand_pos)
-    if not detect_robot_collision(env.robots[0]):
-        ret_bool = True
+    obj_aabb = obj.states[object_states.AABB].get_value()
+    obj_closest_point = get_closest_point_on_aabb(env.robots[0].get_position(), obj_aabb[0], obj_aabb[1])
 
+    hand_pos = (
+        pos_offset[0] + obj_closest_point[0],
+        pos_offset[1] + obj_closest_point[1],
+        pos_offset[2] + obj_closest_point[2],
+    )
+    if isinstance(env.robots[0], BehaviorRobot):
+        env.robots[0].parts["right_hand"].set_position(hand_pos)
+        if not detect_robot_collision(env.robots[0]):
+            ret_bool = True
+    else:
+        # # Always grasp downward
+        # hand_to_obj_unit_vector = np.array([0., 0., 1.])
+        # unit_z_vector = np.array([-1.0, 0.0, 0.0])
+        # # This is because we assume the hand is originally oriented
+        # # so -x is coming out of the palm
+        # c_var = np.dot(unit_z_vector, hand_to_obj_unit_vector)
+        # if c_var not in [-1.0, 1.0]:
+        #     v_var = np.cross(unit_z_vector, hand_to_obj_unit_vector)
+        #     s_var = np.linalg.norm(v_var)
+        #     v_x = np.array([
+        #         [0, -v_var[2], v_var[1]],
+        #         [v_var[2], 0, -v_var[0]],
+        #         [-v_var[1], v_var[0], 0],
+        #     ])
+        #     R = (np.eye(3) + v_x + np.linalg.matrix_power(v_x, 2) * ((1 - c_var) /
+        #                                                              (s_var**2)))
+        #     r = scipy.spatial.transform.Rotation.from_matrix(R)
+        #     euler_angles = r.as_euler("xyz")
+        # else:
+        #     if c_var == 1.0:
+        #         euler_angles = np.zeros(3, dtype=float)
+        #     else:
+        #         euler_angles = np.array([0.0, np.pi, 0.0])
+        # hand_orn = p.getQuaternionFromEuler(euler_angles)
+        # ik_success = env.robots[0].set_eef_position_orientation(hand_pos, hand_orn)
+        ik_success, _ = env.robots[0].set_eef_position(hand_pos)
+        if ik_success and (ignore_collisions or 
+            not detect_robot_collision(env.robots[0])):
+            ret_bool = True
     p.restoreState(state)
     p.removeState(state)
 
@@ -1086,6 +1176,10 @@ def sample_navigation_params(igibson_behavior_env: "BehaviorEnv",
     nearness_limit = 0.15
     distance = nearness_limit + (
         (closeness_limit - nearness_limit) * rng.random())
+    # NOTE: In a previous version, we attempted to sample at a distance d from
+    # the object's bbox. The implementation was incorrect because it didn't 
+    # yield a uniform distribution, but we might want to revisit that if we
+    # have trouble getting the fetch to work
     yaw = rng.random() * (2 * np.pi) - np.pi
     x = distance * np.cos(yaw)
     y = distance * np.sin(yaw)

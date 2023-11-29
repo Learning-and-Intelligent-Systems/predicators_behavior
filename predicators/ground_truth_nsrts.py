@@ -5,6 +5,7 @@ from typing import List, Optional, Sequence, Set, Union, cast
 
 import numpy as np
 from numpy.random._generator import Generator
+import scipy
 
 from predicators.behavior_utils.behavior_utils import CLEANING_OBJECT_TYPES, \
     DUSTYABLE_OBJECT_TYPES, OPENABLE_OBJECT_TYPES, PICK_PLACE_OBJECT_TYPES, \
@@ -12,7 +13,9 @@ from predicators.behavior_utils.behavior_utils import CLEANING_OBJECT_TYPES, \
     PLACE_ONTOP_SURFACE_OBJECT_TYPES, PLACE_UNDER_SURFACE_OBJECT_TYPES, \
     TOGGLEABLE_OBJECT_TYPES, sample_navigation_params, \
     sample_place_inside_params, sample_place_next_to_params, \
-    sample_place_ontop_params, sample_place_under_params
+    sample_place_ontop_params, sample_place_under_params, check_hand_end_pose, \
+    check_nav_end_pose, load_checkpoint_state, get_closest_point_on_aabb, \
+    get_valid_orientation
 from predicators.envs import get_or_create_env
 from predicators.envs.behavior import BehaviorEnv
 from predicators.envs.doors import DoorsEnv
@@ -27,13 +30,21 @@ from predicators.structs import NSRT, Array, GroundAtom, LiftedAtom, Object, \
     ParameterizedOption, Predicate, State, Type, Variable
 from predicators.utils import null_sampler
 
+import pybullet as p
 try:  # pragma: no cover
     from igibson.external.pybullet_tools.utils import get_aabb, get_aabb_extent
     from igibson.object_states.on_floor import \
         RoomFloor  # pylint: disable=unused-import
     from igibson.objects.articulated_object import \
         URDFObject  # pylint: disable=unused-import
+    from igibson.robots.behavior_robot import \
+        BehaviorRobot  # pylint: disable=unused-import
     from igibson.utils import sampling_utils
+    from igibson.external.pybullet_tools.utils import \
+        get_joint_positions, set_joint_positions
+    from igibson.external.pybullet_tools.utils import get_link_pose
+    import igibson.utils.transform_utils as T
+    from igibson import object_states
 except (ImportError, ModuleNotFoundError) as e:  # pragma: no cover
     pass
 
@@ -3025,6 +3036,54 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
             ret_tuple.append(distribution_samples)
         return tuple(ret_tuple)
 
+    # def grasp_obj_param_sampler_fetch(state: State, goal: Set[GroundAtom],
+    #                                   rng: Generator,
+    #                                   objects: Sequence["URDFObject"]) -> Array:
+    #     """Sampler for grasp option (Fetch)."""
+    #     ig_env = get_or_create_env("behavior").igibson_behavior_env
+    #     obj = objects[0]
+    #     num_tries = 100
+    #     # logging.info("Sampling params for grasp...")
+
+    #     robot_pos = ig_env.robots[0].get_position()
+    #     aabb = obj.states[object_states.AABB].get_value()
+    #     aabb_extent = get_aabb_extent(aabb)
+    #     obj_closest_point = get_closest_point_on_aabb(robot_pos, aabb[0], aabb[1])
+
+    #     # for samples in range(num_tries):
+    #     #     # x_offset = (rng.random() * 0.4) - 0.2
+    #     #     # y_offset = (rng.random() * 0.4) - 0.2
+    #     #     # z_offset = rng.random() * .2
+                
+    #     #     x = rng.random() * aabb_extent[0] + aabb[0][0]
+    #     #     y = rng.random() * aabb_extent[1] + aabb[0][1]
+    #     #     # z = obj.get_position()[2] + rng.random() * 0.02
+    #     #     z = obj.get_position() + rng.ran
+
+    #     #     x_offset = x - obj_closest_point[0]
+    #     #     y_offset = y - obj_closest_point[1]
+    #     #     z_offset = z - obj_closest_point[2]#rng.random() * 0.02
+
+    #     #     if check_hand_end_pose(ig_env, obj, [x_offset, y_offset, z_offset], ignore_collisions=True):
+    #     #         break
+    #     # else:
+    #     #     logging.info("Did not find params for grasp, return bad params and retry")
+
+    #     # I'm going to reverse engineer this thing: sample some pose that can reach the object,
+    #     # and then find a point in that direction vector. 
+    #     # Step 1: find successful orientation
+    #     ik_success, orn = get_valid_orientation(ig_env, obj)
+    #     if not ik_success:
+    #         # logging.info("Failed to find valid orientation for grasping")
+    #         x_offset = rng.random() * aabb_extent[0] + aabb[0][0] - obj_closest_point[0]
+    #         y_offset = rng.random() * aabb_extent[1] + aabb[0][1] - obj_closest_point[1]
+    #         z_offset = rng.random() * aabb_extent[2] + aabb[0][2] - obj_closest_point[2]
+    #     else:
+    #         # logging.info(f"Found valid orientation for grasping")
+    #         x_offset = y_offset = z_offset = 0
+
+    #     return np.array([x_offset, y_offset, z_offset])
+
     # Place OnTop sampler definition.
     def place_ontop_obj_pos_sampler(
             state: State, goal: Set[GroundAtom], rng: Generator,
@@ -3053,15 +3112,20 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
         aabb_extent = get_aabb_extent(aabb)
 
         random_seed_int = rng.integers(10000000)
-        sampling_results = sampling_utils.sample_cuboid_on_object(
-            objB,
-            num_samples=1,
-            cuboid_dimensions=aabb_extent,
-            axis_probabilities=[0, 0, 1],
-            refuse_downwards=True,
-            random_seed_number=random_seed_int,
-            **params,
-        )
+        env = get_or_create_env("behavior")
+        assert isinstance(env, BehaviorEnv)
+        if isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot):
+           sampling_results = sampling_utils.sample_cuboid_on_object(
+                objB,
+                num_samples=1,
+                cuboid_dimensions=aabb_extent,
+                axis_probabilities=[0, 0, 1],
+                refuse_downwards=True,
+                random_seed_number=random_seed_int,
+                **params,
+            )
+        else:
+            sampling_results = [None]
 
         # If we cannot find a sample using BEHAVIOR's utility, fall back onto
         # our custom-written samplers.
@@ -3271,6 +3335,10 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                 add_effects = {targ_holding}
                 delete_effects_ontop = {handempty, ontop, targ_reachable}
                 delete_effects_inside = {handempty, inside, targ_reachable}
+                # sampler = (grasp_obj_param_sampler if 
+                #         isinstance(env.igibson_behavior_env.robots[0], BehaviorRobot) 
+                #         else grasp_obj_param_sampler_fetch)
+                sampler = grasp_obj_param_sampler
                 # NSRT for grasping an object from ontop an object.
                 nsrt = NSRT(
                     f"{option.name}-{next(op_name_count_pick)}",
@@ -3281,8 +3349,15 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     set(),
                     option,
                     option_vars,
-                    grasp_obj_param_sampler,
-                )
+                    lambda s, g, r, o: sampler(
+                    s,
+                    g,
+                    r,
+                    [
+                        env.object_to_ig_object(o_i)
+                        if isinstance(o_i, Object) else o_i for o_i in o
+                    ],
+                ))
                 nsrts.add(nsrt)
                 # NSRT for grasping an object from inside an object.
                 nsrt = NSRT(
@@ -3294,8 +3369,15 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     set(),
                     option,
                     option_vars,
-                    grasp_obj_param_sampler,
-                )
+                    lambda s, g, r, o: sampler(
+                    s,
+                    g,
+                    r,
+                    [
+                        env.object_to_ig_object(o_i)
+                        if isinstance(o_i, Object) else o_i for o_i in o
+                    ],
+                ))
                 nsrts.add(nsrt)
 
         elif base_option_name == "PlaceOnTop":
