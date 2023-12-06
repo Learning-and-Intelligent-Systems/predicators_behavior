@@ -3349,7 +3349,8 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     set(),
                     option,
                     option_vars,
-                    lambda s, g, r, o: sampler(
+                    lambda s, g, r, o, max_internal_samples=None,
+                        return_failed_samples=False, return_distribution_samples=False: sampler(
                     s,
                     g,
                     r,
@@ -3357,6 +3358,9 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                         env.object_to_ig_object(o_i)
                         if isinstance(o_i, Object) else o_i for o_i in o
                     ],
+                    max_internal_samples=max_internal_samples,
+                    return_failed_samples=return_failed_samples,
+                    return_distribution_samples=return_distribution_samples,
                 ))
                 nsrts.add(nsrt)
                 # NSRT for grasping an object from inside an object.
@@ -3369,7 +3373,8 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                     set(),
                     option,
                     option_vars,
-                    lambda s, g, r, o: sampler(
+                    lambda s, g, r, o, max_internal_samples=None,
+                        return_failed_samples=False, return_distribution_samples=False: sampler(
                     s,
                     g,
                     r,
@@ -3377,6 +3382,9 @@ def _get_behavior_gt_nsrts() -> Set[NSRT]:  # pragma: no cover
                         env.object_to_ig_object(o_i)
                         if isinstance(o_i, Object) else o_i for o_i in o
                     ],
+                    max_internal_samples=max_internal_samples,
+                    return_failed_samples=return_failed_samples,
+                    return_distribution_samples=return_distribution_samples,
                 ))
                 nsrts.add(nsrt)
 

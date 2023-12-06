@@ -1341,7 +1341,8 @@ def sample_place_ontop_params(igibson_behavior_env: "BehaviorEnv",
                               obj_to_place_ontop: "URDFObject",
                               rng: np.random.Generator,
                               max_internal_samples=None,
-                              return_failed_samples=False) -> Array:
+                              return_failed_samples=False,
+                              return_distribution_samples=False) -> Array:
     """Main logic for place ontop param sampler.
 
     Implemented in a separate method to enable code reuse in
@@ -1431,7 +1432,8 @@ def sample_place_next_to_params(igibson_behavior_env: "BehaviorEnv",
                                 obj_to_place_nextto: "URDFObject",
                                 rng: np.random.Generator,
                                 max_internal_samples=None,
-                                return_failed_samples=False) -> Array:
+                                return_failed_samples=False,
+                                return_distribution_samples=False) -> Array:
     """Main logic for place next to param sampler.
 
     Implemented in a separate method to enable code reuse in
@@ -1535,7 +1537,8 @@ def sample_place_under_params(igibson_behavior_env: "BehaviorEnv",
                               obj_to_place_under: "URDFObject",
                               rng: np.random.Generator,
                               max_internal_samples=None,
-                              return_failed_samples=False) -> Array:
+                              return_failed_samples=False,
+                              return_distribution_samples=False) -> Array:
     """Main logic for place under param sampler.
 
     Implemented in a separate method to enable code reuse in

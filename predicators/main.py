@@ -180,9 +180,9 @@ def _run_pipeline(env: BaseEnv,
                 logging.info("Reached online_learning_max_transitions, "
                              "terminating")
                 break
-            logging.warning("CAREFUL!! THIS WILL EXIT RIGHT AFTER COLLECTING INTERACTION REQUESTS")
+            # logging.warning("CAREFUL!! THIS WILL EXIT RIGHT AFTER COLLECTING INTERACTION REQUESTS")
             interaction_requests = approach.get_interaction_requests()
-            exit()
+            # exit()
             if not interaction_requests:
                 logging.info("Did not receive any interaction requests, "
                              "terminating")

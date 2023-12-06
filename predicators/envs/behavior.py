@@ -849,7 +849,7 @@ class BehaviorEnv(BaseEnv):
         if ig_obj.name == "agent":
             return False
 
-    if isinstance(robot_obj, BehaviorRobot):
+        if isinstance(robot_obj, BehaviorRobot):
             robot_x, robot_y, _ = robot_obj.get_position()
             obj_x, obj_y, _ = ig_obj.get_position()
             _, _, robot_yaw = p.getEulerFromQuaternion(robot_obj.get_orientation())
