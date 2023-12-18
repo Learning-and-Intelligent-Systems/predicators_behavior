@@ -651,7 +651,7 @@ class BehaviorEnv(BaseEnv):
                 action_filter="mobile_manipulation",
                 instance_id=task_instance_id,
                 rng=self._rng,
-                num_viz_spheres=CFG.behavior_distribution_viz_num_samples
+                num_viz_spheres=CFG.behavior_distribution_viz_num_samples if save_video else 0
             )
             self.igibson_behavior_env.step(np.zeros(
                 self.igibson_behavior_env.action_space.shape),
@@ -725,7 +725,7 @@ class BehaviorEnv(BaseEnv):
             obj = self._ig_object_to_object(ig_obj)
             # In the future, we may need other object attributes,
             # but for the moment, we just need position and orientation.
-            assert ig_obj.bounding_box is not None or isinstance(ig_obj, RoomFloor), "We assume only RoomFloors have no bbox"
+            assert isinstance(ig_obj, FetchGripper) or ig_obj.bounding_box is not None or isinstance(ig_obj, RoomFloor), "We assume only RoomFloors have no bbox"
             if isinstance(ig_obj, BRBody):
                 robot_obj = self.igibson_behavior_env.robots[0]
                 obj_state = np.hstack([
@@ -733,6 +733,14 @@ class BehaviorEnv(BaseEnv):
                     robot_obj.get_orientation(),
                     robot_obj.parts["right_hand"].get_position(),
                     robot_obj.parts["right_hand"].get_orientation()
+                ])
+            elif isinstance(ig_obj, FetchGripper):
+                robot_obj = self.igibson_behavior_env.robots[0]
+                obj_state = np.hstack([
+                    robot_obj.get_position(),
+                    robot_obj.get_orientation(),
+                    robot_obj.parts["gripper_link"].get_position(),
+                    robot_obj.parts["gripper_link"].get_orientation()
                 ])
             else:
                 obj_state = np.hstack([
