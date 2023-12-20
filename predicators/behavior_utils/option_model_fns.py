@@ -31,14 +31,14 @@ try:
 
     from igibson.robots.fetch_gripper_robot import FetchGripper
     from igibson.external.pybullet_tools.utils import \
-        get_joint_positions
+        get_joint_positions, get_link_pose
+    import igibson.utils.transform_utils as T
 except (ImportError, ModuleNotFoundError) as e:
     pass
 
 # Necessary to ensure different numbers sampled within the
 # NavigateToOptionModel.
 prng = RandomState(10000)
-
 
 def create_navigate_option_model(
         plan: List[List[float]], _original_orientation: List[List[float]],
@@ -48,7 +48,7 @@ def create_navigate_option_model(
     plan, which is a list of 3-element lists each containing a series of (x, y,
     rot) waypoints for the robot to pass through."""
 
-    def navigateToOptionModel(_init_state: State, env: "BehaviorEnv") -> None:
+    def navigateToOptionModel(_init_state: State, env: "BehaviorEnv", distribution_samples=None) -> None:
         robot_z = env.robots[0].get_position()[2]
         robot_orn = p.getEulerFromQuaternion(env.robots[0].get_orientation())
         # If we're not overriding the learned samplers, then we will directly
@@ -66,34 +66,45 @@ def create_navigate_option_model(
             desired_xpos = sample_arr[0] + obj_pos[0]
             desired_ypos = sample_arr[1] + obj_pos[1]
             desired_zrot = np.arctan2(sample_arr[1], sample_arr[0]) - np.pi
-            logging.info(f"PRIMITIVE: Overriding sample ({plan[-1][0]}" +
-                         f", {plan[-1][1]}) and attempting to " +
-                         f"navigate to {_obj_to_nav_to.name} with "
-                         f"params {sample_arr}")
+            # logging.info(f"PRIMITIVE: Overriding sample ({plan[-1][0]}" +
+            #              f", {plan[-1][1]}) and attempting to " +
+            #              f"navigate to {_obj_to_nav_to.name} with "
+            #              f"params {sample_arr}")
+
+        if distribution_samples is not None:
+            obj_pos = _obj_to_nav_to.get_position()
+            x = obj_pos[0] + distribution_samples[0]
+            y = obj_pos[1] + distribution_samples[1]
+            z = np.ones_like(x) * robot_z
+            print("For navigation: ", distribution_samples.shape)
+            # add_points = list(zip(*(x, y, z)))
+            for sphere, x_i, y_i, z_i in zip(env.viz_spheres, x, y, z):
+                sphere.set_position((x_i, y_i, z_i))
 
         if CFG.simulate_nav:
+            curr_plan = plan[:]
             done_bit = False
             while not done_bit:
-                # Get expected position and orientation from plan.
-                expected_pos = np.array([plan[0][0], plan[0][1], robot_z])
+                # Get expected position and orientation from curr_plan.
+                expected_pos = np.array([curr_plan[0][0], curr_plan[0][1], robot_z])
                 expected_orn = p.getQuaternionFromEuler(
-                    np.array([robot_orn[0], robot_orn[1], plan[0][2]]))
+                    np.array([robot_orn[0], robot_orn[1], curr_plan[0][2]]))
                 # In this case, we're at the final position we wanted to reach.
-                if len(plan) == 1:
+                if len(curr_plan) == 1:
                     done_bit = True
-                    logging.info(
-                        "PRIMITIVE: navigation policy completed execution!")
+                    # logging.info(
+                    #     "PRIMITIVE: navigation policy completed execution!")
                 env.robots[0].set_position_orientation(expected_pos,
                                                        expected_orn)
-                env.step(np.zeros(env.action_space.shape))
-                plan.pop(0)
+                env.step(np.zeros(env.action_space.shape))#, add_points=add_points)
+                curr_plan.pop(0)
         target_pos = np.array([desired_xpos, desired_ypos, robot_z])
         target_orn = p.getQuaternionFromEuler(
             np.array([robot_orn[0], robot_orn[1], desired_zrot]))
         env.robots[0].set_position_orientation(target_pos, target_orn)
         # this is running a zero action to step simulator so
         # the environment updates to the correct final position
-        env.step(np.zeros(env.action_space.shape))
+        env.step(np.zeros(env.action_space.shape))#, add_points=add_points)
 
     return navigateToOptionModel
 
@@ -105,26 +116,48 @@ def create_grasp_option_model(
     which is a list of 6-element lists containing a series of (x, y, z, roll,
     pitch, yaw) waypoints for the hand to pass through."""
 
-    # NOTE: -1 because there are 25 timesteps that we move along the vector
-    # between the hand the object for until finally grasping, and we want
-    # just the final orientation.
     hand_i = -1
-    rh_final_grasp_postion = plan[hand_i][0:3]
-    rh_final_grasp_orn = plan[hand_i][3:6]
-
-    def graspObjectOptionModel(_state: State, env: "BehaviorEnv") -> None:
+    def graspObjectOptionModel(_state: State, env: "BehaviorEnv", distribution_samples=None) -> None:
         nonlocal hand_i
+        
+        if distribution_samples is not None:
+            obj_pos = obj_to_grasp.get_position()
+            print("For grasp: ", distribution_samples.shape)
+            x = obj_pos[0] + distribution_samples[0]
+            y = obj_pos[1] + distribution_samples[1]
+            z = obj_pos[2] + distribution_samples[2]
+            # add_points = list(zip(*(x, y, z)))
+            for sphere, x_i, y_i, z_i in zip(env.viz_spheres, x, y, z):
+                sphere.set_position((x_i, y_i, z_i))
+
         if isinstance(env.robots[0], BehaviorRobot):
+            # NOTE: -1 because there are 25 timesteps that we move along the vector
+            # between the hand the object for until finally grasping, and we want
+            # just the final orientation.
+            rh_final_grasp_postion = plan[hand_i][0:3]
+            rh_final_grasp_orn = plan[hand_i][3:6]
             rh_orig_grasp_postion = env.robots[0].parts["right_hand"].get_position(
             )
             rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
+
+            # Simulate Arm Movement
+            if CFG.behavior_option_model_rrt:
+                for step in plan:
+                    env.robots[0].parts["right_hand"].set_position_orientation(
+                        step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                    for _ in range(1):
+                        env.step(np.zeros(env.action_space.shape))
 
             # 1 Teleport Hand to Grasp offset location
             env.robots[0].parts["right_hand"].set_position_orientation(
                 rh_final_grasp_postion,
                 p.getQuaternionFromEuler(rh_final_grasp_orn))
+            
+            # 1.1 step the environment a few timesteps to update location.
+            for _ in range(3):
+                env.step(np.zeros(env.action_space.shape))
 
-            # 3. Close hand and simulate grasp
+            # 2. Close hand and simulate grasp
             a = np.zeros(env.action_space.shape, dtype=float)
             a[16] = 1.0
             assisted_grasp_action = np.zeros(28, dtype=float)
@@ -147,6 +180,14 @@ def create_grasp_option_model(
             for _ in range(5):
                 env.step(a)
 
+            # Simulate Arm Movement (Backwards)
+            if CFG.behavior_option_model_rrt:
+                for step in reversed(plan):
+                    env.robots[0].parts["right_hand"].set_position_orientation(
+                        step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                    for _ in range(1):
+                        env.step(np.zeros(env.action_space.shape))
+
             # 4 Move Hand to Original Location
             env.robots[0].parts["right_hand"].set_position_orientation(
                 rh_orig_grasp_postion, rh_orig_grasp_orn)
@@ -159,13 +200,42 @@ def create_grasp_option_model(
             # environment.
             env.step(np.zeros(env.action_space.shape))
         else:
+            # NOTE: -1 because there are 25 timesteps that we move along the vector
+            # between the hand the object for until finally grasping, and we want
+            # just the final orientation.
+            hand_i = -1
+            # rh_final_grasp_postion = plan[hand_i][0:3]
+            # rh_final_grasp_orn = plan[hand_i][3:6]
+            final_joint_position = plan[hand_i]
             robot = env.robots[0]
             orig_joint_positions = get_joint_positions(robot.robot_ids[0], robot.joint_ids)
-            # 1 Teleport Hand to Grasp offset location
-            robot.set_eef_position_orientation(rh_final_grasp_postion,
-                p.getQuaternionFromEuler(rh_final_grasp_orn))
+            
+            # Simulate Arm Movement
+            if CFG.behavior_option_model_rrt:
+                for step in plan:
+                    # env.robots[0].set_eef_position_orientation(
+                    #     step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                    robot.set_joint_positions(step)
+                    for _ in range(1):
+                        env.step(np.zeros(env.action_space.shape))
 
-            # 3. Close hand and simulate grasp
+
+            # 1 Teleport Hand to Grasp offset location
+            # robot.set_eef_position_orientation(rh_final_grasp_postion,
+            #     p.getQuaternionFromEuler(rh_final_grasp_orn))
+            robot.set_joint_positions(final_joint_position)
+            ## Debug
+            pos = robot.get_end_effector_position()
+            orn = T.mat2quat(T.pose2mat(get_link_pose(robot.robot_ids[0], robot.eef_link_id))[:3, :3])
+            logging.info(f"\tObtained grasp: pos -- {pos}, orn -- {orn}")
+            logging.info(f"\tActual joint pos were {final_joint_position}")
+
+
+            # 1.1 step the environment a few timesteps to update location.
+            for _ in range(3):
+                env.step(np.zeros(env.action_space.shape))
+
+            # 2. Close hand and simulate grasp
             a = np.zeros(env.action_space.shape, dtype=float)
             a[10] = -1.0
             assisted_grasp_action = np.zeros(11, dtype=float)
@@ -181,8 +251,17 @@ def create_grasp_option_model(
             for _ in range(5):
                 env.step(a)
 
+            # Simulate Arm Movement (Backwards)
+            if CFG.behavior_option_model_rrt:
+                for step in reversed(plan):
+                    # env.robots[0].set_eef_position_orientation(
+                    #     step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                    robot.set_joint_positions(step)
+                    for _ in range(1):
+                        env.step(np.zeros(env.action_space.shape))
+
             # 4 Move Hand to Original Location
-            robot.set_joint_positions(orig_joint_positions) # saves us one call to IK
+            robot.set_joint_positions(orig_joint_positions)
             if robot.object_in_hand is not None:
                 # NOTE: This below line is necessary to update the visualizer.
                 # Also, it only works for URDF objects (but if the object is
@@ -204,16 +283,32 @@ def create_place_option_model(
     pitch, yaw) waypoints for the hand to pass through."""
 
     def placeOntopObjectOptionModel(_init_state: State,
-                                    env: "BehaviorEnv") -> None:
+                                    env: "BehaviorEnv", distribution_samples=None) -> None:
+        
+        if distribution_samples is not None:
+            obj_pos = obj_to_place_onto.get_position()
+            print("For place: ", distribution_samples.shape)
+            x = obj_pos[0] + distribution_samples[0]
+            y = obj_pos[1] + distribution_samples[1]
+            z = obj_pos[2] + distribution_samples[2] + 0.2
+            # add_points = list(zip(*(x, y, z)))
+            for sphere, x_i, y_i, z_i in zip(env.viz_spheres, x, y, z):
+                sphere.set_position((x_i, y_i, z_i))
+
         if isinstance(env.robots[0], BehaviorRobot):
             obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
-            obj_in_hand = [
-                obj for obj in env.scene.get_objects()
-                if obj.get_body_id() == obj_in_hand_idx
-            ][0]
             rh_orig_grasp_position = env.robots[0].parts[
                 "right_hand"].get_position()
             rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
+        else:
+            obj_in_hand_idx = env.robots[0].object_in_hand
+            orig_joint_positions = get_joint_positions(env.robots[0].robot_ids[0], env.robots[0].joint_ids)
+        obj_in_hand = [
+            obj for obj in env.scene.get_objects()
+            if obj.get_body_id() == obj_in_hand_idx
+        ][0]
+
+        if isinstance(env.robots[0], BehaviorRobot):
             # If we're not overriding the learned samplers, then we will directly
             # use the elements of `plan`, which in turn use the outputs of the
             # learned samplers. Otherwise, we will ignore these and use our
@@ -226,17 +321,28 @@ def create_place_option_model(
                 sample_arr = sample_place_ontop_params(env, obj_to_place_onto, rng)
                 target_pos = np.add(sample_arr, \
                     obj_to_place_onto.get_position()).tolist()
+                target_pos[2] += 0.2
                 target_orn = [0, np.pi * 7 / 6, 0]
                 logging.info(f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
                              "and attempting to " +
                              f"place ontop {obj_to_place_onto.name} with "
                              f"params {target_pos}")
+
+            # Simulate Arm Movement
+            if CFG.behavior_option_model_rrt:
+                for step in plan:
+                    env.robots[0].parts["right_hand"].set_position_orientation(
+                        step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                    for _ in range(1):
+                        env.step(np.zeros(env.action_space.shape))
+
             env.robots[0].parts["right_hand"].set_position_orientation(
                 target_pos, p.getQuaternionFromEuler(target_orn))
             env.robots[0].parts["right_hand"].force_release_obj()
             obj_in_hand.set_position_orientation(
                 target_pos, p.getQuaternionFromEuler(target_orn))
-            obj_to_place.force_wakeup()
+            obj_to_place_onto.force_wakeup()
+
             # this is running a zero action to step simulator
             env.step(np.zeros(env.action_space.shape))
             # reset the released object to zero velocity so it doesn't
@@ -246,56 +352,72 @@ def create_place_option_model(
                 linearVelocity=[0, 0, 0],
                 angularVelocity=[0, 0, 0],
             )
+            
+            # Simulate Arm Movement (Backwards)
+            if CFG.behavior_option_model_rrt:
+                for step in reversed(plan):
+                    env.robots[0].parts["right_hand"].set_position_orientation(
+                        step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                    for _ in range(1):
+                        env.step(np.zeros(env.action_space.shape))
+
             env.robots[0].parts["right_hand"].set_position_orientation(
                 rh_orig_grasp_position, rh_orig_grasp_orn)
-            # this is running a series of zero action to step simulator
-            # to let the object fall into its place
-            for _ in range(15):
-                env.step(np.zeros(env.action_space.shape))
+
         else:
-            robot = env.robots[0]
-            released_obj_bid = robot.object_in_hand
-            orig_joint_positions = get_joint_positions(robot.robot_ids[0], robot.joint_ids)
             # If we're not overriding the learned samplers, then we will directly
             # use the elements of `plan`, which in turn use the outputs of the
             # learned samplers. Otherwise, we will ignore these and use our
             # oracle sampler to give us values to use.
             if not CFG.behavior_override_learned_samplers:
-                target_pos = plan[-1][0:3]
-                target_orn = plan[-1][3:6]
+                target_joint_pos = plan[-1]
             else:
-                rng = np.random.default_rng(prng.randint(10000))
-                sample_arr = sample_place_ontop_params(env, obj_to_place_onto, rng)
-                target_pos = np.add(sample_arr, \
-                    obj_to_place_onto.get_position()).tolist()
-                # target_orn = [0, np.pi * 7 / 6, 0]
-                logging.info(f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
-                             "and attempting to " +
-                             f"place ontop {obj_to_place_onto.name} with "
-                             f"params {target_pos}")
+                raise NotImplementedError
+
+            # Simulate Arm Movement
+            if CFG.behavior_option_model_rrt:
+                for step in plan:
+                    # env.robots[0].set_eef_position_orientation(
+                    #     step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                    env.robots[0].set_joint_positions(step)
+                    for _ in range(1):
+                        env.step(np.zeros(env.action_space.shape))
 
             # robot.set_eef_position_orientation(target_pos, p.getQuaternionFromEuler(target_orn))
-            robot.set_eef_position(target_pos)
+            # env.robots[0].set_eef_position(target_pos)
+            env.robots[0].set_joint_positions(target_joint_pos)
             a = np.zeros(env.action_space.shape, dtype=float)
             a[10] = 1.0
             for _ in range(5):
                 env.step(a)
-            obj_to_place.force_wakeup()
+
+            obj_to_place_onto.force_wakeup()
             # this is running a zero action to step simulator
             env.step(np.zeros(env.action_space.shape))
             # reset the released object to zero velocity so it doesn't
             # fly away because of residual warp speeds from teleportation!
             p.resetBaseVelocity(
-                released_obj_bid,
+                obj_in_hand_idx,
                 linearVelocity=[0, 0, 0],
                 angularVelocity=[0, 0, 0],
             )
-            robot.set_joint_positions(orig_joint_positions)
-            # this is running a series of zero action to step simulator
-            # to let the object fall into its place
-            for _ in range(15):
-                env.step(np.zeros(env.action_space.shape))
             
+            # Simulate Arm Movement (Backwards)
+            if CFG.behavior_option_model_rrt:
+                for step in reversed(plan):
+                    # env.robots[0].set_eef_position_orientation(
+                    #     step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                    env.robots[0].set_joint_positions(step)
+                    for _ in range(1):
+                        env.step(np.zeros(env.action_space.shape))
+
+            env.robots[0].set_joint_positions(orig_joint_positions)
+        
+        # this is running a series of zero action to step simulator
+        # to let the object fall into its place
+        for _ in range(25):
+            env.step(np.zeros(env.action_space.shape))
+
         # Check whether object is ontop of not a target object
         objs_under = set()
         for obj in env.scene.get_objects():
@@ -356,8 +478,8 @@ def create_open_option_model(
     """Instantiates and returns an open option model given a dummy plan."""
     del plan
 
-    def openObjectOptionModel(_init_state: State, env: "BehaviorEnv") -> None:
-        logging.info(f"PRIMITIVE: Attempting to open {obj_to_open.name}")
+    def openObjectOptionModel(_init_state: State, env: "BehaviorEnv", distribution_samples=None) -> None:
+        # logging.info(f"PRIMITIVE: Attempting to open {obj_to_open.name}")
         if np.linalg.norm(
                 np.array(obj_to_open.get_position()) -
                 np.array(env.robots[0].get_position())) < 2:
@@ -365,9 +487,11 @@ def create_open_option_model(
                        "states") and object_states.Open in obj_to_open.states:
                 obj_to_open.states[object_states.Open].set_value(True)
             else:
-                logging.info("PRIMITIVE open failed, cannot be opened")
+                pass
+                # logging.info("PRIMITIVE open failed, cannot be opened")
         else:
-            logging.info("PRIMITIVE open failed, too far")
+            pass
+            # logging.info("PRIMITIVE open failed, too far")
         obj_to_open.force_wakeup()
         # Step the simulator to update visuals.
         env.step(np.zeros(env.action_space.shape))
@@ -381,8 +505,8 @@ def create_close_option_model(
     """Instantiates and returns an close option model given a dummy plan."""
     del plan
 
-    def closeObjectOptionModel(_init_state: State, env: "BehaviorEnv") -> None:
-        logging.info(f"PRIMITIVE: Attempting to close {obj_to_close.name}")
+    def closeObjectOptionModel(_init_state: State, env: "BehaviorEnv", distribution_samples=None) -> None:
+        # logging.info(f"PRIMITIVE: Attempting to close {obj_to_close.name}")
         if np.linalg.norm(
                 np.array(obj_to_close.get_position()) -
                 np.array(env.robots[0].get_position())) < 2:
@@ -390,9 +514,11 @@ def create_close_option_model(
                        "states") and object_states.Open in obj_to_close.states:
                 obj_to_close.states[object_states.Open].set_value(False)
             else:
-                logging.info("PRIMITIVE close failed, cannot be opened")
+                pass
+                # logging.info("PRIMITIVE close failed, cannot be opened")
         else:
-            logging.info("PRIMITIVE close failed, too far")
+            pass
+            # logging.info("PRIMITIVE close failed, too far")
         obj_to_close.force_wakeup()
         # Step the simulator to update visuals.
         env.step(np.zeros(env.action_space.shape))
@@ -408,7 +534,16 @@ def create_place_inside_option_model(
     plan."""
 
     def placeInsideObjectOptionModel(_init_state: State,
-                                     env: "BehaviorEnv") -> None:
+                                     env: "BehaviorEnv", distribution_samples=None) -> None:
+        if distribution_samples is not None:
+            obj_pos = obj_to_place_into.get_position()
+            x = obj_pos[0] + distribution_samples[0]
+            y = obj_pos[1] + distribution_samples[1]
+            z = obj_pos[2] + distribution_samples[2]
+            # add_points = list(zip(*(x, y, z)))
+            for sphere, x_i, y_i, z_i in zip(env.viz_spheres, x, y, z):
+                sphere.set_position((x_i, y_i, z_i))
+
         if isinstance(env.robots[0], BehaviorRobot):
             obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
             rh_orig_grasp_position = env.robots[0].parts[
@@ -423,9 +558,9 @@ def create_place_inside_option_model(
         ][0]
         if obj_in_hand is not None and obj_in_hand != obj_to_place_into and \
             isinstance(obj_to_place_into, URDFObject):
-            logging.info(
-                f"PRIMITIVE: attempt to place {obj_in_hand.name} inside "
-                f"{obj_to_place_into.name}")
+            # logging.info(
+            #     f"PRIMITIVE: attempt to place {obj_in_hand.name} inside "
+            #     f"{obj_to_place_into.name}")
             if np.linalg.norm(
                     np.array(obj_to_place_into.get_position()) -
                     np.array(env.robots[0].get_position())) < 2:
@@ -435,73 +570,132 @@ def create_place_inside_option_model(
                         get_value()) or (hasattr(obj_to_place_into, "states")
                                          and not object_states.Open
                                          in obj_to_place_into.states):
-                    logging.info(f"PRIMITIVE: place {obj_in_hand.name} inside "
-                                 f"{obj_to_place_into.name} success")
+                    # logging.info(f"PRIMITIVE: place {obj_in_hand.name} inside "
+                    #              f"{obj_to_place_into.name} success")
 
-                    # If we're not overriding the learned samplers, then we
-                    # will directly use the elements of `plan`, which in turn
-                    # use the outputs of the learned samplers. Otherwise, we
-                    # will ignore these and use our oracle sampler to give us
-                    # values to use.
-                    if not CFG.behavior_override_learned_samplers:
-                        target_pos = plan[-1][0:3]
-                        target_orn = plan[-1][3:6]
-                    else:
-                        rng = np.random.default_rng(prng.randint(10000))
-                        place_rel_pos = sample_place_inside_params(
-                            obj_to_place_into, rng)
-                        target_pos_list = np.add(
-                            place_rel_pos, obj_to_place_into.get_position())
-                        target_pos_list[2] += 0.2
-                        target_pos = target_pos_list.tolist()
-                        target_orn = plan[-1][3:6]
-                        logging.info(
-                            f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
-                            f", {plan[-1][3:6]}) and attempting to " +
-                            f"place inside to {obj_to_place_into.name} with "
-                            f"params {target_pos}")
                     if isinstance(env.robots[0], BehaviorRobot):
+                        # If we're not overriding the learned samplers, then we
+                        # will directly use the elements of `plan`, which in turn
+                        # use the outputs of the learned samplers. Otherwise, we
+                        # will ignore these and use our oracle sampler to give us
+                        # values to use.
+                        if not CFG.behavior_override_learned_samplers:
+                            target_pos = plan[-1][0:3]
+                            target_orn = plan[-1][3:6]
+                        else:
+                            rng = np.random.default_rng(prng.randint(10000))
+                            place_rel_pos = sample_place_inside_params(
+                                obj_to_place_into, rng)
+                            target_pos_list = np.add(
+                                place_rel_pos, obj_to_place_into.get_position())
+                            target_pos_list[2] += 0.2
+                            target_pos = target_pos_list.tolist()
+                            target_orn = plan[-1][3:6]
+                            logging.info(
+                                f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
+                                f", {plan[-1][3:6]}) and attempting to " +
+                                f"place inside to {obj_to_place_into.name} with "
+                                f"params {target_pos}")
+
+                        # Simulate Arm Movement
+                        if CFG.behavior_option_model_rrt:
+                            for step in plan:
+                                env.robots[0].parts["right_hand"].set_position_orientation(
+                                    step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                                for _ in range(1):
+                                    env.step(np.zeros(env.action_space.shape))
+
+                        env.robots[0].parts["right_hand"].set_position_orientation(
+                            target_pos, p.getQuaternionFromEuler(target_orn))
                         env.robots[0].parts["right_hand"].force_release_obj()
                         obj_to_place_into.force_wakeup()
                         obj_in_hand.set_position_orientation(
                             target_pos, p.getQuaternionFromEuler(target_orn))
+
+                        # this is running a zero action to step simulator
+                        env.step(np.zeros(env.action_space.shape))
+                        # reset the released object to zero velocity so it
+                        # doesn't fly away because of residual warp speeds
+                        # from teleportation!
+                        p.resetBaseVelocity(
+                            obj_in_hand_idx,
+                            linearVelocity=[0, 0, 0],
+                            angularVelocity=[0, 0, 0],
+                        )
+
+                        # Simulate Arm Movement (Backwards)
+                        if CFG.behavior_option_model_rrt:
+                            for step in reversed(plan):
+                                env.robots[0].parts["right_hand"].set_position_orientation(
+                                    step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                                for _ in range(1):
+                                    env.step(np.zeros(env.action_space.shape))
+
+                        env.robots[0].parts["right_hand"].set_position_orientation(
+                            rh_orig_grasp_position, rh_orig_grasp_orn)
+
                     else:
+                        if not CFG.behavior_override_learned_samplers:
+                            # target_pos = plan[-1][0:3]
+                            # target_orn = plan[-1][3:6]
+                            target_joint_pos = plan[-1]
+                        else:
+                            raise NotImplementedError                        
+
+                        # Simulate Arm Movement
+                        if CFG.behavior_option_model_rrt:
+                            for step in plan:
+                                # env.robots[0].set_eef_position_orientation(
+                                #     step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                                env.robots[0].set_joint_positions(step)
+                                for _ in range(1):
+                                    env.step(np.zeros(env.action_space.shape))
+                       
                         # env.robots[0].set_eef_position_orientation(target_pos, p.getQuaternionFromEuler(target_orn))
-                        env.robots[0].set_eef_position(target_pos)
+                        # env.robots[0].set_eef_position(target_pos)
+
+                        env.robots[0].set_joint_positions(target_joint_pos)
                         a = np.zeros(env.action_space.shape, dtype=float)
                         a[10] = 1.0
                         for _ in range(5):
                             env.step(a)
                         obj_to_place_into.force_wakeup()
 
-                    # this is running a zero action to step simulator
-                    env.step(np.zeros(env.action_space.shape))
-                    # reset the released object to zero velocity so it
-                    # doesn't fly away because of residual warp speeds
-                    # from teleportation!
-                    p.resetBaseVelocity(
-                        obj_in_hand_idx,
-                        linearVelocity=[0, 0, 0],
-                        angularVelocity=[0, 0, 0],
-                    )
-                    if isinstance(env.robots[0], BehaviorRobot):
-                        env.robots[0].parts["right_hand"].set_position_orientation(
-                            rh_orig_grasp_position, rh_orig_grasp_orn)
-                    else:
+                        # this is running a zero action to step simulator
+                        env.step(np.zeros(env.action_space.shape))
+                        # reset the released object to zero velocity so it
+                        # doesn't fly away because of residual warp speeds
+                        # from teleportation!
+                        p.resetBaseVelocity(
+                            obj_in_hand_idx,
+                            linearVelocity=[0, 0, 0],
+                            angularVelocity=[0, 0, 0],
+                        )
+
+                        # Simulate Arm Movement (Backwards)
+                        if CFG.behavior_option_model_rrt:
+                            for step in reversed(plan):
+                                # env.robots[0].set_eef_position_orientation(
+                                #     step[0:3], p.getQuaternionFromEuler(step[3:6]))
+                                env.robots[0].set_joint_positions(step)
+                                for _ in range(1):
+                                    env.step(np.zeros(env.action_space.shape))
                         env.robots[0].set_joint_positions(orig_joint_positions)
-                    # this is running a series of zero action to step
-                    # simulator to let the object fall into its place
+
                     for _ in range(15):
                         env.step(np.zeros(env.action_space.shape))
                 else:
-                    logging.info(
-                        f"PRIMITIVE: place {obj_in_hand.name} inside "
-                        f"{obj_to_place_into.name} fail, need open not open")
+                    pass
+                    # logging.info(
+                    #     f"PRIMITIVE: place {obj_in_hand.name} inside "
+                    #     f"{obj_to_place_into.name} fail, need open not open")
             else:
-                logging.info(f"PRIMITIVE: place {obj_in_hand.name} inside "
-                             f"{obj_to_place_into.name} fail, too far")
+                pass
+                # logging.info(f"PRIMITIVE: place {obj_in_hand.name} inside "
+                #              f"{obj_to_place_into.name} fail, too far")
         else:
-            logging.info("PRIMITIVE: place failed with invalid obj params.")
+            pass
+            # logging.info("PRIMITIVE: place failed with invalid obj params.")
 
         obj_to_place_into.force_wakeup()
         # Step the simulator to update visuals.
@@ -518,7 +712,7 @@ def create_place_under_option_model(
     plan."""
 
     def placeUnderObjectOptionModel(_init_state: State,
-                                    env: "BehaviorEnv") -> None:
+                                    env: "BehaviorEnv", distribution_samples=None) -> None:
         obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
         obj_in_hand = [
             obj for obj in env.scene.get_objects()
@@ -527,11 +721,19 @@ def create_place_under_option_model(
         rh_orig_grasp_position = env.robots[0].parts[
             "right_hand"].get_position()
         rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
+        if distribution_samples is not None:
+            obj_pos = obj_to_place_under.get_position()
+            x = obj_pos[0] + distribution_samples[0]
+            y = obj_pos[1] + distribution_samples[1]
+            z = obj_pos[2] + distribution_samples[2]
+            # add_points = list(zip(*(x, y, z)))
+            for sphere, x_i, y_i, z_i in zip(env.viz_spheres, x, y, z):
+                sphere.set_position((x_i, y_i, z_i))
         if obj_in_hand is not None and obj_in_hand != obj_to_place_under and \
             isinstance(obj_to_place_under, URDFObject):
-            logging.info(
-                f"PRIMITIVE: attempt to place {obj_in_hand.name} under "
-                f"{obj_to_place_under.name}")
+            # logging.info(
+            #     f"PRIMITIVE: attempt to place {obj_in_hand.name} under "
+            #     f"{obj_to_place_under.name}")
             if np.linalg.norm(
                     np.array(obj_to_place_under.get_position()) -
                     np.array(env.robots[0].get_position())) < 2:
@@ -540,9 +742,10 @@ def create_place_under_option_model(
                     if obj_in_hand.states[object_states.Under].get_value(
                             obj_to_place_under) or obj_to_place_under.states[
                                 object_states.Under].get_value(obj_in_hand):
-                        logging.info(
-                            f"PRIMITIVE: place {obj_in_hand.name} under "
-                            f"{obj_to_place_under.name} success")
+                        pass
+                        # logging.info(
+                        #     f"PRIMITIVE: place {obj_in_hand.name} under "
+                        #     f"{obj_to_place_under.name} success")
 
                     # If we're not overriding the learned samplers, then we
                     # will directly use the elements of `plan`, which in turn
@@ -561,11 +764,11 @@ def create_place_under_option_model(
                         target_pos_list[2] += 0.2
                         target_pos = target_pos_list.tolist()
                         target_orn = plan[-1][3:6]
-                        logging.info(
-                            f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
-                            f", {plan[-1][3:6]}) and attempting to " +
-                            f"place under to {obj_to_place_under.name} with "
-                            f"params {target_pos}")
+                        # logging.info(
+                        #     f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
+                        #     f", {plan[-1][3:6]}) and attempting to " +
+                        #     f"place under to {obj_to_place_under.name} with "
+                        #     f"params {target_pos}")
                     env.robots[0].parts["right_hand"].force_release_obj()
                     obj_to_place_under.force_wakeup()
                     obj_in_hand.set_position_orientation(
@@ -587,14 +790,17 @@ def create_place_under_option_model(
                     for _ in range(15):
                         env.step(np.zeros(env.action_space.shape))
                 else:
-                    logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
-                                 f"{obj_to_place_under.name} fail, not under")
+                    pass
+                    # logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
+                    #              f"{obj_to_place_under.name} fail, not under")
             else:
-                logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
-                             f"{obj_to_place_under.name} fail, too far")
+                pass
+                # logging.info(f"PRIMITIVE: place {obj_in_hand.name} under "
+                #              f"{obj_to_place_under.name} fail, too far")
         else:
-            logging.info(
-                "PRIMITIVE: place under failed with invalid obj params.")
+            pass
+            # logging.info(
+            #     "PRIMITIVE: place under failed with invalid obj params.")
 
         obj_to_place_under.force_wakeup()
         # Step the simulator to update visuals.
@@ -611,9 +817,9 @@ def create_toggle_on_option_model(
     del plan
 
     def toggleOnObjectOptionModel(_init_state: State,
-                                  env: "BehaviorEnv") -> None:
-        logging.info(
-            f"PRIMITIVE: Attempting to toggle on {obj_to_toggled_on.name}")
+                                  env: "BehaviorEnv", distribution_samples=None) -> None:
+        # logging.info(
+            # f"PRIMITIVE: Attempting to toggle on {obj_to_toggled_on.name}")
         if np.linalg.norm(
                 np.array(obj_to_toggled_on.get_position()) -
                 np.array(env.robots[0].get_position())) < 2:
@@ -623,9 +829,11 @@ def create_toggle_on_option_model(
                 obj_to_toggled_on.states[object_states.ToggledOn].set_value(
                     True)
             else:
-                logging.info("PRIMITIVE toggle failed, cannot be toggled on")
+                pass
+                # logging.info("PRIMITIVE toggle failed, cannot be toggled on")
         else:
-            logging.info("PRIMITIVE toggle failed, too far")
+            pass
+            # logging.info("PRIMITIVE toggle failed, too far")
         obj_to_toggled_on.force_wakeup()
         # Step the simulator to update visuals.
         env.step(np.zeros(env.action_space.shape))
@@ -641,7 +849,7 @@ def create_place_nextto_option_model(
     plan."""
 
     def placeNextToObjectOptionModel(_init_state: State,
-                                     env: "BehaviorEnv") -> None:
+                                     env: "BehaviorEnv", distribution_samples=None) -> None:
         obj_in_hand_idx = env.robots[0].parts["right_hand"].object_in_hand
         obj_in_hand = [
             obj for obj in env.scene.get_objects()
@@ -652,9 +860,9 @@ def create_place_nextto_option_model(
         rh_orig_grasp_orn = env.robots[0].parts["right_hand"].get_orientation()
         if obj_in_hand is not None and obj_in_hand != obj_to_place_nextto and \
             isinstance(obj_to_place_nextto, URDFObject):
-            logging.info(
-                f"PRIMITIVE: attempt to place {obj_in_hand.name} next to "
-                f"{obj_to_place_nextto.name}")
+            # logging.info(
+            #     f"PRIMITIVE: attempt to place {obj_in_hand.name} next to "
+            #     f"{obj_to_place_nextto.name}")
             if np.linalg.norm(
                     np.array(obj_to_place_nextto.get_position()) -
                     np.array(env.robots[0].get_position())) < 2:
@@ -663,9 +871,10 @@ def create_place_nextto_option_model(
                     if obj_in_hand.states[object_states.NextTo].get_value(
                             obj_to_place_nextto) or obj_to_place_nextto.states[
                                 object_states.NextTo].get_value(obj_in_hand):
-                        logging.info(
-                            f"PRIMITIVE: place {obj_in_hand.name} next to "
-                            f"{obj_to_place_nextto.name} success")
+                        pass
+                        # logging.info(
+                        #     f"PRIMITIVE: place {obj_in_hand.name} next to "
+                        #     f"{obj_to_place_nextto.name} success")
 
                     # If we're not overriding the learned samplers, then we
                     # will directly use the elements of `plan`, which in turn
@@ -684,11 +893,11 @@ def create_place_nextto_option_model(
                         target_pos_list[2] += 0.2
                         target_pos = target_pos_list.tolist()
                         target_orn = plan[-1][3:6]
-                        logging.info(
-                            f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
-                            f", {plan[-1][3:6]}) and attempting to " +
-                            f"place next to {obj_to_place_nextto.name} with "
-                            f"params {target_pos}")
+                        # logging.info(
+                        #     f"PRIMITIVE: Overriding sample ({plan[-1][0:3]}" +
+                        #     f", {plan[-1][3:6]}) and attempting to " +
+                        #     f"place next to {obj_to_place_nextto.name} with "
+                        #     f"params {target_pos}")
                     env.robots[0].parts["right_hand"].force_release_obj()
                     obj_to_place_nextto.force_wakeup()
                     obj_in_hand.set_position_orientation(
@@ -710,15 +919,18 @@ def create_place_nextto_option_model(
                     for _ in range(15):
                         env.step(np.zeros(env.action_space.shape))
                 else:
-                    logging.info(
-                        f"PRIMITIVE: place {obj_in_hand.name} next to "
-                        f"{obj_to_place_nextto.name} fail, not next to")
+                    pass
+                    # logging.info(
+                    #     f"PRIMITIVE: place {obj_in_hand.name} next to "
+                    #     f"{obj_to_place_nextto.name} fail, not next to")
             else:
-                logging.info(f"PRIMITIVE: place {obj_in_hand.name} next to "
-                             f"{obj_to_place_nextto.name} fail, too far")
+                pass
+                # logging.info(f"PRIMITIVE: place {obj_in_hand.name} next to "
+                #              f"{obj_to_place_nextto.name} fail, too far")
         else:
-            logging.info(
-                "PRIMITIVE: place under failed with invalid obj params.")
+            pass
+            # logging.info(
+            #     "PRIMITIVE: place under failed with invalid obj params.")
 
         obj_to_place_nextto.force_wakeup()
         # Step the simulator to update visuals.
@@ -735,8 +947,8 @@ def create_clean_dusty_option_model(
     del plan
 
     def cleanDustyObjectOptionModel(_init_state: State,
-                                    env: "BehaviorEnv") -> None:
-        logging.info(f"PRIMITIVE: Attempting to clean {obj_to_clean.name}")
+                                    env: "BehaviorEnv", distribution_samples=None) -> None:
+        # logging.info(f"PRIMITIVE: Attempting to clean {obj_to_clean.name}")
         if np.linalg.norm(
                 np.array(obj_to_clean.get_position()) -
                 np.array(env.robots[0].get_position())) < 2:
@@ -745,9 +957,11 @@ def create_clean_dusty_option_model(
                     "states") and object_states.Dusty in obj_to_clean.states:
                 obj_to_clean.states[object_states.Dusty].set_value(False)
             else:
-                logging.info("PRIMITIVE clean failed, cannot be cleaned")
+                pass
+                # logging.info("PRIMITIVE clean failed, cannot be cleaned")
         else:
-            logging.info("PRIMITIVE clean failed, too far")
+            pass
+            # logging.info("PRIMITIVE clean failed, too far")
         obj_to_clean.force_wakeup()
         # Step the simulator to update visuals.
         env.step(np.zeros(env.action_space.shape))
