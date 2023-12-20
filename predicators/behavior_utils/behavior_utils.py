@@ -837,7 +837,7 @@ def get_aabb_centroid(lo: Array, hi: Array) -> List[float]:
     return [(hi[0] + lo[0]) / 2, (hi[1] + lo[1]) / 2, (hi[2] + lo[2]) / 2]
 
 
-def get_scene_body_ids(
+def get_relevant_scene_body_ids(
     env: "BehaviorEnv",
     include_self: bool = False,
     include_right_hand: bool = False,
@@ -852,7 +852,9 @@ def get_scene_body_ids(
             # will never practically collide with it, but if we include it
             # in collision checking, we always seem to collide.
             if obj.name != "floors":
-                ids.extend(obj.body_ids)
+                # Here are the list of relevant objects.
+                if "bed" in obj.name:
+                    ids.extend(obj.body_ids)
 
     if include_self:
         ids.append(env.robots[0].parts["left_hand"].get_body_id())
@@ -860,6 +862,12 @@ def get_scene_body_ids(
         ids.append(env.robots[0].parts["eye"].get_body_id())
         if not include_right_hand:
             ids.append(env.robots[0].parts["right_hand"].get_body_id())
+
+    all_obj_ids = []
+    for obj in env.scene.get_objects():
+        if isinstance(obj, URDFObject):
+            all_obj_ids.append([obj.name, obj.body_ids])
+    print("ALL OBJ IDS:", all_obj_ids)
 
     return ids
 
@@ -1088,12 +1096,9 @@ def check_nav_end_pose(
 
     return valid_position, status
 
-def get_valid_orientation(env: "BehaviorEnv", obj: Union["URDFObject",
-                                                       "RoomFloor"]) -> Tuple[float]:
+def get_valid_orientation(env: "BehaviorEnv", position: List[float]) -> Tuple[float]:
     state = p.saveState()
-    obj_aabb = obj.states[object_states.AABB].get_value()
-    obj_closest_point = get_closest_point_on_aabb(env.robots[0].get_position(), obj_aabb[0], obj_aabb[1])
-    ik_success, orn = env.robots[0].set_eef_position(obj_closest_point)
+    ik_success, orn = env.robots[0].set_eef_position(position)
     p.restoreState(state)
     p.removeState(state)
     return ik_success, orn
@@ -1109,7 +1114,8 @@ def check_hand_end_pose(env: "BehaviorEnv", obj: Union["URDFObject",
     ret_bool = False
     state = p.saveState()
     obj_aabb = obj.states[object_states.AABB].get_value()
-    obj_closest_point = get_closest_point_on_aabb(env.robots[0].get_position(), obj_aabb[0], obj_aabb[1])
+    # obj_closest_point = get_closest_point_on_aabb(env.robots[0].get_position(), obj_aabb[0], obj_aabb[1])
+    obj_closest_point = get_closest_point_on_aabb(env.robots[0].get_end_effector_position(), obj_aabb[0], obj_aabb[1])
 
     hand_pos = (
         pos_offset[0] + obj_closest_point[0],
