@@ -11,7 +11,8 @@ from numpy.random._generator import Generator
 
 from predicators.behavior_utils.behavior_utils import check_nav_end_pose, \
     get_aabb_volume, get_closest_point_on_aabb, get_relevant_scene_body_ids, \
-    reset_and_release_hand, get_aabb_centroid, get_valid_orientation
+    reset_and_release_hand, get_aabb_centroid, get_valid_orientation, \
+    get_grasp_relevant_scene_body_ids
 from predicators.settings import CFG
 from predicators.structs import Array
 
@@ -171,6 +172,8 @@ def make_navigation_plan(
             rng=rng,
             max_distance=0.01
         )
+        if plan is not None:
+            plan = plan + [end_conf]
         p.restoreState(state)
     else:
         pos = env.robots[0].get_position()
@@ -212,6 +215,9 @@ def make_grasp_plan(
     will only be one step (i.e, the pose to move the hand to to try
     grasping the object).
     """
+    if not isinstance(env.robots[0], BehaviorRobot):
+        env.robots[0].set_joint_positions(env.robots[0].untucked_default_joints)
+
     if distribution_samples is not None:
         obj_pos = obj.get_position()
         print("Motion planner grasp, distr shape:", distribution_samples.shape)
@@ -283,9 +289,10 @@ def make_grasp_plan(
         obj_pos = tuple(delta + delta / np.linalg.norm(delta) * .01 + np.array(robot_position_closest_to_obj))  # Add 1 cm in the same direction
 
         hand_x, hand_y, hand_z = env.robots[0].get_end_effector_position()
-        obstacles = get_relevant_scene_body_ids(env)
-        if env.robots[0].object_in_hand in obstacles:
-            obstacles.remove(env.robots[0].object_in_hand)
+        obstacles = get_grasp_relevant_scene_body_ids(env) #get_relevant_scene_body_ids(env)
+        for body_id in obj.body_ids:
+            if body_id in obstacles:
+                obstacles.remove(body_id)
         obstacles.append((env.robots[0].body_id, (env.robots[0].parts["base_link"].body_part_index, env.robots[0].parts["torso_lift_link"].body_part_index)))
     x = obj_pos[0] + grasp_offset[0]
     y = obj_pos[1] + grasp_offset[1]
@@ -398,6 +405,7 @@ def make_grasp_plan(
             logging.info(f"PRIMITIVE: grasp {obj.name} fail, failed "
                          f"to find plan to continuous params {grasp_offset}")
             return None
+        # assert np.allclose(plan[0], env.robots[0].untucked_default_joints, atol=1e-2)
         plan = plan + [end_conf]
     else:
         if isinstance(env.robots[0], BehaviorRobot):
@@ -485,7 +493,7 @@ def make_grasp_plan(
         #     # hand_orn = new_step[3:6]
         #     # joint_pos = new_step[6:]
         #     joint_pos = new_step
-        # assert np.allclose(joint_pos, closest_point_joint_pos), f"\n{joint_pos}\n{closest_point_joint_pos}"
+        # assert np.allclose(joint_pos, closest_point_joint_pos), f"\n{joint_pos}\n{closest_point_joint_pos}, atol=1e-2"
         # logging.info(f"\tTarget joint positions will be -- {closest_point_joint_pos}")
         # logging.info(f"\t\t{delta_pos_to_obj}")
         # exit()
@@ -530,6 +538,9 @@ def make_place_plan(
     run RRT, the plan will only be one step (i.e, the pose to move the
     hand to to try placing the object).
     """
+    if not isinstance(env.robots[0], BehaviorRobot):
+        env.robots[0].set_joint_positions(env.robots[0].untucked_default_joints)
+
     if distribution_samples is not None:
         obj_pos = obj.get_position()
         print("Motion planner place, distr shape:", distribution_samples.shape)
@@ -604,8 +615,8 @@ def make_place_plan(
     maxy = max(y, hand_y) + 0.5
     maxz = max(z, hand_z) + 0.5
 
-    obstacles = get_relevant_scene_body_ids(env, include_self=False)
     if isinstance(env.robots[0], BehaviorRobot):
+        obstacles = get_relevant_scene_body_ids(env, include_self=False)
         if env.robots[0].parts["right_hand"].object_in_hand in obstacles:
             obstacles.remove(env.robots[0].parts["right_hand"].object_in_hand)
         end_conf = [
@@ -617,6 +628,7 @@ def make_place_plan(
             0,
         ]
     else:
+        obstacles = get_grasp_relevant_scene_body_ids(env)
         if env.robots[0].object_in_hand in obstacles:
             obstacles.remove(env.robots[0].object_in_hand)
         
@@ -660,6 +672,13 @@ def make_place_plan(
                 rng=rng,
             )
             p.restoreState(state)
+        # If RRT planning fails, fail and return None
+        if plan is None:
+            logging.info(f"PRIMITIVE: place {obj_in_hand.name} fail, failed "
+                         f"to find plan to continuous params {place_rel_pos}")
+            return None
+        # assert np.allclose(plan[0], env.robots[0].untucked_default_joints, atol=1e-2)
+        plan = plan + [end_conf]
     else:
         if isinstance(env.robots[0], BehaviorRobot):
             pos = env.robots[0].parts["right_hand"].get_position()

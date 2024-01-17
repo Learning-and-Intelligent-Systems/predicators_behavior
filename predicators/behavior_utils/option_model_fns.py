@@ -209,7 +209,9 @@ def create_grasp_option_model(
             final_joint_position = plan[hand_i]
             robot = env.robots[0]
             orig_joint_positions = get_joint_positions(robot.robot_ids[0], robot.joint_ids)
-            
+            # assert np.allclose(orig_joint_positions, plan[0], atol=1e-3), f"{np.abs(orig_joint_positions - plan[0])}"
+            # assert np.allclose(orig_joint_positions, robot.untucked_default_joints, atol=1e-3), f"{np.abs(orig_joint_positions - robot.untucked_default_joints)}"
+            orig_joint_positions = robot.untucked_default_joints
             # Simulate Arm Movement
             if CFG.behavior_option_model_rrt:
                 for step in plan:
@@ -303,6 +305,9 @@ def create_place_option_model(
         else:
             obj_in_hand_idx = env.robots[0].object_in_hand
             orig_joint_positions = get_joint_positions(env.robots[0].robot_ids[0], env.robots[0].joint_ids)
+            # assert np.allclose(orig_joint_positions, plan[0], atol=1e-3), f"{np.abs(orig_joint_positions - plan[0])}"
+            # assert np.allclose(orig_joint_positions, env.robots[0].untucked_default_joints, atol=1e-3), f"{np.abs(orig_joint_positions - env.robots[0].untucked_default_joints)}"
+            orig_joint_positions = env.robots[0].untucked_default_joints
         obj_in_hand = [
             obj for obj in env.scene.get_objects()
             if obj.get_body_id() == obj_in_hand_idx
@@ -552,6 +557,9 @@ def create_place_inside_option_model(
         else:
             obj_in_hand_idx = env.robots[0].object_in_hand
             orig_joint_positions = get_joint_positions(env.robots[0].robot_ids[0], env.robots[0].joint_ids)
+            # assert np.allclose(orig_joint_positions, plan[0], atol=1e-2), f"{np.abs(orig_joint_positions - plan[0])}"
+            # assert np.allclose(orig_joint_positions, env.robots[0].untucked_default_joints, atol=1e-3), f"{np.abs(orig_joint_positions - env.robots[0].untucked_default_joints)}"
+            orig_joint_positions = env.robots[0].untucked_default_joints
         obj_in_hand = [
             obj for obj in env.scene.get_objects()
             if obj.get_body_id() == obj_in_hand_idx

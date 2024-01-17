@@ -837,6 +837,22 @@ def get_aabb_centroid(lo: Array, hi: Array) -> List[float]:
     return [(hi[0] + lo[0]) / 2, (hi[1] + lo[1]) / 2, (hi[2] + lo[2]) / 2]
 
 
+def get_grasp_relevant_scene_body_ids(env: "BehaviorEnv") -> List[int]:
+    ids = []
+    cnt_skipped = 0
+    for obj in env.scene.get_objects():
+        if isinstance(obj, URDFObject):
+            # for body_id in obj.body_ids:
+            #     closest_points = p.getClosestPoints(env.robots[0].body_id, body_id, distance=3)
+            #     if len(closest_points) > 0:
+            #         ids.append(body_id)
+            #     else:
+            #         cnt_skipped += 1
+            if "bed" in obj.name:
+                ids.extend(obj.body_ids)
+    print("TOTAL OBSTACLES: ", len(ids), "( skipped:", cnt_skipped, ")")
+    return ids
+
 def get_relevant_scene_body_ids(
     env: "BehaviorEnv",
     include_self: bool = False,
@@ -853,8 +869,8 @@ def get_relevant_scene_body_ids(
             # in collision checking, we always seem to collide.
             if obj.name != "floors":
                 # Here are the list of relevant objects.
-                if "bed" in obj.name:
-                    ids.extend(obj.body_ids)
+                # if "bed" in obj.name:
+                ids.extend(obj.body_ids)
 
     if include_self:
         ids.append(env.robots[0].parts["left_hand"].get_body_id())
