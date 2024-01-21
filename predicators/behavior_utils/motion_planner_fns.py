@@ -34,8 +34,7 @@ try:
         get_aabb_extent, get_joint_positions
     import igibson.utils.transform_utils as T
 except (ImportError, ModuleNotFoundError) as e:
-    pass
-
+    raise
 
 def make_dummy_plan(
     env: "BehaviorEnv",
@@ -279,14 +278,29 @@ def make_grasp_plan(
                                                 include_self=True,
                                                 include_right_hand=True)
     else:
+        ## Implementation with bbox closest point
         # aabb = obj.states[object_states.AABB].get_value()
         # obj_pos = get_closest_point_on_aabb(env.robots[0].get_position(), aabb[0], aabb[1])
-        points = p.getClosestPoints(env.robots[0].get_body_id(), obj.get_body_id(), distance=10, linkIndexA=env.robots[0].parts["gripper_link"].body_part_index)
-        closest_point = min(points, key=lambda x:x[8])
-        obj_pos = closest_point[6]
-        robot_position_closest_to_obj = closest_point[5]
+
+        ## Implementation with closest point to robot
+        # points = p.getClosestPoints(env.robots[0].get_body_id(), obj.get_body_id(), distance=10, linkIndexA=env.robots[0].parts["gripper_link"].body_part_index)
+        # closest_point = min(points, key=lambda x:x[8])
+        # obj_pos = closest_point[6]
+        # robot_position_closest_to_obj = closest_point[5]
+        # delta = (np.array(obj_pos) - np.array(robot_position_closest_to_obj))
+        # obj_pos = tuple(delta + delta / np.linalg.norm(delta) * .01 + np.array(robot_position_closest_to_obj))  # Add 1 cm in the same direction
+
+        ## Implementation with closest point to grasp_offset
+        obj_pos = obj.get_position()
+        target_gripper_pos = [obj_pos[0] + grasp_offset[0], obj_pos[1] + grasp_offset[1], obj_pos[2] + grasp_offset[2]]
+        ray_test_res = p.rayTest(target_gripper_pos, obj_pos)
+        if len(ray_test_res) == 0 or ray_test_res[0][0] != obj.get_body_id():
+            return None
+        obj_pos = ray_test_res[0][3]
+        robot_position_closest_to_obj = env.robots[0].get_end_effector_position()
         delta = (np.array(obj_pos) - np.array(robot_position_closest_to_obj))
         obj_pos = tuple(delta + delta / np.linalg.norm(delta) * .01 + np.array(robot_position_closest_to_obj))  # Add 1 cm in the same direction
+
 
         hand_x, hand_y, hand_z = env.robots[0].get_end_effector_position()
         obstacles = get_grasp_relevant_scene_body_ids(env) #get_relevant_scene_body_ids(env)
